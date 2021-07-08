@@ -27,18 +27,38 @@ function install_prereqs {
   . /etc/os-release
 
   if [ "$ID" = "centos" ] || [ "$ID" = "redhat" ]; then
-    if [ "$VERSION" = "8" ] || [ "$VERSION" = "7" ]; then
+    if [ "$VERSION_ID" = "8" ] || [ "$VERSION_ID" = "7" ]; then
       echo "$ID $VERSION found"
-      REPO_URL="https://repo.stackable.tech/repository/rpm-${REPO_TYPE}/el${VERSION}"
+      REPO_URL="https://repo.stackable.tech/repository/rpm-${REPO_TYPE}/el${VERSION_ID}"
       INSTALLER=/usr/bin/yum
       install_prereqs_redhat
     else
-      echo "Only Redhat/CentOS 7 & 8 are supported. This host is running $VERSION."
+      echo "Only Redhat/CentOS 7 & 8 are supported. This host is running $VERSION_ID."
+      exit 1
     fi
-  elif [ "$ID" = "ubuntu" ] || [ "$ID" = "debian" ]; then
-    REPO_URL="https://repo.stackable.tech/repository/deb-${REPO_TYPE}"
-    INSTALLER=apt
-    install_prereqs_debian
+  elif [ "$ID" = "ubuntu" ]; then
+    if [ "$VERSION_ID" = "20.04" ]; then
+      echo "$ID $VERSION_ID found"
+      REPO_URL="https://repo.stackable.tech/repository/deb-${REPO_TYPE}"
+      INSTALLER=apt
+      install_prereqs_ubuntu
+    else
+      echo "Only Ubuntu 20.04 LTS is supported. This host is running $ID $VERSION_ID."
+      exit 1
+    fi
+  elif [ "$ID" = "debian" ]; then
+    if [ "$VERSION_ID" = "10" ]; then
+      echo "$ID $VERSION_ID found"
+      REPO_URL="https://repo.stackable.tech/repository/deb-${REPO_TYPE}"
+      INSTALLER=apt
+      install_prereqs_debian
+    else
+      echo "Only Debian 10 is supported. This host is running $ID $VERSION_ID."
+      exit 1
+    fi
+  else
+    echo "Unsupported operating system detected: $ID $VERSION_ID"
+    exit 1
   fi
 }
 
@@ -51,7 +71,7 @@ function install_prereqs_redhat {
   fi
 
   # Download the Stackable GPG key used for package signing
-  /usr/bin/yum -y install gnupg2 java-1.8.0-openjdk
+  /usr/bin/yum -y install gnupg2 java-11-openjdk curl
   /usr/bin/curl -s "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xce45c7a0a3e41385acd4358916dd12f5c7a6d76a" > /etc/pki/rpm-gpg/RPM-GPG-KEY-stackable
   /usr/bin/rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-stackable
 
@@ -65,7 +85,6 @@ gpgcheck=0" > /etc/yum.repos.d/stackable.repo
   /usr/bin/yum clean all
 }
 
-
 function install_prereqs_debian {
   echo "Installing Stackable APT repo"
 
@@ -74,12 +93,25 @@ function install_prereqs_debian {
     exit 1
   fi
 
-  apt-get install gnupg openjdk-8-jdk -y
+  apt-get -y install gnupg openjdk-11-jdk curl
   apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 16dd12f5c7a6d76a
   echo "deb $REPO_URL buster main" > /etc/apt/sources.list.d/stackable.list
   apt update
 }
 
+function install_prereqs_ubuntu {
+  echo "Installing Stackable APT repo"
+
+  if [ -z $REPO_URL ]; then
+    /usr/bin/echo "No YUM repo URL found, exiting."
+    exit 1
+  fi
+
+  apt-get -y install gnupg openjdk-11-jdk curl
+  apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 16dd12f5c7a6d76a
+  echo "deb $REPO_URL buster main" > /etc/apt/sources.list.d/stackable.list
+  apt update
+}
 
 function install_k8s {
   echo "Installing K8s"
@@ -106,7 +138,7 @@ function install_crds {
 
 function install_stackable_k8s_repo {
   echo Installing Stackable package repo
-  cat <<EOF | kubectl apply -f -
+  kubectl apply -f - <<EOF
 apiVersion: "stable.stackable.de/v1"
 kind: Repository
 metadata:
@@ -116,6 +148,7 @@ spec:
   properties:
     url: https://repo.stackable.tech/repository/packages/
 EOF
+
 }
 
 function check_operator_list {
@@ -289,23 +322,28 @@ install_prereqs
 # Install the K3s Kubernetes distribution
 install_k8s
 
-# Install the Stackable Kubernetes repo
-install_stackable_k8s_repo
+# Install the Stackable CRDs
+install_crds
 
 # Install the Stackable operators for the chosen components
 install_stackable_operators
 
-# Install the Stackable CRDs
-install_crds
-
 # Install the Stackable agent
 install_stackable_agent
+
+# Install the Stackable Kubernetes repo
+install_stackable_k8s_repo
 
 # Deploy Stackable Components
 for OPERATOR in ${OPERATORS[@]}; do
   echo "Deploying ${OPERATOR}"
   deploy_${OPERATOR}
 done
+
+# Tested on CentOS 8
+# Tested on Ubuntu 20.04
+# Testing Debian 9
+# Testing Debian 10
 
 # TODO: Create TLS certificate
 # TODO: Create Spark client configuration
