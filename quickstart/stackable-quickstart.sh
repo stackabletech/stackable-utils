@@ -1,7 +1,14 @@
 #!/bin/bash
 # Install a single node deployment of Stackable
 
-HOSTNAME=`/usr/bin/hostname -f`
+# This is a dirty hack to get two K8s nodes running on a single machine.
+# Use the shortname if hostname returns the FQDN or vice versa.
+if [ "$(hostname)" = "$(hostname -f)" ]; then
+  K8S_HOSTNAME=`/usr/bin/hostname -s`
+else
+  K8S_HOSTNAME=`/usr/bin/hostname -f`
+fi
+
 GPG_KEY_URL="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xce45c7a0a3e41385acd4358916dd12f5c7a6d76a"
 
 # This is the list of currently supported operators for Stackable Quickstart
@@ -23,12 +30,14 @@ function install_prereqs {
     if [ "$VERSION" = "8" ] || [ "$VERSION" = "7" ]; then
       echo "$ID $VERSION found"
       REPO_URL="https://repo.stackable.tech/repository/rpm-${REPO_TYPE}/el${VERSION}"
+      INSTALLER=/usr/bin/yum
       install_prereqs_redhat
     else
       echo "Only Redhat/CentOS 7 & 8 are supported. This host is running $VERSION."
     fi
   elif [ "$ID" = "ubuntu" ] || [ "$ID" = "debian" ]; then
     REPO_URL="https://repo.stackable.tech/repository/deb-${REPO_TYPE}"
+    INSTALLER=apt
     install_prereqs_debian
   fi
 }
@@ -48,7 +57,11 @@ function install_prereqs_redhat {
 
   # Create YUM repo configuration file
   # TODO: Enable GPG checking on Stackable repo
-  /usr/bin/yum-config-manager --add-repo=$REPO_URL
+  echo "[stackable]
+name=Stackable ${REPO_TYPE} repo
+baseurl=${REPO_URL}
+enabled=1
+gpgcheck=0" > /etc/yum.repos.d/stackable.repo
   /usr/bin/yum clean all
 }
 
@@ -116,54 +129,36 @@ function check_operator_list {
 }
 
 function install_operator {
-  operator=$1
+  OPERATOR=$1
+  PKG_NAME=stackable-${OPERATOR}-operator-server
+  echo "Installing Stackable operator for ${OPERATOR}"
 
-  if [ "$ID" == "redhat" ] || [ "$ID" == "centos" ]; then
-    /usr/bin/yum -y install stackable
-  fi
+  $INSTALLER -y install ${PKG_NAME}
+
+  /usr/bin/systemctl enable ${PKG_NAME}
+  /usr/bin/systemctl start ${PKG_NAME}
 }
 
 function install_stackable_operators {
   echo "Installing Stackable operators"
-#  for OPERATOR in ${OPERATORS[@]}; do
-#    install_operator($OPERATOR)
-#  done 
-
-  apt install -y stackable-spark-operator-server stackable-zookeeper-operator-server stackable-kafka-operator-server stackable-nifi-operator-server
-  systemctl enable stackable-spark-operator-server
-  systemctl enable stackable-kafka-operator-server
-  systemctl enable stackable-zookeeper-operator-server
-  systemctl enable stackable-nifi-operator-server
-  systemctl start stackable-spark-operator-server
-  systemctl start stackable-kafka-operator-server
-  systemctl start stackable-zookeeper-operator-server
-  systemctl start stackable-nifi-operator-server
+  for OPERATOR in ${OPERATORS[@]}; do
+    install_operator $OPERATOR
+  done 
 }
 
-# MAIN
-# Check the list of operators to deploy against the allowed list
-check_operator_list
+function install_stackable_agent {
+  echo "Installing Stackable agent"
+  ${INSTALLER} -y install stackable-agent
+  echo "--hostname=$K8S_HOSTNAME" > /etc/stackable/stackable-agent/agent.conf
+  systemctl enable stackable-agent
+  systemctl start stackable-agent
+  kubectl certificate approve ${K8S_HOSTNAME}-tls
+  kubectl get nodes
+}
 
-# Install the prerequisite OS-dependant repos and packages
-install_prereqs
-
-# Install the K3s Kubernetes distribution
-install_k8s
-exit
-
-install_stackable_k8s_repo
-install_stackable_operators
-
-echo Installing Stackable agent
-apt install -y stackable-agent
-echo "--hostname=$HOSTNAME" > /etc/stackable/stackable-agent/agent.conf
-systemctl enable stackable-agent
-systemctl start stackable-agent
-kubectl certificate approve ${HOSTNAME}-tls
-kubectl get nodes
-
-echo Deploying Apache Zookeeper
-kubectl apply -f - <<EOF
+function deploy_zookeeper {
+  echo "Deploying Apache Zookeeper"
+  kubectl apply -f - <<EOF
 apiVersion: zookeeper.stackable.tech/v1
 kind: ZookeeperCluster
 metadata:
@@ -175,13 +170,15 @@ spec:
       default:
         selector:
           matchLabels:
-            kubernetes.io/hostname: ${HOSTNAME}
+            kubernetes.io/hostname: ${K8S_HOSTNAME}
         instances: 1
         instancesPerNode: 1
 EOF
+}
 
-echo Deploying Apache Kafka
-kubectl apply -f - <<EOF
+function deploy_kafka {
+  echo Deploying Apache Kafka
+  kubectl apply -f - <<EOF
 apiVersion: kafka.stackable.tech/v1
 kind: KafkaCluster
 metadata:
@@ -200,13 +197,15 @@ spec:
       default:
         selector:
           matchLabels:
-            kubernetes.io/hostname: ${HOSTNAME}
+            kubernetes.io/hostname: ${K8S_HOSTNAME}
         instances: 1
         instancesPerNode: 1
 EOF
+}
 
-echo Deploying Apache Spark
-kubectl apply -f - <<EOF
+function deploy_spark {
+  echo Deploying Apache Spark
+  kubectl apply -f - <<EOF
 apiVersion: spark.stackable.tech/v1
 kind: SparkCluster
 metadata:
@@ -218,7 +217,7 @@ spec:
       default:
         selector:
           matchLabels:
-            kubernetes.io/hostname: ${HOSTNAME}
+            kubernetes.io/hostname: ${K8S_HOSTNAME}
         instances: 1
         instancesPerNode: 1
         config:
@@ -229,7 +228,7 @@ spec:
       2core2g:
         selector:
           matchLabels:
-            kubernetes.io/hostname: ${HOSTNAME}
+            kubernetes.io/hostname: ${K8S_HOSTNAME}
         instances: 1
         instancesPerNode: 1
         config:
@@ -242,13 +241,15 @@ spec:
       default:
         selector:
           matchLabels:
-            kubernetes.io/hostname: ${HOSTNAME}
+            kubernetes.io/hostname: ${K8S_HOSTNAME}
         instances: 1
         instancesPerNode: 1
         config:
           historyWebUiPort: 18081
 EOF
+}
 
+function deploy_nifi {
 echo Deploying Apache Nifi
 kubectl apply -f - <<EOF
 apiVersion: nifi.stackable.tech/v1
@@ -266,7 +267,7 @@ spec:
       default:
         selector:
           matchLabels:
-            kubernetes.io/hostname: ${HOSTNAME}
+            kubernetes.io/hostname: ${K8S_HOSTNAME}
         instances: 1
         instancesPerNode: 1
         config:
@@ -274,6 +275,37 @@ spec:
           nodeProtocolPort: 10443
           nodeLoadBalancingPort: 6342
 EOF
+}
+
+
+
+# MAIN
+# Check the list of operators to deploy against the allowed list
+check_operator_list
+
+# Install the prerequisite OS-dependant repos and packages
+install_prereqs
+
+# Install the K3s Kubernetes distribution
+install_k8s
+
+# Install the Stackable Kubernetes repo
+install_stackable_k8s_repo
+
+# Install the Stackable operators for the chosen components
+install_stackable_operators
+
+# Install the Stackable CRDs
+install_crds
+
+# Install the Stackable agent
+install_stackable_agent
+
+# Deploy Stackable Components
+for OPERATOR in ${OPERATORS[@]}; do
+  echo "Deploying ${OPERATOR}"
+  deploy_${OPERATOR}
+done
 
 # TODO: Create TLS certificate
 # TODO: Create Spark client configuration
