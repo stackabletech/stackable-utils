@@ -247,44 +247,44 @@ EOF
 function deploy_spark {
   echo Deploying Apache Spark
   kubectl apply -f - <<EOF
-apiVersion: spark.stackable.tech/v1
+apiVersion: spark.stackable.tech/v1alpha1
 kind: SparkCluster
 metadata:
   name: simple
 spec:
   version: "3.0.1"
+  config:
+    logDir: "file:///tmp"
+    enableMonitoring: true
   masters:
-    selectors:
+    roleGroups:
       default:
         selector:
           matchLabels:
             kubernetes.io/hostname: ${K8S_HOSTNAME}
-        instances: 1
-        instancesPerNode: 1
+        replicas: 1
         config:
           masterPort: 7078
           masterWebUiPort: 8081
   workers:
-    selectors:
+    roleGroups:
       2core2g:
         selector:
           matchLabels:
             kubernetes.io/hostname: ${K8S_HOSTNAME}
-        instances: 1
-        instancesPerNode: 1
+        replicas: 1
         config:
           cores: 2
           memory: "2g"
           workerPort: 3031
           workerWebUiPort: 8083
   historyServers:
-    selectors:
+    roleGroups:
       default:
         selector:
           matchLabels:
             kubernetes.io/hostname: ${K8S_HOSTNAME}
-        instances: 1
-        instancesPerNode: 1
+        replicas: 1
         config:
           historyWebUiPort: 18081
 EOF
