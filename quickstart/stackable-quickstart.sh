@@ -3,6 +3,11 @@
 
 # This is a dirty hack to get two K8s nodes running on a single machine.
 # Use the shortname if hostname returns the FQDN or vice versa.
+if [ "$(hostname -s)" = "$(hostname -f)" ]; then
+  echo "Shortname matches FQDN. Host must have a dot in its hostname."
+  exit 1
+fi
+
 if [ "$(hostname)" = "$(hostname -f)" ]; then
   K8S_HOSTNAME=`/usr/bin/hostname -s`
 else
@@ -192,27 +197,31 @@ function install_stackable_agent {
 function deploy_zookeeper {
   echo "Deploying Apache Zookeeper"
   kubectl apply -f - <<EOF
-apiVersion: zookeeper.stackable.tech/v1
+---
+apiVersion: zookeeper.stackable.tech/v1alpha1
 kind: ZookeeperCluster
 metadata:
   name: simple
 spec:
-  version: 3.4.14
+  version: 3.5.8
   servers:
-    selectors:
+    roleGroups:
       default:
         selector:
           matchLabels:
             kubernetes.io/hostname: ${K8S_HOSTNAME}
-        instances: 1
-        instancesPerNode: 1
+        replicas: 3
+        config:
+          adminPort: 12000
+          metricsPort: 9505
 EOF
 }
 
 function deploy_kafka {
   echo Deploying Apache Kafka
   kubectl apply -f - <<EOF
-apiVersion: kafka.stackable.tech/v1
+---
+apiVersion: kafka.stackable.tech/v1alpha1
 kind: KafkaCluster
 metadata:
   name: simple
@@ -222,17 +231,16 @@ spec:
   zookeeperReference:
     namespace: default
     name: simple
-  opaReference:
-    namespace: default
-    name: simple-opacluster
   brokers:
-    selectors:
+    roleGroups:
       default:
         selector:
           matchLabels:
             kubernetes.io/hostname: ${K8S_HOSTNAME}
-        instances: 1
-        instancesPerNode: 1
+        replicas: 3
+        config:
+          logDirs: "/tmp/kafka-logs"
+          metricsPort: 9606
 EOF
 }
 
@@ -285,28 +293,29 @@ EOF
 function deploy_nifi {
 echo Deploying Apache Nifi
 kubectl apply -f - <<EOF
-apiVersion: nifi.stackable.tech/v1
+---
+apiVersion: nifi.stackable.tech/v1alpha1
 kind: NifiCluster
 metadata:
-  name: simple-nificluster
+  name: simple
 spec:
+  metricsPort: 8428
   version: "1.13.2"
   zookeeperReference:
     name: simple
     namespace: default
     chroot: /nifi
   nodes:
-    selectors:
+    roleGroups:
       default:
         selector:
           matchLabels:
             kubernetes.io/hostname: ${K8S_HOSTNAME}
-        instances: 1
-        instancesPerNode: 1
+        replicas: 3
         config:
-          httpPort: 10000
-          nodeProtocolPort: 10443
-          nodeLoadBalancingPort: 6342
+          nifiWebHttpPort: 10000
+          nifiClusterNodeProtocolPort: 10443
+          nifiClusterLoadBalancePort: 6342
 EOF
 }
 
