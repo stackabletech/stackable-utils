@@ -31,14 +31,15 @@ maybe_create_github_pr() {
 
 main() {
 
-  local RELEASE_LEVEL=${1:-minor}
+  local NEXT_LEVEL=${1:-minor}
+  local PUSH=${2:-true}
 
   ensure_release_branch
 
   #
   # Release
   #
-  cargo-version.py --bump ${RELEASE_LEVEL}
+  cargo-version.py --release
   cargo update --workspace
   local TAG=$(cargo-version.py --show)
   git commit -am "bump version $TAG"
@@ -47,15 +48,16 @@ main() {
   #
   # Development
   #
-  cargo-version.py --next
+  cargo-version.py --next ${NEXT_LEVEL}
   cargo update --workspace
   TAG=$(cargo-version.py --show)
   git commit -am "bump version $TAG"
 
-  git push ${REPOSITORY} ${RELEASE_BRANCH} 
-  git push --tags
-
-  maybe_create_github_pr $TAG_NAME
+  if [ "$PUSH" = "true" ]; then
+    git push ${REPOSITORY} ${RELEASE_BRANCH} 
+    git push --tags
+    maybe_create_github_pr $TAG_NAME
+  fi
 }
 
 main $@

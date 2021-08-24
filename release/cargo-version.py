@@ -34,6 +34,10 @@ class Crate:
         return Crate(self.path, self.name, self.version, deps)
 
     @classmethod
+    def finalize(cls, version):
+        return str(semver.VersionInfo.parse(version).finalize_version())
+
+    @classmethod
     def bump_level(cls, version, level):
         v = semver.VersionInfo.parse(version)
         if level == 'major':
@@ -45,6 +49,9 @@ class Crate:
         else:
             return str(v.bump_prerelease('nightly'))
 
+    def finalize_version(self):
+        return Crate(self.path, self.name, Crate.finalize(self.version), self.dependencies.copy())
+
     def bump_version(self, level):
         return Crate(self.path, self.name, Crate.bump_level(self.version, level), self.dependencies.copy())
 
@@ -52,7 +59,7 @@ class Crate:
         return Crate(self.path, self.name, version, self.dependencies.copy())
 
     def next_version(self):
-        return Crate(self.path, self.name, str(semver.VersionInfo.parse(self.version).next_version('prerelease', 'nightly')), self.dependencies.copy())
+        return Crate(self.path, self.name, str(semver.VersionInfo.parse(self.version).next_version('patch')), self.dependencies.copy())
 
     def show_version(self):
         return self.version
@@ -80,6 +87,10 @@ class Workspace:
     def __init__(self, crates):
         names = set([c.name for c in crates])
         self.crates = {c.name: c.with_dependencies(names) for c in crates}
+
+    def finalize_version(self):
+        crates = {c.name: c.finalize_version() for c in self.crates.values()}
+        return Workspace(Workspace.update_dependencies(crates).values())
 
     def bump_version(self, level):
         crates = {c.name: c.bump_version(level) for c in self.crates.values()}
@@ -122,8 +133,8 @@ def load(root):
 def parse_args():
     parser = argparse.ArgumentParser(description="Change versions of cargo projects.")
     parser.add_argument("-p", "--project", help="Project folder", default=".")
-    parser.add_argument("-b", "--bump", help="Level", choices=['major', 'minor', 'patch', 'prerelease'])
-    parser.add_argument("-n", "--next", help="Version", action="store_true")
+    parser.add_argument("-r", "--release", help="Version", action="store_true")
+    parser.add_argument("-n", "--next", help="Version", choices=['major', 'minor', 'patch'])
     parser.add_argument("-s", "--set", help="Version" )
     parser.add_argument("-o", "--show", help="Version", action="store_true")
     return parser.parse_args()
@@ -133,11 +144,11 @@ if __name__ == "__main__":
 
     old = load(args.project.rstrip('/'))
 
-    if args.bump:
-        new = old.bump_version(args.bump)
+    if args.release:
+        new = old.finalize_version()
         new.save(old)
     elif args.next:
-        new = old.next_version()
+        new = old.bump_version(args.next).bump_version("prerelease")
         new.save(old)
     elif args.set:
         # sanity check
