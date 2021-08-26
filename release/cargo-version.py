@@ -47,7 +47,7 @@ class Crate:
         elif level == 'patch':
             return str(v.bump_patch())
         else:
-            return str(v.bump_prerelease('nightly'))
+            return str(v.bump_prerelease('nightly'))[:-2] ### remove the .1 suffix that semver always adds to the prererelease.
 
     def finalize_version(self):
         return Crate(self.path, self.name, Crate.finalize(self.version), self.dependencies.copy())
