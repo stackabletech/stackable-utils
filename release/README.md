@@ -47,8 +47,8 @@ The release process performs the following steps:
 4. Set the version to the next development version by increasing the 'minor' (by default) part and adding the '-nightly' prerelease token.
 5. Update `Cargo.lock` with the new version.
 6. Commit the next release.
-7. Push the two commits
-8. __Optional__: if the GitHub cli is installed, a PR is created.
+7. Push the two commits. This is skipped if the second argument was `false`.
+8. __Optional__: if the GitHub cli is installed, a PR is created.  This is also skipped if the second argument was `false`.
 
 ## Future development
 
