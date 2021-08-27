@@ -25,7 +25,7 @@ maybe_create_github_pr() {
   local TAG=$1
   GH_COMMAND=$(which gh)
   if [ "$GH_COMMAND" != "" ]; then
-    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --reviewer "@stackabletech/rust-developers" --title "Release $TAG" --body "Release $TAG"
+    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --reviewer "@stackabletech/rust-developers" --title "Release $TAG" --body "Release $TAG. DO NOT SQUASH MERGE!"
   fi
 }
 
@@ -50,13 +50,13 @@ main() {
   #
   cargo-version.py --next ${NEXT_LEVEL}
   cargo update --workspace
-  TAG=$(cargo-version.py --show)
-  git commit -am "bump version $TAG"
+  local NEXT_TAG=$(cargo-version.py --show)
+  git commit -am "bump version $NEXT_TAG"
 
   if [ "$PUSH" = "true" ]; then
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
     git push --tags
-    maybe_create_github_pr $TAG_NAME
+    maybe_create_github_pr $TAG
   fi
 }
 
