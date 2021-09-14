@@ -29,6 +29,14 @@ maybe_create_github_pr() {
   fi
 }
 
+update_changelog() {
+  local RELEASE_VERSION=$1;
+
+  TODAY=$(date +'%Y-%m-%d')
+
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_VERSION] - $TODAY\n/I" CHANGELOG.md
+}
+
 main() {
 
   local NEXT_LEVEL=${1:-minor}
@@ -41,9 +49,12 @@ main() {
   #
   cargo-version.py --release
   cargo update --workspace
-  local TAG=$(cargo-version.py --show)
-  git commit -am "bump version $TAG"
-  git tag -a $TAG -m "release $TAG" HEAD
+  local RELEASE_VERSION=$(cargo-version.py --show)
+
+  update_changelog $RELEASE_VERSION
+
+  git commit -am "bump version $RELEASE_VERSION"
+  git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION" HEAD
 
   #
   # Development
@@ -51,12 +62,14 @@ main() {
   cargo-version.py --next ${NEXT_LEVEL}
   cargo update --workspace
   local NEXT_TAG=$(cargo-version.py --show)
+
   git commit -am "bump version $NEXT_TAG"
 
   if [ "$PUSH" = "true" ]; then
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
     git push --tags
-    maybe_create_github_pr $TAG
+    maybe_create_github_pr $RELEASE_VERSION
+    git switch main
   fi
 }
 

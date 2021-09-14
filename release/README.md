@@ -22,19 +22,21 @@ Optionally, if you want to have a GitHub Pull-Request automatically created, you
 
 Go to the folder containing a Cargo workspace or crate and run:
 
-    release.sh [major|minor|patch] [false]
+    release.sh [<next-devel-level>] [false]
+
+where `next-devel-level` is the version level to be increased *after* the release is done. This ca be `major`, `minor` or `patch`.
 
 This pushes two commits in a newly created release branch. When merging, __do not squash them__.
 
 Examples:
 
-    # Perform release raise the minor version
+    # Perform release and raise the minor version afterwards
     $ release.sh
 
     # Perform a release but do not push anything to origin
     $ release.sh minor false
 
-    # Perform a release and raise the major version
+    # Perform a release and raise the major version for the next development version
     $ release.sh major
 
 ## Description
