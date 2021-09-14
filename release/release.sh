@@ -68,7 +68,7 @@ main() {
   if [ "$PUSH" = "true" ]; then
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
     git push --tags
-    maybe_create_github_pr $TAG
+    maybe_create_github_pr $RELEASE_VERSION
   fi
 }
 
