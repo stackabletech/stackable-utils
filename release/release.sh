@@ -69,6 +69,7 @@ main() {
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
     git push --tags
     maybe_create_github_pr $RELEASE_VERSION
+    git switch main
   fi
 }
 
