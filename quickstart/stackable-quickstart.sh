@@ -101,6 +101,7 @@ function install_prereqs_debian {
   apt-get -y install gnupg openjdk-11-jdk curl
   apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 16dd12f5c7a6d76a
   echo "deb $REPO_URL buster main" > /etc/apt/sources.list.d/stackable.list
+  apt clean
   apt update
 }
 
@@ -168,7 +169,7 @@ function check_operator_list {
 
 function install_operator {
   OPERATOR=$1
-  PKG_NAME=stackable-${OPERATOR}-operator-server
+  PKG_NAME=stackable-${OPERATOR}-operator
   echo "Installing Stackable operator for ${OPERATOR}"
 
   $INSTALLER -y install ${PKG_NAME}
