@@ -1,6 +1,12 @@
 #!/bin/bash
 # Install a single node deployment of Stackable
 
+if [ $UID != 0 ]
+then
+  echo "This script must be run as root, exiting."
+  exit 1
+fi
+
 # This is a dirty hack to get two K8s nodes running on a single machine.
 # Use the shortname if hostname returns the FQDN or vice versa.
 if [ "$(hostname -s)" = "$(hostname -f)" ]; then
