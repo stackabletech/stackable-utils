@@ -5,13 +5,13 @@
 # Don't edit this list unless you know what you're doing. If you get an error
 # that you're attempting to install an unsupported operator then check the
 # OPERATORS list for typos.
-ALLOWED_OPERATORS=(zookeeper kafka nifi spark)
+ALLOWED_OPERATORS=(zookeeper kafka nifi spark hive trino)
 
 # Do you want to use the dev or release repository?
 REPO_TYPE=dev
 
 # List of operators to install
-OPERATORS=(zookeeper kafka nifi spark)
+OPERATORS=(zookeeper kafka nifi spark hive trino)
 
 if [ $UID != 0 ]
 then
@@ -95,7 +95,7 @@ function install_prereqs_redhat {
   fi
 
   # Download the Stackable GPG key used for package signing
-  /usr/bin/yum -y install gnupg2 java-11-openjdk curl
+  /usr/bin/yum -y install gnupg2 java-11-openjdk curl python
   /usr/bin/curl -s "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xce45c7a0a3e41385acd4358916dd12f5c7a6d76a" > /etc/pki/rpm-gpg/RPM-GPG-KEY-stackable
   /usr/bin/rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-stackable
 
@@ -113,11 +113,11 @@ function install_prereqs_debian {
   print_g "Installing Stackable APT repo"
 
   if [ -z $REPO_URL ]; then
-    print_r "No YUM repo URL found, exiting."
+    print_r "No APT repo URL found, exiting."
     exit 1
   fi
 
-  apt-get -y install gnupg openjdk-11-jdk curl
+  apt-get -y install gnupg openjdk-11-jdk curl python
   apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 16dd12f5c7a6d76a
   echo "deb $REPO_URL buster main" > /etc/apt/sources.list.d/stackable.list
   apt clean
@@ -128,11 +128,11 @@ function install_prereqs_ubuntu {
   print_g "Installing Stackable APT repo"
 
   if [ -z $REPO_URL ]; then
-    print_r "No YUM repo URL found, exiting."
+    print_r "No APT repo URL found, exiting."
     exit 1
   fi
 
-  apt-get -y install gnupg openjdk-11-jdk curl
+  apt-get -y install gnupg openjdk-11-jdk curl python
   apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 16dd12f5c7a6d76a
   echo "deb $REPO_URL buster main" > /etc/apt/sources.list.d/stackable.list
   apt update
@@ -170,6 +170,17 @@ function install_crds {
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/spark-operator/main/deploy/crd/restart.command.crd.yaml
   # NiFi Operator
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/nifi-operator/main/deploy/crd/nificluster.crd.yaml
+  # Hive Operator
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/databaseconnection.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/hivecluster.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/start.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/stop.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/restart.crd.yaml
+  # Trino Operator
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/trinocluster.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/start.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/stop.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/restart.crd.yaml
 }
 
 function install_stackable_k8s_repo {

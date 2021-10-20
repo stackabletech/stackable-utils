@@ -9,8 +9,11 @@ spec:
     roleGroups:
       default:
         selector:
-          matchLabels:
-            kubernetes.io/arch: stackable-linux
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/arch
+              values:
+                - stackable-linux
         replicas: 1
         config:
           adminPort: 12000

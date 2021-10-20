@@ -12,8 +12,11 @@ spec:
     roleGroups:
       default:
         selector:
-          matchLabels:
-            kubernetes.io/arch: stackable-linux
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/arch
+              values:
+                - stackable-linux
         replicas: 1
         config:
           masterPort: 7078
@@ -22,8 +25,11 @@ spec:
     roleGroups:
       2core2g:
         selector:
-          matchLabels:
-            kubernetes.io/arch: stackable-linux
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/arch
+              values:
+                - stackable-linux
         replicas: 1
         config:
           cores: 2
@@ -34,8 +40,11 @@ spec:
     roleGroups:
       default:
         selector:
-          matchLabels:
-            kubernetes.io/arch: stackable-linux
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/arch
+              values:
+                - stackable-linux
         replicas: 1
         config:
           historyWebUiPort: 18081
