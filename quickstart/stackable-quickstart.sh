@@ -5,13 +5,13 @@
 # Don't edit this list unless you know what you're doing. If you get an error
 # that you're attempting to install an unsupported operator then check the
 # OPERATORS list for typos.
-ALLOWED_OPERATORS=(zookeeper kafka nifi spark hive trino)
+ALLOWED_OPERATORS=(zookeeper kafka nifi spark hive trino opa)
 
 # Do you want to use the dev or release repository?
 REPO_TYPE=dev
 
 # List of operators to install
-OPERATORS=(zookeeper kafka nifi spark hive trino)
+OPERATORS=(zookeeper kafka nifi spark hive trino opa)
 
 if [ $UID != 0 ]
 then
@@ -181,6 +181,8 @@ function install_crds {
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/start.crd.yaml
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/stop.crd.yaml
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/restart.crd.yaml
+  # OPA Operator
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/opa-operator/main/deploy/crd/openpolicyagent.crd.yaml
 }
 
 function install_stackable_k8s_repo {

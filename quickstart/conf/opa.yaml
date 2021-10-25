@@ -1,0 +1,15 @@
+apiVersion: opa.stackable.tech/v1alpha1
+kind: OpenPolicyAgent
+metadata:
+  name: simple
+spec:
+  version: "0.27.1"
+  servers:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/arch: stackable-linux
+        config:
+          port: 8181
+          repoRuleReference: "http://mdesktop:3030/opa/v1"
