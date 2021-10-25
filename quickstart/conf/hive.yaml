@@ -18,10 +18,11 @@ spec:
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
           metricsPort: 11111
           database:
-            connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
+            connString: jdbc:derby:;databaseName=/data/hive/metastore_db;create=true
             user: APP
             password: mine
             dbType: derby
+          warehouseDir: /data/hive/warehouse
 
           s3Connection:
             endPoint: changeme

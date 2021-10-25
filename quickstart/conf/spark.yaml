@@ -6,7 +6,7 @@ metadata:
 spec:
   version: "3.0.1"
   config:
-    logDir: "file:///tmp"
+    logDir: "file:///data/spark/logs"
     enableMonitoring: true
   masters:
     roleGroups:

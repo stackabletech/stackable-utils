@@ -28,7 +28,7 @@ spec:
                 - stackable-linux
         config:
           coordinator: true
-          nodeDataDir: /tmp/trino/data
+          nodeDataDir: /data/trino/coordinator
           metricsPort: 10200
           httpServerHttpPort: 8080
           httpServerHttpsPort: 8443
@@ -98,7 +98,7 @@ spec:
                 - stackable-linux
         replicas: 1
         config:
-          nodeDataDir: /tmp/trino/data2
+          nodeDataDir: /data/trino/worker
           metricsPort: 10201
           httpServerHttpPort: 8087
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/

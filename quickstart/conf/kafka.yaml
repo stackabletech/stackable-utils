@@ -20,5 +20,5 @@ spec:
                 - stackable-linux
         replicas: 1
         config:
-          logDirs: "/tmp/kafka-logs"
+          logDirs: "/data/kafka/kafka-logs"
           metricsPort: 9606

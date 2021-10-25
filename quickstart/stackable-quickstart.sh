@@ -171,11 +171,11 @@ function install_crds {
   # NiFi Operator
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/nifi-operator/main/deploy/crd/nificluster.crd.yaml
   # Hive Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/databaseconnection.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/hivecluster.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/start.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/stop.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/hackathon/deploy/crd/restart.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/databaseconnection.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/hivecluster.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/start.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/stop.crd.yaml
+  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/restart.crd.yaml
   # Trino Operator
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/trinocluster.crd.yaml
   kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/start.crd.yaml
