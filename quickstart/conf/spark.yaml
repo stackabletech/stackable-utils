@@ -12,11 +12,8 @@ spec:
     roleGroups:
       default:
         selector:
-          matchExpressions:
-            - operator: In
-              key: kubernetes.io/arch
-              values:
-                - stackable-linux
+          matchLabels:
+            kubernetes.io/os: stackable-linux
         replicas: 1
         config:
           masterPort: 7078

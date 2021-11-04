@@ -21,6 +21,7 @@ fi
 
 BASEDIR=$(dirname $0)
 CONFDIR=$BASEDIR/conf
+CRDDIR=$BASEDIR/crds
 
 function print_r {
   /usr/bin/echo -e "\e[0;31m${1}\e[m"
@@ -148,41 +149,19 @@ function install_k8s {
   /usr/bin/cp /etc/rancher/k3s/k3s.yaml /root/.kube/config
 }
 
+function install_k9s {
+  print_g "Installing K9s"
+  URL=https://github.com/derailed/k9s/releases/download/v0.24.15/k9s_Linux_x86_64.tar.gz
+  TMPFILE=/tmp/k9s.tar.gz
+  curl -L $URL > $TMPFILE
+  (cd /usr/local/bin && tar xf $TMPFILE k9s)
+  rm $TMPFILE
+}
+
 function install_crds {
   # TODO: Install the CRDs based on the list of operators to install
   print_g "Installing Stackable CRDs"
-  # Stackable Agent
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/agent/main/deploy/crd/repository.crd.yaml
-  # ZooKeeper Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/zookeeper-operator/main/deploy/crd/zookeepercluster.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/zookeeper-operator/main/deploy/crd/start.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/zookeeper-operator/main/deploy/crd/stop.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/zookeeper-operator/main/deploy/crd/restart.crd.yaml
-  # Kafka Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/kafka-operator/main/deploy/crd/kafkacluster.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/kafka-operator/main/deploy/crd/start.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/kafka-operator/main/deploy/crd/stop.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/kafka-operator/main/deploy/crd/restart.crd.yaml
-  # Spark Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/spark-operator/main/deploy/crd/sparkcluster.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/spark-operator/main/deploy/crd/start.command.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/spark-operator/main/deploy/crd/stop.command.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/spark-operator/main/deploy/crd/restart.command.crd.yaml
-  # NiFi Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/nifi-operator/main/deploy/crd/nificluster.crd.yaml
-  # Hive Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/databaseconnection.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/hivecluster.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/start.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/stop.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/hive-operator/main/deploy/crd/restart.crd.yaml
-  # Trino Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/trinocluster.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/start.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/stop.crd.yaml
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/trino-operator/hackathon/deploy/crd/restart.crd.yaml
-  # OPA Operator
-  kubectl apply -f https://raw.githubusercontent.com/stackabletech/opa-operator/main/deploy/crd/openpolicyagent.crd.yaml
+  kubectl apply -f "$CRDDIR"
 }
 
 function install_stackable_k8s_repo {
@@ -197,7 +176,6 @@ spec:
   properties:
     url: https://repo.stackable.tech/repository/packages/
 EOF
-
 }
 
 function check_operator_list {
@@ -262,6 +240,9 @@ install_prereqs
 # Install the K3s Kubernetes distribution
 install_k8s
 
+# Install k9s
+install_k9s
+
 # Install the Stackable CRDs
 install_crds
 
@@ -271,6 +252,9 @@ install_stackable_operators
 # Install the Stackable agent
 install_stackable_agent
 
+# Create the Spark log directory as this is not auto-created by the service
+mkdir -p /data/spark/logs
+
 # Install the Stackable Kubernetes repo
 install_stackable_k8s_repo
 
@@ -279,19 +263,3 @@ for OPERATOR in "${OPERATORS[@]}"; do
   print_g "Deploying ${OPERATOR}"
   deploy_service "${OPERATOR}"
 done
-
-# Tested on CentOS 8
-# Tested on Ubuntu 20.04
-# Testing Debian 9
-# Testing Debian 10
-
-# TODO: Create TLS certificate
-# TODO: Create Spark client configuration
-# TODO: Install Python
-# TODO: Write output to a log file an tidy up the user feedback
-
-
-# TODO: Install OpenLDAP and boostrap with default creds
-# kubectl create secret generic openldap --from-literal=adminpassword=adminpassword \
-# --from-literal=users=user01,user02 \
-# --from-literal=passwords=password01,password02

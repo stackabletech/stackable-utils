@@ -9,13 +9,10 @@ spec:
     roleGroups:
       default:
         selector:
-          matchExpressions:
-            - operator: In
-              key: kubernetes.io/arch
-              values:
-                - stackable-linux
+          matchLabels:
+            kubernetes.io/os: stackable-linux
         replicas: 1
         config:
           adminPort: 12000
           metricsPort: 9505
-          dataDir: /data/zookeeperq
+          dataDir: /data/zookeeper

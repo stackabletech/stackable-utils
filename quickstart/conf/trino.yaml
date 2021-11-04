@@ -21,11 +21,8 @@ spec:
     roleGroups:
       default:
         selector:
-          matchExpressions:
-            - operator: In
-              key: kubernetes.io/arch
-              values:
-                - stackable-linux
+          matchLabels:
+            kubernetes.io/os: stackable-linux
         config:
           coordinator: true
           nodeDataDir: /data/trino/coordinator
