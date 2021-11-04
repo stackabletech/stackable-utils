@@ -5,13 +5,13 @@
 # Don't edit this list unless you know what you're doing. If you get an error
 # that you're attempting to install an unsupported operator then check the
 # OPERATORS list for typos.
-ALLOWED_OPERATORS=(zookeeper kafka nifi spark hive trino opa)
+ALLOWED_OPERATORS=(zookeeper kafka nifi spark hive trino opa regorule)
 
 # Do you want to use the dev or release repository?
 REPO_TYPE=dev
 
 # List of operators to install
-OPERATORS=(zookeeper kafka nifi spark hive trino opa)
+OPERATORS=(zookeeper kafka nifi spark hive trino opa regorule)
 
 if [ $UID != 0 ]
 then
@@ -19,7 +19,7 @@ then
   exit 1
 fi
 
-BASEDIR=$(dirname $0)
+BASEDIR=$(dirname "$0")
 CONFDIR=$BASEDIR/conf
 CRDDIR=$BASEDIR/crds
 
@@ -153,9 +153,9 @@ function install_k9s {
   print_g "Installing K9s"
   URL=https://github.com/derailed/k9s/releases/download/v0.24.15/k9s_Linux_x86_64.tar.gz
   TMPFILE=/tmp/k9s.tar.gz
-  curl -L $URL > $TMPFILE
-  (cd /usr/local/bin && tar xf $TMPFILE k9s)
-  rm $TMPFILE
+  /usr/bin/curl -s -L $URL > $TMPFILE
+  (cd /usr/local/bin && /usr/bin/tar xf $TMPFILE k9s)
+  /usr/bin/rm $TMPFILE
 }
 
 function install_crds {
@@ -166,16 +166,7 @@ function install_crds {
 
 function install_stackable_k8s_repo {
   print_g Installing Stackable package repo
-  kubectl apply -f - <<EOF
-apiVersion: "stable.stackable.de/v1"
-kind: Repository
-metadata:
-  name: stackablepublic
-spec:
-  repo_type: StackableRepo
-  properties:
-    url: https://repo.stackable.tech/repository/packages/
-EOF
+  kubectl apply -f "$CONFDIR/stackable-repo.yaml"
 }
 
 function check_operator_list {

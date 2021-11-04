@@ -1,3 +1,4 @@
+---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
@@ -11,6 +12,27 @@ spec:
   opa:
     namespace: default
     name: simple
+    authorization:
+      package: trino
+      permissions:
+        admin:
+          schemas:
+            read: true
+            write: true
+          tables:
+            yellow_taxi_trips:
+              read: true
+              write: true
+            fhv_trips:
+              read: true
+              write: true
+        bob:
+          schemas:
+            read: false
+            write: false
+          tables:
+            yellow_taxi_trips:
+              read: true
   s3Connection:
     endPoint: changeme
     accessKey: changeme
@@ -88,11 +110,8 @@ spec:
     roleGroups:
       default:
         selector:
-          matchExpressions:
-            - operator: In
-              key: kubernetes.io/arch
-              values:
-                - stackable-linux
+          matchLabels:
+            kubernetes.io/os: stackable-linux
         replicas: 1
         config:
           nodeDataDir: /data/trino/worker

@@ -1,3 +1,4 @@
+---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
 metadata:
