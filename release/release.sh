@@ -4,6 +4,8 @@
 #
 # <level> : "major", "minor" or "patch". Default: "minor".
 #
+set -e
+
 BASE_BRANCH="main"
 REPOSITORY="origin"
 NOW_UTC=$(date -u '+%Y%m%d%H%M%S')
