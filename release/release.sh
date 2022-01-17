@@ -27,7 +27,7 @@ maybe_create_github_pr() {
   local TAG=$1
   GH_COMMAND=$(which gh)
   if [ "$GH_COMMAND" != "" ]; then
-    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --reviewer "@stackabletech/rust-developers" --title "Release $TAG" --body "Release $TAG. DO NOT SQUASH MERGE!"
+    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title "Release $TAG" --body "Release $TAG. DO NOT SQUASH MERGE!"
   fi
 }
 
