@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::io;
 use std::process::exit;
 
 #[derive(Parser)]
@@ -12,18 +13,26 @@ use std::process::exit;
 struct Opts {
     #[clap(short, long, default_value = "10")]
     cost: u8,
-    #[clap(short, long)]
-    input: String,
 }
 
 fn main() {
     let opts = Opts::parse();
-    match bcrypt::hash(opts.input, opts.cost.into()) {
+
+    // Read from stdin and fail on error
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap_or_else(|error| {
+        eprintln!("error: {}", error);
+        exit(-1);
+    });
+
+    // Hash what we read
+    match bcrypt::hash(&input, opts.cost.into()) {
         Ok(hashed) => {
             println!("{}", hashed);
+            exit(0);
         }
         Err(error) => {
-            eprintln!("Failed to hash: {:?}", error);
+            eprintln!("error: {:?}", error);
             exit(-1);
         }
     }

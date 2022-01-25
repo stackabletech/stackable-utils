@@ -4,9 +4,11 @@ This is a tiny tool along the same lines as https://github.com/bitnami/bcrypt-cl
 
 Most common use case will be in init containers to hash cleartext passwords from Kubernetes secrets and replace these in config files.
 
+The tool reads from stdin.
+
 ## Usage
 
-stackable-bcrypt [OPTIONS] --input <INPUT>
+stackable-bcrypt [OPTIONS] 
 
 OPTIONS:
 -c, --cost <COST>
