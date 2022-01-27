@@ -6,10 +6,14 @@ Most common use case will be in init containers to hash cleartext passwords from
 
 The tool reads from stdin.
 
+## Building
+
+Maven is used as the build tool, simply running `mvn package` will generate the required jars to run this.
+
 ## Usage
 
-stackable-bcrypt [OPTIONS] 
+````
+➜  echo password | java -jar stackable-bcrypt-1.0-SNAPSHOT-jar-with-dependencies.jar
+$2b$12$esbe7T2nhgkk5hwu2jM4Kuo9RQ4Zwjdl5a6Ir9/gILUJ4swHbZYrK
+````
 
-OPTIONS:
--c, --cost <COST>
-[default: 10]
