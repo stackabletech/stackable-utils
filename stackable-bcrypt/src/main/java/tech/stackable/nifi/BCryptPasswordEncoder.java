@@ -16,7 +16,7 @@ public class BCryptPasswordEncoder {
     }
 
     public String encode(char[] password) {
-        return HASHER.hashToString(12, password);
+        return HASHER.hashToString(DEFAULT_COST, password);
     }
 
     public boolean matches(char[] password, String encodedPassword) {
