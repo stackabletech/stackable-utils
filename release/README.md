@@ -10,10 +10,6 @@ Install required packages:
 
     pip install -r release/requirements.txt
 
-### Update PATH
-
-Add the `release` folder to your `PATH`.
-
 ### Optional: GitHub CLI
 
 Optionally, if you want to have a GitHub Pull-Request automatically created, you need the GitHib command line tools installed and properly configured. See https://cli.github.com/.
