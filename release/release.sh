@@ -11,6 +11,8 @@ REPOSITORY="origin"
 NOW_UTC=$(date -u '+%Y%m%d%H%M%S')
 RELEASE_BRANCH="release-$NOW_UTC"
 
+CARGO_VERSION=$(dirname -- "${BASH_SOURCE[0]}")/cargo-version.py
+
 ensure_release_branch() {
   local STATUS=$(git status -s | grep -v '??')
 
@@ -49,7 +51,6 @@ main() {
   #
   # Release
   #
-  local CARGO_VERSION=$(dirname -- "${BASH_SOURCE[0]}")/cargo-version.py
   $CARGO_VERSION --release
   cargo update --workspace
   local RELEASE_VERSION=$($CARGO_VERSION --show)
