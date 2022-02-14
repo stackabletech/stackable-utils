@@ -43,12 +43,12 @@ update_changelog() {
 
 main() {
 
-  local NEXT_LEVEL=${1:-minor}
+  local NEXT_LEVEL=${1:-"release"}
   local PUSH=${2:-true}
 
   ensure_release_branch
 
-  if [ "$NEXT_LEVEL" != "next" ]; then
+  if [ "$NEXT_LEVEL" == "release" ]; then
     #
     # Release
     #
@@ -66,7 +66,7 @@ main() {
     #
     # Development
     #
-    $CARGO_VERSION --next minor
+    $CARGO_VERSION --next ${NEXT_LEVEL}
     cargo update --workspace
     make regenerate-charts
     local NEXT_TAG=$($CARGO_VERSION --show)
