@@ -26,10 +26,10 @@ ensure_release_branch() {
 }
 
 maybe_create_github_pr() {
-  local TAG=$1
+  local MESSAGE=$1
   GH_COMMAND=$(which gh)
   if [ "$GH_COMMAND" != "" ]; then
-    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title "Release $TAG" --body "Release $TAG. DO NOT SQUASH MERGE!"
+    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title $MESSAGE --body $MESSAGE
   fi
 }
 
@@ -59,7 +59,8 @@ main() {
 
     update_changelog $RELEASE_VERSION
 
-    git commit -am "release $RELEASE_VERSION"
+    MESSAGE="release $RELEASE_VERSION"
+    git commit -am $MESSAGE
     git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION" HEAD
 
   else
@@ -69,16 +70,17 @@ main() {
     $CARGO_VERSION --next ${NEXT_LEVEL}
     cargo update --workspace
     make regenerate-charts
-    local NEXT_TAG=$($CARGO_VERSION --show)
+    local RELEASE_VERSION=$($CARGO_VERSION --show)
 
-    git commit -am "bump version $NEXT_TAG"
+    MESSAGE="bump version $RELEASE_VERSION"
+    git commit -am $MESSAGE
 
   fi
 
   if [ "$PUSH" = "true" ]; then
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
     git push --tags
-    maybe_create_github_pr $RELEASE_VERSION
+    maybe_create_github_pr $MESSAGE
     git switch main
   fi
 }
