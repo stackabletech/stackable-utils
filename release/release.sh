@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 #
 # Usage: release.sh <level>
 #
@@ -38,7 +38,7 @@ update_changelog() {
 
   TODAY=$(date +'%Y-%m-%d')
 
-  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_VERSION] - $TODAY\n/I" CHANGELOG.md
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_VERSION] - $TODAY/I" CHANGELOG.md
 }
 
 main() {
@@ -48,26 +48,32 @@ main() {
 
   ensure_release_branch
 
-  #
-  # Release
-  #
-  $CARGO_VERSION --release
-  cargo update --workspace
-  local RELEASE_VERSION=$($CARGO_VERSION --show)
+  if [ "$NEXT_LEVEL" != "next" ]; then
+    #
+    # Release
+    #
+    $CARGO_VERSION --release
+    cargo update --workspace
+    make regenerate-charts
+    local RELEASE_VERSION=$($CARGO_VERSION --show)
 
-  update_changelog $RELEASE_VERSION
+    update_changelog $RELEASE_VERSION
 
-  git commit -am "bump version $RELEASE_VERSION"
-  git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION" HEAD
+    git commit -am "release $RELEASE_VERSION"
+    git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION" HEAD
 
-  #
-  # Development
-  #
-  $CARGO_VERSION --next ${NEXT_LEVEL}
-  cargo update --workspace
-  local NEXT_TAG=$($CARGO_VERSION --show)
+  else
+    #
+    # Development
+    #
+    $CARGO_VERSION --next minor
+    cargo update --workspace
+    make regenerate-charts
+    local NEXT_TAG=$($CARGO_VERSION --show)
 
-  git commit -am "bump version $NEXT_TAG"
+    git commit -am "bump version $NEXT_TAG"
+
+  fi
 
   if [ "$PUSH" = "true" ]; then
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
