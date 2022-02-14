@@ -5,6 +5,7 @@
 # <level> : "major", "minor" or "patch". Default: "minor".
 #
 set -e
+set -x
 
 BASE_BRANCH="main"
 REPOSITORY="origin"
@@ -26,7 +27,7 @@ ensure_release_branch() {
 }
 
 maybe_create_github_pr() {
-  local MESSAGE=$1
+  local MESSAGE=${1}
   GH_COMMAND=$(which gh)
   if [ "$GH_COMMAND" != "" ]; then
     gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title $MESSAGE --body $MESSAGE
@@ -60,8 +61,8 @@ main() {
     update_changelog $RELEASE_VERSION
 
     MESSAGE="release $RELEASE_VERSION"
-    git commit -am $MESSAGE
-    git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION" HEAD
+    git commit -am "release $RELEASE_VERSION"
+    git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION"
 
   else
     #
@@ -73,7 +74,7 @@ main() {
     local RELEASE_VERSION=$($CARGO_VERSION --show)
 
     MESSAGE="bump version $RELEASE_VERSION"
-    git commit -am $MESSAGE
+    git commit -am "bump version $RELEASE_VERSION"
 
   fi
 

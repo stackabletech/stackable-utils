@@ -18,7 +18,7 @@ Optionally, if you want to have a GitHub Pull-Request automatically created, you
 
 To make a release pull-request, go to the folder containing a Cargo workspace or crate and run:
 
-    release.sh
+    release.sh release
 
 To bump the version and create pull-request:
 
@@ -31,7 +31,7 @@ This pushes two commits in a newly created release branch.
 Examples:
 
     # Perform release
-    $ release.sh
+    $ release.sh release
 
     # Bump the minor version but do not push anything to origin
     $ release.sh minor false
