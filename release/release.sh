@@ -1,10 +1,11 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 #
 # Usage: release.sh <level>
 #
 # <level> : "major", "minor" or "patch". Default: "minor".
 #
 set -e
+set -x
 
 BASE_BRANCH="main"
 REPOSITORY="origin"
@@ -26,10 +27,10 @@ ensure_release_branch() {
 }
 
 maybe_create_github_pr() {
-  local TAG=$1
+  local MESSAGE=${1}
   GH_COMMAND=$(which gh)
   if [ "$GH_COMMAND" != "" ]; then
-    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title "Release $TAG" --body "Release $TAG. DO NOT SQUASH MERGE!"
+    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title $MESSAGE --body $MESSAGE
   fi
 }
 
@@ -38,41 +39,49 @@ update_changelog() {
 
   TODAY=$(date +'%Y-%m-%d')
 
-  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_VERSION] - $TODAY\n/I" CHANGELOG.md
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_VERSION] - $TODAY/I" CHANGELOG.md
 }
 
 main() {
 
-  local NEXT_LEVEL=${1:-minor}
+  local NEXT_LEVEL=${1:-"release"}
   local PUSH=${2:-true}
 
   ensure_release_branch
 
-  #
-  # Release
-  #
-  $CARGO_VERSION --release
-  cargo update --workspace
-  local RELEASE_VERSION=$($CARGO_VERSION --show)
+  if [ "$NEXT_LEVEL" == "release" ]; then
+    #
+    # Release
+    #
+    $CARGO_VERSION --release
+    cargo update --workspace
+    make regenerate-charts
+    local RELEASE_VERSION=$($CARGO_VERSION --show)
 
-  update_changelog $RELEASE_VERSION
+    update_changelog $RELEASE_VERSION
 
-  git commit -am "bump version $RELEASE_VERSION"
-  git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION" HEAD
+    MESSAGE="release $RELEASE_VERSION"
+    git commit -am "release $RELEASE_VERSION"
+    git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION"
 
-  #
-  # Development
-  #
-  $CARGO_VERSION --next ${NEXT_LEVEL}
-  cargo update --workspace
-  local NEXT_TAG=$($CARGO_VERSION --show)
+  else
+    #
+    # Development
+    #
+    $CARGO_VERSION --next ${NEXT_LEVEL}
+    cargo update --workspace
+    make regenerate-charts
+    local RELEASE_VERSION=$($CARGO_VERSION --show)
 
-  git commit -am "bump version $NEXT_TAG"
+    MESSAGE="bump version $RELEASE_VERSION"
+    git commit -am "bump version $RELEASE_VERSION"
+
+  fi
 
   if [ "$PUSH" = "true" ]; then
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
     git push --tags
-    maybe_create_github_pr $RELEASE_VERSION
+    maybe_create_github_pr $MESSAGE
     git switch main
   fi
 }
