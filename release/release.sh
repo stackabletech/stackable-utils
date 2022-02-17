@@ -80,7 +80,7 @@ main() {
 
   if [ "$PUSH" = "true" ]; then
     git push ${REPOSITORY} ${RELEASE_BRANCH} 
-    git push --tags
+    # git push --tags
     maybe_create_github_pr $MESSAGE
     git switch main
   fi
