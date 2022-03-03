@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+source repos
+for product in "${products[@]}"; do
+    gh pr checks $1 -R stackabletech/${product}-operator &> /dev/null
+    status=$?
+    echo ${product}: ${status}
+done
+

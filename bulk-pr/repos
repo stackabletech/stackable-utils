@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+products=(
+    kafka
+    opa
+    regorule 
+    zookeeper
+    trino
+    druid
+    hive
+    hdfs
+    nifi
+    spark
+    superset
+    airflow
+    hbase
+)
