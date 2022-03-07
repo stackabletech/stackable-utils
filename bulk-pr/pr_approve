@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+source repos
+for product in "${products[@]}"; do
+  gh pr review $1 --approve -R stackabletech/${product}-operator
+  gh pr review $1 --comment -b "bors r+" -R stackabletech/${product}-operator
+done

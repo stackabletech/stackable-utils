@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+source repos
+for product in "${products[@]}"; do
+    gh pr close $1 -R stackabletech/${product}-operator
+done
