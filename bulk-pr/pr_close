@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 source repos
 for product in "${products[@]}"; do
-    gh pr close $1 -R stackabletech/${product}-operator
+    STATE=$(gh pr view $1  -R stackabletech/${product}-operator --jq '.state' --json state)
+    if [[ $STATE -eq "OPEN" ]]; then
+        gh pr close $1 -R stackabletech/${product}-operator
+    else
+        echo "Skipping ${product}, PR already closed"
+    fi
 done

@@ -2,7 +2,6 @@
 products=(
     kafka
     opa
-    regorule 
     zookeeper
     trino
     druid
