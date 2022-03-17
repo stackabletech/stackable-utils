@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 source repos
 for product in "${products[@]}"; do
+    STATE=$(gh pr view $1  -R stackabletech/${product}-operator --jq '.state' --json state)
     gh pr checks $1 -R stackabletech/${product}-operator &> /dev/null
     status=$?
-    echo ${product}: ${status}
+    echo "${product}(${STATE}): ${status}"
 done
-

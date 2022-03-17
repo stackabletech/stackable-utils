@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 source repos
 for product in "${products[@]}"; do
-  gh pr review $1 --approve -R stackabletech/${product}-operator
-  gh pr review $1 --comment -b "bors r+" -R stackabletech/${product}-operator
+  STATE=$(gh pr view $1  -R stackabletech/${product}-operator --jq '.state' --json state)
+  if [[ $STATE -eq "OPEN" ]]; then
+    echo "Approving ${product}"
+    gh pr review $1 --approve -R stackabletech/${product}-operator
+    gh pr review $1 --comment -b "bors r+" -R stackabletech/${product}-operator
+  else
+    echo "Skipping ${product}, PR already closed"
+  fi
 done
