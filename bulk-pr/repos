@@ -12,4 +12,5 @@ products=(
     superset
     airflow
     hbase
+    spark-k8s
 )
