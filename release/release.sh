@@ -57,12 +57,14 @@ main() {
     cargo update --workspace
     make regenerate-charts
     local RELEASE_VERSION=$($CARGO_VERSION --show)
+    local DOCS_VERSION=$(echo "${RELEASE_VERSION}" | sed 's/^\([0-9]\+\.[0-9]\+\)\..*$/\1/')
 
     update_changelog $RELEASE_VERSION
 
     MESSAGE="release $RELEASE_VERSION"
     git commit -am "release $RELEASE_VERSION"
     git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION"
+    git tag -a docs/$DOCS_VERSION -m "docs $DOCS_VERSION"
 
   else
     #
