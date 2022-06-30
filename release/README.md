@@ -48,6 +48,7 @@ Examples:
 ## Description
 
 The release process performs the following steps:
+
 0. Create a release branch from `main`.
 1. Update the release version in the cargo workspace by dropping the "-nightly" token.
 2. Update `Cargo.lock` with the new version.
@@ -57,6 +58,7 @@ The release process performs the following steps:
 6. __Optional__: if the GitHub cli is installed, a PR is created.
 
 Raising the next development version includes the following steps:
+
 0. Create a release branch from `main`.
 1. Set the version to the next development version by increasing the 'next-devel-level' (by default) part and adding the '-nightly' prerelease token.
 2. Update `Cargo.lock` with the new version.
