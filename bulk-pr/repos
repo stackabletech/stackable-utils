@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 products=(
-    commons
-    kafka
-    opa
-    zookeeper
-    trino
-    druid
-    hive
-    hdfs
-    nifi
-    spark
-    superset
     airflow
+    commons
+    druid
     hbase
+    hdfs
+    hive
+    kafka
+    nifi
+    opa
+    secret
     spark-k8s
+    superset
+    trino
+    zookeeper
 )
