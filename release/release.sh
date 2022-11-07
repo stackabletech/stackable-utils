@@ -27,10 +27,10 @@ ensure_release_branch() {
 }
 
 maybe_create_github_pr() {
-  local MESSAGE=${1}
+  local MESSAGE=$@
   GH_COMMAND=$(which gh)
   if [ "$GH_COMMAND" != "" ]; then
-    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title $MESSAGE --body $MESSAGE
+    gh pr create --base $BASE_BRANCH --head $RELEASE_BRANCH --title "$MESSAGE" --body "$MESSAGE"
   fi
 }
 
@@ -64,7 +64,8 @@ main() {
     MESSAGE="release $RELEASE_VERSION"
     git commit -am "release $RELEASE_VERSION"
     git tag -a $RELEASE_VERSION -m "release $RELEASE_VERSION"
-    git tag -a docs/$DOCS_VERSION -m "docs $DOCS_VERSION"
+    # We don't want to tag the docs in all the cases, as some manual steps might be needed (e.g. updating getting started guides)
+    # git tag -a docs/$DOCS_VERSION -m "docs $DOCS_VERSION"
 
   else
     #
