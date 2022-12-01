@@ -47,13 +47,11 @@ main() {
   update_antora
 
   git commit -am "release $RELEASE_TAG"
-  git tag -a $RELEASE_TAG -m "release $RELEASE_TAG"
 
   if [ "$#" -eq  "2" ]; then
     if [[ $2 == '-p' ]]; then
       echo "Pushing changes..."
       git push ${REPOSITORY} ${RELEASE_BRANCH}
-      git push --tags
       git switch main
     fi
    fi
