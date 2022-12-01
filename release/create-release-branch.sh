@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Usage: create-release-branch.sh <release-tag> [-d]
+# Usage: create-release-branch.sh <release-tag> [-p]
 #
 # <release-tag> : e.g. "23.01"
-# [-d]: dry run
+# [-p]: push changes (otherwise is effectively a dry run)
 #
 set -e
 set -x
@@ -50,7 +50,7 @@ main() {
   git tag -a $RELEASE_TAG -m "release $RELEASE_TAG"
 
   if [ "$#" -eq  "2" ]; then
-    if [[ $2 == '-d' ]]; then
+    if [[ $2 == '-p' ]]; then
       echo "Pushing changes..."
       git push ${REPOSITORY} ${RELEASE_BRANCH}
       git push --tags
