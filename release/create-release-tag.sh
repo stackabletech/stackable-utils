@@ -13,7 +13,7 @@ set -e
 #set -x
 
 RELEASE_TAG=$1
-TAG_REGEX="^[0-9][0-9]\.([0][0-9]|[1][1-2])\.[0-9]+$"
+TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
 
 #DOCKER_IMAGES_REPO="git@github.com:stackabletech/docker-images.git"
 DOCKER_IMAGES_REPO="git@github.com:stackabletech/test-platform-release-images.git"
