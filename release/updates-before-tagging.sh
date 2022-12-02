@@ -9,6 +9,10 @@ set -e
 set -x
 
 RELEASE_TAG=$1
+# tags should be semver-compatible e.g. 23.1.1 and not 23.01.1
+# this is needed for cargo commands to work properly
+TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
+
 # remove leading and trailing quotes
 RELEASE_TAG="${RELEASE_TAG%\"}"
 RELEASE_TAG="${RELEASE_TAG#\"}"
@@ -28,6 +32,12 @@ update_changelog() {
 }
 
 main() {
+  # check if argument matches our tag regex
+    if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
+      echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
+      exit -1
+    fi
+
   CARGO_VERSION=$(dirname -- "${BASH_SOURCE[0]}")/cargo-version.py
   echo $CARGO_VERSION
 

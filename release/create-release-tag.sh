@@ -13,7 +13,13 @@ set -e
 #set -x
 
 RELEASE_TAG=$1
+# tags should be semver-compatible e.g. 23.1.1 and not 23.01.1
+# this is needed for cargo commands to work properly
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
+
+# remove leading and trailing quotes
+RELEASE_TAG="${RELEASE_TAG%\"}"
+RELEASE_TAG="${RELEASE_TAG#\"}"
 
 #DOCKER_IMAGES_REPO="git@github.com:stackabletech/docker-images.git"
 DOCKER_IMAGES_REPO="git@github.com:stackabletech/test-platform-release-images.git"
