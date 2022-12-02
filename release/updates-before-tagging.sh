@@ -21,10 +21,20 @@ echo ${RELEASE_TAG}
 
 update_code() {
   yq -i ".version = \"${RELEASE_TAG}\"" docs/antora.yml
-  yq -i '.prerelease = false' docs/antora.yml
+  yq -i ".prerelease = false" docs/antora.yml
   yq -i ".versions[] = \"${RELEASE_TAG}\"" docs/templating_vars.yaml
   yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" docs/templating_vars.yaml
   yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" docs/templating_vars.yaml
+
+  # TODO: just for docs/modules/getting_started/examples/code or can we do this more globally e.g. also for
+  # - docs/modules/ROOT/examples/
+  # - docs/modules/ROOT/pages/?
+  # Replace spec.version for *.stackable.tech documents
+  #find *.yaml -exec yq e -i '.apiVersion | select(. | contains("stackable.tech")) | parent | .spec | select (. | has("version")) | parent' {} \;
+
+  find docs/modules/getting_started/examples/code/*.yaml -exec yq -i \
+  ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\")) | parent | .spec.version = \"${RELEASE_TAG}\"" {} \;
+
 }
 
 update_changelog() {
