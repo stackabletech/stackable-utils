@@ -32,6 +32,7 @@ update_code() {
   # Replace spec.version for *.stackable.tech documents
   #find *.yaml -exec yq e -i '.apiVersion | select(. | contains("stackable.tech")) | parent | .spec | select (. | has("version")) | parent' {} \;
 
+  # FIXME this removes empty files!
   find docs/modules/getting_started/examples/code/*.yaml -exec yq -i \
   ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\")) | parent | .spec.version = \"${RELEASE_TAG}\"" {} \;
 
