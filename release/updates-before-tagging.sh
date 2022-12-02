@@ -22,7 +22,9 @@ echo ${RELEASE_TAG}
 update_code() {
   yq -i ".version = \"${RELEASE_TAG}\"" docs/antora.yml
   yq -i '.prerelease = false' docs/antora.yml
-  yq -i ".versions[] = ${RELEASE_TAG}" docs/templating_vars.yaml
+  yq -i ".versions[] = \"${RELEASE_TAG}\"" docs/templating_vars.yaml
+  yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" docs/templating_vars.yaml
+  yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" docs/templating_vars.yaml
 }
 
 update_changelog() {
@@ -45,6 +47,10 @@ main() {
 
   cargo update --workspace
   make regenerate-charts
+
+  update_code
+  # ensure .j2 changes are resolved
+  ./scripts/docs_templating.sh
 
   # inserts a single line with tag and date
   update_changelog $RELEASE_TAG
