@@ -33,10 +33,10 @@ update_changelog() {
 
 main() {
   # check if argument matches our tag regex
-    if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
-      echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
-      exit -1
-    fi
+  if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
+    echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
+    exit -1
+  fi
 
   CARGO_VERSION=$(dirname -- "${BASH_SOURCE[0]}")/cargo-version.py
   echo $CARGO_VERSION
