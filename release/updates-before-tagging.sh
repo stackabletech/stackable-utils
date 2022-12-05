@@ -26,16 +26,16 @@ update_code() {
   yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" docs/templating_vars.yaml
   yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" docs/templating_vars.yaml
 
+  # Replace spec.version for *.stackable.tech documents
   # TODO: just for docs/modules/getting_started/examples/code or can we do this more globally e.g. also for
   # - docs/modules/ROOT/examples/
   # - docs/modules/ROOT/pages/?
-  # Replace spec.version for *.stackable.tech documents
-  #find *.yaml -exec yq e -i '.apiVersion | select(. | contains("stackable.tech")) | parent | .spec | select (. | has("version")) | parent' {} \;
-
-  # FIXME this removes empty files!
-  find docs/modules/getting_started/examples/code/*.yaml -exec yq -i \
-  ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\")) | parent | .spec.version = \"${RELEASE_TAG}\"" {} \;
-
+  for file in docs/modules/getting_started/examples/code/*.yaml; do
+    if yq ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\"))" "$file" | grep version
+    then
+      yq -i ".spec.version = \"${RELEASE_TAG}\"" "$file"
+    fi
+  done
 }
 
 update_changelog() {
