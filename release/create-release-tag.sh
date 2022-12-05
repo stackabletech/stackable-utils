@@ -2,7 +2,7 @@
 #
 # Usage: create-release-tag.sh <release-tag> [-d]
 #
-# <release-tag> : e.g. "23.01.42"
+# <release-tag> : e.g. "23.1.42"
 # [-d]: dry run
 #
 # What this script does:

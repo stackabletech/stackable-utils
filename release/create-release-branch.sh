@@ -2,7 +2,7 @@
 #
 # Usage: create-release-branch.sh <release-tag> [-p]
 #
-# <release-tag> : e.g. "23.01"
+# <release-tag> : e.g. "23.1"
 # [-p]: push changes (otherwise is effectively a dry run)
 #
 set -e
@@ -12,6 +12,10 @@ BASE_BRANCH="main"
 REPOSITORY="origin"
 
 RELEASE_TAG=$1
+# tags should be semver-compatible e.g. 23.1 and not 23.01
+# this is needed for cargo commands to work properly: although it is not strictly needed
+# for the name of the release branch, the branch naming will be consistent with the cargo versioning.
+TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
 # remove leading and trailing quotes
 RELEASE_TAG="${RELEASE_TAG%\"}"
 RELEASE_TAG="${RELEASE_TAG#\"}"
@@ -37,11 +41,16 @@ update_antora() {
 }
 
 main() {
-  # for each callout:
-  # - create new release branch based on the tag argument
-  # - replace "nightly" with "$RELEASE_TAG" (i.e. with qoutes) in antora.yaml
-  # - set pre-release=false in antora.yaml
-  # - set version to $RELEASE_TAG (without quotes) in docs_templating.sh
+  # check if tag argument provided
+  if [ -z ${RELEASE_TAG+x} ]; then
+    echo "Usage: create-release-branch.sh <tag>"
+    exit -1
+  fi
+  # check if argument matches our tag regex
+  if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
+    echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
+    exit -1
+  fi
 
   ensure_release_branch
   update_antora
