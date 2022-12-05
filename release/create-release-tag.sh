@@ -57,6 +57,11 @@ clone_and_tag_repos() {
     make regenerate-charts
 
     update_code "$TEMP_RELEASE_FOLDER/${operator}"
+    # ensure .j2 changes are resolved
+    "$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
+
+    # inserts a single line with tag and date
+    update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
     #git commit -am "release $RELEASE_TAG"
     #git tag "$RELEASE_TAG"
@@ -92,6 +97,11 @@ push_branch() {
   else
     echo "(Dry-run: not pushing...)"
   fi
+}
+
+update_changelog() {
+  TODAY=$(date +'%Y-%m-%d')
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" "$1"/CHANGELOG.md
 }
 
 main() {
