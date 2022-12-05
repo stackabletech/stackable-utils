@@ -24,7 +24,7 @@
 #     - rebuilds the helm charts
 #     - bumps the changelog
 #     - adapts the versions in CRDs in the getting started section to <release-tag> argument
-#     - runs the templating script to propogate changes to script files
+#     - runs the templating script to propagate changes to script files
 #   - creates a commit in the branch (i.e. the changes are valid for the branch lifetime)
 #   - pushes the commit if the push argument is provided
 #----------------------------------------------------------------------------------------------------
