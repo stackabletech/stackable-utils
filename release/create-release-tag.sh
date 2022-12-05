@@ -9,6 +9,7 @@
 # - Adapt versions in all cargo.toml to <release-tag> argument
 # - Adapt versions in all helm charts to <release-tag> argument
 # - Bump the changelog
+# - Adapt versions in CRDs in the getting started section
 set -e
 #set -x
 
@@ -21,21 +22,76 @@ TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
 RELEASE_TAG="${RELEASE_TAG%\"}"
 RELEASE_TAG="${RELEASE_TAG#\"}"
 
-#DOCKER_IMAGES_REPO="git@github.com:stackabletech/docker-images.git"
-DOCKER_IMAGES_REPO="git@github.com:stackabletech/test-platform-release-images.git"
-TEMP_RELEASE_FOLDER="/tmp/stackable-release-$RELEASE_TAG"
+# for a tag of e.g. 23.1.1 the release branch (already created) will be 23.1
+RELEASE="$(cut -d'.' -f1,2 <<<"$RELEASE_TAG")"
+RELEASE_BRANCH="release-$RELEASE"
+echo "Working release branch: ${RELEASE_BRANCH}"
 
-update_changelog() {
-  local RELEASE_VERSION=$1;
+#DOCKER_IMAGES_REPO="docker-images"
+DOCKER_IMAGES_REPO="test-platform-release-images"
+TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 
-  TODAY=$(date +'%Y-%m-%d')
+INITIAL_DIR="$PWD"
 
-  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_VERSION] - $TODAY/I" CHANGELOG.md
+clone_and_tag_repos() {
+  mkdir -p "$TEMP_RELEASE_FOLDER" && cd "$TEMP_RELEASE_FOLDER"
+  git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git"
+  cd "$DOCKER_IMAGES_REPO"
+  # the release branch should already exist
+  git pull && git switch "$RELEASE_BRANCH"
+  #git tag "$RELEASE_TAG"
+  #push_branch "$@"
+
+  cd "$TEMP_RELEASE_FOLDER"
+
+  while IFS="" read -r operator || [ -n "$operator" ]
+  do
+    echo "Cloning ${operator}..."
+    git clone "git@github.com:stackabletech/${operator}.git"
+    cd "$operator"
+    git pull && git switch "$RELEASE_BRANCH"
+
+    CARGO_VERSION="$INITIAL_DIR"/release/cargo-version.py
+    $CARGO_VERSION --set "$RELEASE_TAG"
+    cargo update --workspace
+    make regenerate-charts
+
+    update_code "$TEMP_RELEASE_FOLDER/${operator}"
+
+    #git commit -am "release $RELEASE_TAG"
+    #git tag "$RELEASE_TAG"
+    #push_branch "$@"
+  done < "$INITIAL_DIR"/release/operators_to_release.txt
 }
 
-clone_repo() {
-  mkdir -p "$TEMP_RELEASE_FOLDER" && cd "$TEMP_RELEASE_FOLDER"
-  git clone "$DOCKER_IMAGES_REPO"
+update_code() {
+  # these 3 instructions would have been executed when the branch was created:
+  #yq -i ".version = \"${RELEASE_TAG}\"" "$1/docs/antora.yml"
+  #yq -i ".prerelease = false" "$1docs/antora.yml"
+  #yq -i ".versions[] = \"${RELEASE_TAG}\"" "$1docs/templating_vars.yaml"
+
+  yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
+  yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
+
+  # Replace spec.version for *.stackable.tech documents
+  for file in "$1"/docs/modules/getting_started/examples/code/*.yaml; do
+    if yq ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\"))" "$file" | grep version
+    then
+      yq -i ".spec.version = \"${RELEASE_TAG}\"" "$file"
+    fi
+  done
+}
+
+push_branch() {
+  if [ "$#" -eq  "2" ]; then
+    if [[ $2 == '-p' ]]; then
+      echo "Pushing changes..."
+      git push "${REPOSITORY}" "${RELEASE_BRANCH}"
+      git switch main
+    fi
+  else
+    echo "(Dry-run: not pushing...)"
+  fi
 }
 
 main() {
@@ -50,16 +106,15 @@ main() {
     exit -1
   fi
 
-  echo "Cloning docker images to [$TEMP_RELEASE_FOLDER]"
-  clone_repo
-  git switch
-
-
-  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-  git tag $RELEASE_TAG
+  echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
+  clone_and_tag_repos "$@"
 
   echo "Cleaning up"
-  rm -rf "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  #rm -rf "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  #while IFS="" read -r operator || [ -n "$operator" ]
+  #  do
+  #    rm -rf "$TEMP_RELEASE_FOLDER/$operator"
+  #  done < "$INITIAL_DIR"/release/operators_to_release.txt
 }
 
-main $@
+main "$@"
