@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #----------------------------------------------------------------------------------------------------
-# Usage: create-release-branch.sh <release-tag> [-p]
+# Usage: create-release-branch.sh -b <release-branch> [-p]
 #
-# <release-tag> : e.g. "23.1"
+# -b <release-branch> : e.g. "23.1"
 # [-p]: push changes (otherwise is effectively a dry run)
 # This script requires https://github.com/mikefarah/yq (not to be confused with https://github.com/kislyuk/yq)
 #
@@ -24,32 +24,19 @@ set -x
 
 BASE_BRANCH="main"
 REPOSITORY="origin"
-RELEASE=$1
 #----------------------------------------------------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1 and not 23.01
 # this is needed for cargo commands to work properly: although it is not strictly needed
 # for the name of the release branch, the branch naming will be consistent with the cargo versioning.
 #----------------------------------------------------------------------------------------------------
 RELEASE_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
-#-----------------------------------------------------------
-# remove leading and trailing quotes
-#-----------------------------------------------------------
-RELEASE="${RELEASE%\"}"
-RELEASE="${RELEASE#\"}"
-RELEASE_BRANCH="release-$RELEASE"
-echo "Working release branch: ${RELEASE_BRANCH}"
-
-#DOCKER_IMAGES_REPO="docker-images"
-DOCKER_IMAGES_REPO="test-platform-release-images"
-TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
-INITIAL_DIR="$PWD"
 
 clone_repos() {
   mkdir -p "$TEMP_RELEASE_FOLDER" && cd "$TEMP_RELEASE_FOLDER"
   git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git"
   cd "$DOCKER_IMAGES_REPO"
   git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
-  push_branch "$@"
+  push_branch
 
   cd "$TEMP_RELEASE_FOLDER"
 
@@ -61,19 +48,24 @@ clone_repos() {
     git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
     update_antora "$TEMP_RELEASE_FOLDER/${operator}"
     git commit -am "release $RELEASE"
-    push_branch "$@"
+    push_branch
   done < "$INITIAL_DIR"/release/operators_to_release.txt
 }
 
 push_branch() {
-  if [ "$#" -eq  "2" ]; then
-    if [[ $2 == '-p' ]]; then
-      echo "Pushing changes..."
-      git push "${REPOSITORY}" "${RELEASE_BRANCH}"
-      git switch main
-    fi
+  if $PUSH; then
+    echo "Pushing changes..."
+    git push "${REPOSITORY}" "${RELEASE_BRANCH}"
+    git switch main
   else
     echo "(Dry-run: not pushing...)"
+  fi
+}
+
+cleanup() {
+  if $CLEANUP; then
+    echo "Cleaning up..."
+    rm -rf "$TEMP_RELEASE_FOLDER"
   fi
 }
 
@@ -84,7 +76,39 @@ update_antora() {
   yq -i ".versions[] = ${RELEASE}" "$1/docs/templating_vars.yaml"
 }
 
+parse_inputs() {
+  RELEASE="xxx"
+  PUSH=false
+  CLEANUP=false
+
+  while [[ "$#" -gt 0 ]]; do
+      case $1 in
+          -b|--branch) RELEASE="$2"; shift ;;
+          -p|--push) PUSH=true ;;
+          -c|--cleanup) CLEANUP=true ;;
+          *) echo "Unknown parameter passed: $1"; exit 1 ;;
+      esac
+      shift
+  done
+  #-----------------------------------------------------------
+  # remove leading and trailing quotes
+  #-----------------------------------------------------------
+  RELEASE="${RELEASE%\"}"
+  RELEASE="${RELEASE#\"}"
+  RELEASE_BRANCH="release-$RELEASE"
+  echo "Working release branch: ${RELEASE_BRANCH}"
+
+  #DOCKER_IMAGES_REPO="docker-images"
+  DOCKER_IMAGES_REPO="test-platform-release-images"
+  TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+  INITIAL_DIR="$PWD"
+
+  echo "Push: $PUSH"
+  echo "Cleanup: $CLEANUP"
+}
+
 main() {
+  parse_inputs "$@"
   #-----------------------------------------------------------
   # check if tag argument provided
   #-----------------------------------------------------------
@@ -101,7 +125,8 @@ main() {
   fi
 
   echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
-  clone_repos "$@"
+  clone_repos
+  cleanup
 }
 
 main "$@"

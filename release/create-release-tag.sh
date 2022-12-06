@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #----------------------------------------------------------------------------------------------------
-# Usage: create-release-tag.sh <release-tag> [-p]
+# Usage: create-release-tag.sh -t <release-tag> [-p] [-c]
 #
-# <release-tag> : e.g. "23.1.42"
+# -t <release-tag> : e.g. "23.1.42"
 # [-p]: push changes (otherwise is effectively a dry run)
+# [-c]: cleanup i.e. delete temporary folder(s)
 # This script requires https://github.com/mikefarah/yq (not to be confused with https://github.com/kislyuk/yq)
 #
 # What this script does:
@@ -30,30 +31,11 @@
 #----------------------------------------------------------------------------------------------------
 set -euo pipefail
 set -x
-
-RELEASE_TAG=$1
 #-----------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1.1 not 23.01.1
 # this is needed for cargo commands to work properly
 #-----------------------------------------------------------
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
-#-----------------------------------------------------------
-# remove leading and trailing quotes
-#-----------------------------------------------------------
-RELEASE_TAG="${RELEASE_TAG%\"}"
-RELEASE_TAG="${RELEASE_TAG#\"}"
-#----------------------------------------------------------------------------------------------------
-# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-#----------------------------------------------------------------------------------------------------
-RELEASE="$(cut -d'.' -f1,2 <<<"$RELEASE_TAG")"
-RELEASE_BRANCH="release-$RELEASE"
-echo "Working release branch: ${RELEASE_BRANCH}"
-
-#DOCKER_IMAGES_REPO="docker-images"
-DOCKER_IMAGES_REPO="test-platform-release-images"
-TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
-
-INITIAL_DIR="$PWD"
 
 clone_and_tag_repos() {
   mkdir -p "$TEMP_RELEASE_FOLDER" && cd "$TEMP_RELEASE_FOLDER"
@@ -63,8 +45,9 @@ clone_and_tag_repos() {
   # the release branch should already exist
   #-----------------------------------------------------------
   git pull && git switch "$RELEASE_BRANCH"
-  #git tag "$RELEASE_TAG"
-  push_branch "$@"
+  # TODO where to conduct the tag-not-already-exists check?
+  git tag "$RELEASE_TAG"
+  push_branch
 
   cd "$TEMP_RELEASE_FOLDER"
 
@@ -91,12 +74,13 @@ clone_and_tag_repos() {
     update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
     git commit -am "release $RELEASE_TAG"
-    #git tag "$RELEASE_TAG"
-    push_branch "$@"
+    git tag "$RELEASE_TAG"
+    push_branch
   done < "$INITIAL_DIR"/release/operators_to_release.txt
 }
 
 update_code() {
+  # TODO put this in the branch script if the versions are always non-patch level?
   yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
   yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
   #-----------------------------------------------------------
@@ -111,14 +95,19 @@ update_code() {
 }
 
 push_branch() {
-  if [ "$#" -eq  "2" ]; then
-    if [[ $2 == '-p' ]]; then
-      echo "Pushing changes..."
-      git push "${REPOSITORY}" "${RELEASE_BRANCH}"
-      git switch main
-    fi
+  if $PUSH; then
+    echo "Pushing changes..."
+    #git push "${REPOSITORY}" "${RELEASE_BRANCH}"
+    #git switch main
   else
     echo "(Dry-run: not pushing...)"
+  fi
+}
+
+cleanup() {
+  if $CLEANUP; then
+    echo "Cleaning up..."
+    rm -rf "$TEMP_RELEASE_FOLDER"
   fi
 }
 
@@ -127,12 +116,48 @@ update_changelog() {
   sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" "$1"/CHANGELOG.md
 }
 
+parse_inputs() {
+  RELEASE_TAG="xxx"
+  PUSH=false
+  CLEANUP=false
+
+  while [[ "$#" -gt 0 ]]; do
+      case $1 in
+          -t|--tag) RELEASE_TAG="$2"; shift ;;
+          -p|--push) PUSH=true ;;
+          -c|--cleanup) CLEANUP=true ;;
+          *) echo "Unknown parameter passed: $1"; exit 1 ;;
+      esac
+      shift
+  done
+  #-----------------------------------------------------------
+  # remove leading and trailing quotes
+  #-----------------------------------------------------------
+  RELEASE_TAG="${RELEASE_TAG%\"}"
+  RELEASE_TAG="${RELEASE_TAG#\"}"
+  #----------------------------------------------------------------------------------------------------
+  # for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
+  #----------------------------------------------------------------------------------------------------
+  RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
+  RELEASE_BRANCH="release-$RELEASE"
+  echo "Working release branch: ${RELEASE_BRANCH}"
+
+  #DOCKER_IMAGES_REPO="docker-images"
+  DOCKER_IMAGES_REPO="test-platform-release-images"
+  TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+  INITIAL_DIR="$PWD"
+
+  echo "Push: $PUSH"
+  echo "Cleanup: $CLEANUP"
+}
+
 main() {
+  parse_inputs "$@"
   #-----------------------------------------------------------
   # check if tag argument provided
   #-----------------------------------------------------------
   if [ -z ${RELEASE_TAG+x} ]; then
-    echo "Usage: create-release-tag.sh <tag>"
+    echo "Usage: create-release-tag.sh -t <tag>"
     exit 1
   fi
   #-----------------------------------------------------------
@@ -144,14 +169,8 @@ main() {
   fi
 
   echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
-  clone_and_tag_repos "$@"
-
-  echo "Cleaning up"
-  #rm -rf "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-  #while IFS="" read -r operator || [ -n "$operator" ]
-  #  do
-  #    rm -rf "$TEMP_RELEASE_FOLDER/$operator"
-  #  done < "$INITIAL_DIR"/release/operators_to_release.txt
+  clone_and_tag_repos
+  cleanup
 }
 
 main "$@"
