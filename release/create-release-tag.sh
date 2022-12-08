@@ -140,14 +140,12 @@ parse_inputs() {
   #----------------------------------------------------------------------------------------------------
   RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
   RELEASE_BRANCH="release-$RELEASE"
-  echo "Working release branch: ${RELEASE_BRANCH}"
 
+  INITIAL_DIR="$PWD"
   DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
   TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
-  INITIAL_DIR="$PWD"
 
-  echo "Push: $PUSH"
-  echo "Cleanup: $CLEANUP"
+  echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }
 
 main() {
