@@ -1,0 +1,7 @@
+---
+images-repo: docker-images
+operators:
+  - test-platform-release-zk
+  #- airflow
+  #- secret
+  #- commons

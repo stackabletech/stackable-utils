@@ -13,7 +13,7 @@
 #   - creates a new folder in a temporary folder and clones the images repository
 #   - creates a new branch (and pushes it if the push argument is provided)
 # - for operators:
-#   - iterates over a list of operator repository names (operators_to_release.txt), and for each one:
+#   - iterates over a list of operator repository names (config.yaml), and for each one:
 #   - creates a new folder in a temporary folder and clones the operator repository
 #   - creates a new branch
 #   - creates a one-off commit in the branch (i.e. the changes are valid for the branch lifetime)
@@ -49,7 +49,7 @@ clone_repos() {
     update_antora "$TEMP_RELEASE_FOLDER/${operator}"
     git commit -am "release $RELEASE"
     push_branch
-  done < "$INITIAL_DIR"/release/operators_to_release.txt
+  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 push_branch() {
@@ -98,8 +98,7 @@ parse_inputs() {
   RELEASE_BRANCH="release-$RELEASE"
   echo "Working release branch: ${RELEASE_BRANCH}"
 
-  #DOCKER_IMAGES_REPO="docker-images"
-  DOCKER_IMAGES_REPO="test-platform-release-images"
+  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
   TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
   INITIAL_DIR="$PWD"
 

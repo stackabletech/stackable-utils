@@ -1,4 +1,4 @@
-# Release tools
+# Release scripts
 
 A set of scripts that automates some release steps. The release process has three steps:
 
@@ -21,6 +21,12 @@ A set of scripts that automates some release steps. The release process has thre
 - commit and tag these changes
 - push the resulting commits and tags, triggering github actions to build the product images and operators
 
+These steps are summarised in the two diagrams below:
+
+image::images/rb-flow.png[]
+
+image::images/rb-utils.png[]
+
 ## Install requirements
 
 ### Python 3
@@ -29,51 +35,91 @@ A working python 3 installation is required by the `cargo-version.py` script.
 
 Install required packages:
 
-    pip install -r release/requirements.txt
+[source]
+----
+pip install -r release/requirements.txt
+----
 
+### yq (yaml parser)
+
+This script requires https://github.com/mikefarah/yq (not to be confused with https://github.com/kislyuk/yq)
 
 ## Usage
 
-To make a release pull-request, go to the folder containing a Cargo workspace or crate and run:
+### Release branches
 
-    release.sh [release]
+To create release branches use the `create-release-branch.sh` script. The syntax is given below:
 
-To bump the version and create pull-request:
+[source]
+----
+./release/create-release-branch.sh -b <release> [-p] [-c]
+----
 
-    release.sh [<next-devel-level>]
+- `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
+- `-p`: push flag (optional). If provided, the created branches plus any changes made as part fo this process will be pushed to the origin.
+- `-c`: cleanup flag (optional). If provided, the repository folders will be torn down on completion.
 
-where `next-devel-level` is the version level to be bumped. This ca be `major`, `minor` or `patch`.
+N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
-This pushes two commits in a newly created release branch.
+e.g.
 
-Examples:
+[source]
+----
+./release/create-release-branch.sh 23.1 -p -c
+----
 
-    # Perform release
-    $ release.sh release
+#### What this script does
 
-    # Bump the minor version but do not push anything to origin
-    $ release.sh minor false
+* checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
+* strips this argument of any leading or trailing quote marks
+* for docker images
+** creates a new folder in a temporary folder and clones the images repository (given in `config.yaml`)
+** creates a new branch (and pushes it if the push argument is provided)
+** deletes the branch if the cleanup flag is provided
+* for operators:
+** iterates over a list of operator repository names (listed in `config.yaml`), and for each one:
+** creates a new folder in a temporary folder and clones the operator repository
+** creates a new branch
+** creates a one-off commit in the branch (i.e. the changes are valid for the branch lifetime)
+** pushes the commit if the push argument is provided
+** deletes the temporary folder if the cleanup flag is provided
 
-    # Bump the major version, push and make a pull-request
-    $ release.sh major
 
-## Description
+### Release tags
 
-The release process performs the following steps:
+To create release tags use the `create-release-tag.sh` script. The syntax is given below:
 
-0. Create a release branch from `main`.
-1. Update the release version in the cargo workspace by dropping the "-nightly" token.
-2. Update `Cargo.lock` with the new version.
-3. Regenerate Helm chart and manifests.
-4. Update the CHANGELOG.md entry of this release
-5. Commit, tag and push the changes *BUT* do not push the tags.
-6. __Optional__: if the GitHub cli is installed, a PR is created.
+[source]
+----
+./release/create-release-branch.sh -t <release-tag> [-p] [-c]
+----
 
-Raising the next development version includes the following steps:
+- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
+- `-p`: push flag (optional). If provided, the created commits and tags made as part of this process will be pushed to the origin.
+- `-c`: cleanup flag (optional). If provided, the repository folders will be torn down on completion.
 
-0. Create a release branch from `main`.
-1. Set the version to the next development version by increasing the 'next-devel-level' (by default) part and adding the '-nightly' prerelease token.
-2. Update `Cargo.lock` with the new version.
-3. Regenerate Helm chart and manifests.
-4. Commit and push *BUT* do not push the tags.
-5. __Optional__: if the GitHub cli is installed, a PR is created.
+N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
+
+#### What this script does
+
+* checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
+* strips this argument of any leading or trailing quote marks and derives the corresponding branch name
+* for docker images:
+** creates a new folder in a temporary folder and clones the images repository (given in `config.yaml`)
+** switches to the release branch
+** tags the branch and pushes it if the push argument is provided
+* for operators:
+** iterates over a list of operator repository names (listed in `config.yaml`), and for each one:
+** creates a new folder in a temporary folder and clones the operator repository
+** switches to the release branch
+** makes the following changes:
+*** adapts the versions in all cargo.toml to `release-tag` argument
+*** adapts the versions in all helm charts to `release-tag` argument
+*** updates the workspace
+*** rebuilds the helm charts
+*** bumps the changelog
+*** adapts the versions in CRDs in the getting started section to `release-tag` argument
+*** runs the templating script to propagate changes to script files
+** creates a tagged commit in the branch (i.e. the changes are valid for the branch lifetime)
+** pushes the commit and tag if the push argument is provided
+** deletes the temporary folder if the cleanup flag is provided

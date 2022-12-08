@@ -15,7 +15,7 @@
 #   - switches to the release branch
 #   - tags the branch and pushes it if the push argument is provided
 # - for operators:
-#   - iterates over a list of operator repository names (operators_to_release.txt), and for each one:
+#   - iterates over a list of operator repository names (config.yaml), and for each one:
 #   - creates a new folder in a temporary folder and clones the operator repository
 #   - switches to the release branch
 #   - makes the following changes:
@@ -76,7 +76,7 @@ clone_and_tag_repos() {
     git commit -am "release $RELEASE_TAG"
     git tag "$RELEASE_TAG"
     push_branch
-  done < "$INITIAL_DIR"/release/operators_to_release.txt
+  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 update_code() {
@@ -142,8 +142,7 @@ parse_inputs() {
   RELEASE_BRANCH="release-$RELEASE"
   echo "Working release branch: ${RELEASE_BRANCH}"
 
-  #DOCKER_IMAGES_REPO="docker-images"
-  DOCKER_IMAGES_REPO="test-platform-release-images"
+  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
   TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
   INITIAL_DIR="$PWD"
 
