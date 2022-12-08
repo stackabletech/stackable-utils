@@ -76,7 +76,7 @@ clone_and_tag_repos() {
 
     git commit -am "release $RELEASE_TAG"
     git tag "$RELEASE_TAG"
-    #push_branch
+    push_branch
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 

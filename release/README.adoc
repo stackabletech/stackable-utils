@@ -123,3 +123,51 @@ N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 ** creates a tagged commit in the branch (i.e. the changes are valid for the branch lifetime)
 ** pushes the commit and tag if the push argument is provided
 ** deletes the temporary folder if the cleanup flag is provided
+
+#### Build actions
+
+When a tag is pushed, the images for products and operators are built via github actions. The following points should be noted:
+
+##### Product images
+
+The build action script `release.yml` builds all product images that exist in the docker-images repository, with an explicit filtering provided by the following `matrix` section:
+
+[source, yaml]
+----
+
+name: Release product images
+on:
+  push:
+    tags:
+      - '[0-9][0-9].[0-9]+.[0-9]+'
+
+jobs:
+  ...
+  strategy:
+    fail-fast: false
+    # If we want more parallelism we can schedule a dedicated task for every tuple (product, product version)
+    matrix:
+      product:
+        # N.B. exclude base images!
+        - airflow
+        - zookeeper
+        ...
+----
+
+Base images should be excluded from the build action as they need to be referenced by their manifest hashes in the product Dockerfiles and therefore should be built independently of the product images.
+
+Also note that the tag pattern above is not using a regex (this functionality is not available for tag filtering) but uses glob-operators. The check is not totally watertight - we cannot for example enforce the "minor" version of the release to be limited to a digit between 1 and 12 - but this check is covered by the calling script `create-release-tag.sh`.
+
+##### Operator images
+
+Operator images are built by iterating over and pushing tags for the operator-repositories listed in the `operators` section of `config.yaml`:
+
+[source, yaml]
+----
+images-repo: test-platform-release-images #docker-images
+  operators:
+    - test-platform-release-zk
+    #- airflow
+    #- secret
+    #- commons
+----
