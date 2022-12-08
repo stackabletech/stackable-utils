@@ -36,6 +36,7 @@ set -x
 # this is needed for cargo commands to work properly
 #-----------------------------------------------------------
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
+REPOSITORY="origin"
 
 clone_and_tag_repos() {
   mkdir -p "$TEMP_RELEASE_FOLDER" && cd "$TEMP_RELEASE_FOLDER"
@@ -75,7 +76,7 @@ clone_and_tag_repos() {
 
     git commit -am "release $RELEASE_TAG"
     git tag "$RELEASE_TAG"
-    push_branch
+    #push_branch
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
@@ -97,8 +98,9 @@ update_code() {
 push_branch() {
   if $PUSH; then
     echo "Pushing changes..."
-    #git push "${REPOSITORY}" "${RELEASE_BRANCH}"
-    #git switch main
+    git push "${REPOSITORY}" "${RELEASE_BRANCH}"
+    git push --tags
+    git switch main
   else
     echo "(Dry-run: not pushing...)"
   fi
