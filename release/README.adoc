@@ -1,0 +1,79 @@
+# Release tools
+
+A set of scripts that automates some release steps. The release process has three steps:
+
+1. Call `create-release-branch.sh`- This will:
+
+- create a temporary folder
+- clone operator and image repositories
+- create a new release branch for each repository
+
+2. Test and fix things in the release branches
+
+- changes should be done by making changes in the main branch and then cherry-picking these changes back into the release branch
+
+3. Call `create-release-tag.sh`- This will:
+
+- create a temporary folder
+- clone operator and image repositories
+- switch to the previously-created release branch in each repository
+- conduct code refactoring
+- commit and tag these changes
+- push the resulting commits and tags, triggering github actions to build the product images and operators
+
+## Install requirements
+
+### Python 3
+
+A working python 3 installation is required by the `cargo-version.py` script.
+
+Install required packages:
+
+    pip install -r release/requirements.txt
+
+
+## Usage
+
+To make a release pull-request, go to the folder containing a Cargo workspace or crate and run:
+
+    release.sh [release]
+
+To bump the version and create pull-request:
+
+    release.sh [<next-devel-level>]
+
+where `next-devel-level` is the version level to be bumped. This ca be `major`, `minor` or `patch`.
+
+This pushes two commits in a newly created release branch.
+
+Examples:
+
+    # Perform release
+    $ release.sh release
+
+    # Bump the minor version but do not push anything to origin
+    $ release.sh minor false
+
+    # Bump the major version, push and make a pull-request
+    $ release.sh major
+
+## Description
+
+The release process performs the following steps:
+
+0. Create a release branch from `main`.
+1. Update the release version in the cargo workspace by dropping the "-nightly" token.
+2. Update `Cargo.lock` with the new version.
+3. Regenerate Helm chart and manifests.
+4. Update the CHANGELOG.md entry of this release
+5. Commit, tag and push the changes *BUT* do not push the tags.
+6. __Optional__: if the GitHub cli is installed, a PR is created.
+
+Raising the next development version includes the following steps:
+
+0. Create a release branch from `main`.
+1. Set the version to the next development version by increasing the 'next-devel-level' (by default) part and adding the '-nightly' prerelease token.
+2. Update `Cargo.lock` with the new version.
+3. Regenerate Helm chart and manifests.
+4. Commit and push *BUT* do not push the tags.
+5. __Optional__: if the GitHub cli is installed, a PR is created.
