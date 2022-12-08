@@ -1,5 +1,5 @@
 ---
-images-repo: docker-images
+images-repo: test-platform-release-images #docker-images
 operators:
   - test-platform-release-zk
   #- airflow
