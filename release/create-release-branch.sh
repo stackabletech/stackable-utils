@@ -32,48 +32,57 @@ REPOSITORY="origin"
 RELEASE_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
 
 clone_repos() {
-  mkdir -p "$TEMP_RELEASE_FOLDER" && cd "$TEMP_RELEASE_FOLDER"
-  git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git"
-  cd "$DOCKER_IMAGES_REPO"
-  git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
-  push_branch
+  local BASE_DIR="$1";
 
-  cd "$TEMP_RELEASE_FOLDER"
+  git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
+  cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
+  git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
+  push_branch "$DOCKER_IMAGES_REPO"
 
   while IFS="" read -r operator || [ -n "$operator" ]
   do
     echo "Cloning ${operator}..."
-    git clone "git@github.com:stackabletech/${operator}.git"
-    cd "$operator"
+    git clone "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
+
+    cd "$BASE_DIR/${operator}"
+
     git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
-    update_antora "$TEMP_RELEASE_FOLDER/${operator}"
+    update_antora "$BASE_DIR/${operator}"
     git commit -am "release $RELEASE"
-    push_branch
+    push_branch "$operator"
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 push_branch() {
+  local REMOTE="$1";
   if $PUSH; then
-    echo "Pushing changes..."
-    git push "${REPOSITORY}" "${RELEASE_BRANCH}"
-    git switch main
+    echo "Pushing to $REMOTE"
+    git push -u "${REPOSITORY}" "${RELEASE_BRANCH}"
+    #git switch main
   else
-    echo "(Dry-run: not pushing...)"
+    echo "Dry run pushing to $REMOTE"
+    git push --dry -u "${REPOSITORY}" "${RELEASE_BRANCH}"
   fi
 }
 
 cleanup() {
+  local BASE_DIR="$1";
+
   if $CLEANUP; then
     echo "Cleaning up..."
-    rm -rf "$TEMP_RELEASE_FOLDER"
+    rm -rf "$BASE_DIR"
   fi
 }
 
 update_antora() {
-  echo "Updating from: $1"
+  echo "Updating antora docs for $1"
   yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
   yq -i '.prerelease = false' "$1/docs/antora.yml"
-  yq -i ".versions[] = ${RELEASE}" "$1/docs/templating_vars.yaml"
+  # Not all operators have a getting started guide
+  # that's why we verify if templating_vars.yaml exists.
+  if [ -f "$1/docs/templating_vars.yaml" ]; then
+    yq -i ".versions[] = ${RELEASE}" "$1/docs/templating_vars.yaml"
+  fi
 }
 
 parse_inputs() {
@@ -122,8 +131,9 @@ main() {
   fi
 
   echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
-  clone_repos
-  cleanup
+  mkdir -p "$TEMP_RELEASE_FOLDER"
+  clone_repos "$TEMP_RELEASE_FOLDER"
+  cleanup "$TEMP_RELEASE_FOLDER"
 }
 
 main "$@"
