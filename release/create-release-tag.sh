@@ -38,13 +38,13 @@ set -x
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
 REPOSITORY="origin"
 
-clone_and_tag_repos() {
+tag_repos() {
   # assume that the branch exists and has either been pushed or has been created locally
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   #-----------------------------------------------------------
   # the release branch should already exist
   #-----------------------------------------------------------
-  git pull && git switch "$RELEASE_BRANCH"
+  git switch "$RELEASE_BRANCH"
   # TODO where to conduct the tag-not-already-exists check?
   git tag "$RELEASE_TAG"
   push_branch
@@ -53,10 +53,8 @@ clone_and_tag_repos() {
 
   while IFS="" read -r operator || [ -n "$operator" ]
   do
-    echo "Cloning ${operator}..."
-    git clone "git@github.com:stackabletech/${operator}.git"
     cd "$operator"
-    git pull && git switch "$RELEASE_BRANCH"
+    git switch "$RELEASE_BRANCH"
 
     CARGO_VERSION="$INITIAL_DIR"/release/cargo-version.py
     $CARGO_VERSION --set "$RELEASE_TAG"
@@ -79,19 +77,80 @@ clone_and_tag_repos() {
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
+checks() {
+  if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
+    echo "Expected folder is missing: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+    exit 1
+  fi
+  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  #-----------------------------------------------------------
+  # the up-to-date release branch has already been pulled
+  #-----------------------------------------------------------
+  BRANCH_EXISTS=$(git branch -r | grep "$RELEASE_BRANCH")
+
+  if [ -z "${BRANCH_EXISTS}" ]; then
+    echo "Expected release branch is missing: $RELEASE_BRANCH"
+    exit 1
+  fi
+
+  git fetch --tags
+  git tag
+  TAGXXX_EXISTS=$(git tag | grep "$RELEASE_TAG")
+
+  if [ -z "$TAGXXX_EXISTS" ]; then
+    echo "All fine"
+  else
+    echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
+    exit 1
+  fi
+
+  while IFS="" read -r operator || [ -n "$operator" ]
+  do
+    echo "Operator: $operator"
+    if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
+      echo "Expected folder is missing: $TEMP_RELEASE_FOLDER/${operator}"
+      exit 1
+    fi
+    cd "$TEMP_RELEASE_FOLDER/${operator}"
+    BRANCH_EXISTS=$(git branch -r | grep "$RELEASE_BRANCH")
+    if [ -z "${BRANCH_EXISTS}" ]; then
+      echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
+      exit 1
+    fi
+    git fetch --tags
+    TAG_EXISTS=$(git tag | grep "$RELEASE_TAG")
+    if [ -n "${TAG_EXISTS}" ]; then
+      echo "Tag $RELEASE_TAG already exists in ${operator}"
+      exit 1
+    fi
+  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+}
+
 update_code() {
-  # TODO put this in the branch script if the versions are always non-patch level?
-  yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
-  yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
+  echo "Updating antora docs for $1"
+  yq -i ".version = \"${RELEASE_TAG}\"" "$1/docs/antora.yml"
+  yq -i '.prerelease = false' "$1/docs/antora.yml"
+
+  # Not all operators have a getting started guide
+  # that's why we verify if templating_vars.yaml exists.
+  if [ -f "$1/docs/templating_vars.yaml" ]; then
+    yq -i ".versions[] = ${RELEASE_TAG}" "$1/docs/templating_vars.yaml"
+    yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
+    yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
+  fi
+
   #-----------------------------------------------------------
   # Replace spec.version for *.stackable.tech documents
   #-----------------------------------------------------------
-  for file in "$1"/docs/modules/getting_started/examples/code/*.yaml; do
-    if yq ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\"))" "$file" | grep version
-    then
-      yq -i ".spec.version = \"${RELEASE_TAG}\"" "$file"
-    fi
-  done
+  if [ -d "$1/docs/modules/getting_started/examples/code" ]; then
+    for file in "$1"/docs/modules/getting_started/examples/code/*.yaml; do
+        # FIXME update following PIS changes
+      if yq ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\"))" "$file" | grep version
+      then
+        yq -i ".spec.version = \"${RELEASE_TAG}\"" "$file"
+      fi
+    done
+  fi
 }
 
 push_branch() {
@@ -154,7 +213,7 @@ main() {
   #-----------------------------------------------------------
   # check if tag argument provided
   #-----------------------------------------------------------
-  if [ -z ${RELEASE_TAG+x} ]; then
+  if [ -z ${RELEASE_TAG} ]; then
     echo "Usage: create-release-tag.sh -t <tag>"
     exit 1
   fi
@@ -166,10 +225,11 @@ main() {
     exit 1
   fi
 
-  # if branch exists, then proceed
-  # otherwise clone
+  # sanity checks before we start: folder, branches etc.
+  checks
+
   echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
-  clone_and_tag_repos
+  tag_repos
   cleanup
 }
 
