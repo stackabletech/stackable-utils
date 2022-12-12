@@ -39,9 +39,8 @@ TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
 REPOSITORY="origin"
 
 clone_and_tag_repos() {
-  mkdir -p "$TEMP_RELEASE_FOLDER" && cd "$TEMP_RELEASE_FOLDER"
-  git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git"
-  cd "$DOCKER_IMAGES_REPO"
+  # assume that the branch exists and has either been pushed or has been created locally
+  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   #-----------------------------------------------------------
   # the release branch should already exist
   #-----------------------------------------------------------
@@ -167,6 +166,8 @@ main() {
     exit 1
   fi
 
+  # if branch exists, then proceed
+  # otherwise clone
   echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
   clone_and_tag_repos
   cleanup

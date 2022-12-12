@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #----------------------------------------------------------------------------------------------------
-# Usage: create-release-branch.sh -b <release-branch> [-p]
+# Usage: create-release-branch.sh -b <release-branch> -x <create|update> [-p]
 #
 # -b <release-branch> : e.g. "23.1"
 # [-p]: push changes (otherwise is effectively a dry run)
@@ -47,6 +47,20 @@ clone_repos() {
     cd "$BASE_DIR/${operator}"
 
     git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
+    push_branch "$operator"
+  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+}
+
+update_repos() {
+  local BASE_DIR="$1";
+  cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
+  git switch "${RELEASE_BRANCH}"
+
+  while IFS="" read -r operator || [ -n "$operator" ]
+  do
+    cd "$BASE_DIR/${operator}"
+
+    git switch "${RELEASE_BRANCH}"
     update_antora "$BASE_DIR/${operator}"
     git commit -am "release $RELEASE"
     push_branch "$operator"
@@ -89,10 +103,12 @@ parse_inputs() {
   RELEASE="xxx"
   PUSH=false
   CLEANUP=false
+  EXECUTE="create"
 
   while [[ "$#" -gt 0 ]]; do
       case $1 in
           -b|--branch) RELEASE="$2"; shift ;;
+          -x|--execute) EXECUTE="$2"; shift ;;
           -p|--push) PUSH=true ;;
           -c|--cleanup) CLEANUP=true ;;
           *) echo "Unknown parameter passed: $1"; exit 1 ;;
@@ -131,8 +147,16 @@ main() {
   fi
 
   echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
-  mkdir -p "$TEMP_RELEASE_FOLDER"
-  clone_repos "$TEMP_RELEASE_FOLDER"
+  if [ "$EXECUTE" == "create" ]; then
+    mkdir -p "$TEMP_RELEASE_FOLDER"
+    clone_repos "$TEMP_RELEASE_FOLDER"
+  elif [ "$EXECUTE" == "update" ]; then
+    update_repos "$TEMP_RELEASE_FOLDER"
+  else
+    echo "Unknown command: $EXECUTE"
+    exit 1
+  fi
+
   cleanup "$TEMP_RELEASE_FOLDER"
 }
 
