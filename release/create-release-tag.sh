@@ -94,12 +94,8 @@ checks() {
   fi
 
   git fetch --tags
-  git tag
-  TAGXXX_EXISTS=$(git tag | grep "$RELEASE_TAG")
-
-  if [ -z "$TAGXXX_EXISTS" ]; then
-    echo "All fine"
-  else
+  TAG_EXISTS=$(git tag -l | grep "$RELEASE_TAG")
+  if [ -n "$TAG_EXISTS" ]; then
     echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
     exit 1
   fi
@@ -226,7 +222,9 @@ main() {
   fi
 
   # sanity checks before we start: folder, branches etc.
+  set +e
   checks
+  set -e
 
   echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
   tag_repos
