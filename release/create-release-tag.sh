@@ -130,7 +130,7 @@ update_code() {
   # Not all operators have a getting started guide
   # that's why we verify if templating_vars.yaml exists.
   if [ -f "$1/docs/templating_vars.yaml" ]; then
-    yq -i ".versions[] = ${RELEASE_TAG}" "$1/docs/templating_vars.yaml"
+    yq -i ".versions[] = \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
   fi
@@ -173,7 +173,7 @@ update_changelog() {
 }
 
 parse_inputs() {
-  RELEASE_TAG="xxx"
+  RELEASE_TAG=""
   PUSH=false
   CLEANUP=false
 
@@ -209,7 +209,7 @@ main() {
   #-----------------------------------------------------------
   # check if tag argument provided
   #-----------------------------------------------------------
-  if [ -z ${RELEASE_TAG} ]; then
+  if [ -z "${RELEASE_TAG}" ]; then
     echo "Usage: create-release-tag.sh -t <tag>"
     exit 1
   fi
@@ -222,6 +222,7 @@ main() {
   fi
 
   # sanity checks before we start: folder, branches etc.
+  # deactivate -e so that piped commands can be used
   set +e
   checks
   set -e

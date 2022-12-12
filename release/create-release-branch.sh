@@ -79,7 +79,7 @@ cleanup() {
 }
 
 parse_inputs() {
-  RELEASE="xxx"
+  RELEASE=""
   PUSH=false
   CLEANUP=false
 
@@ -111,7 +111,7 @@ main() {
   #-----------------------------------------------------------
   # check if tag argument provided
   #-----------------------------------------------------------
-  if [ -z ${RELEASE} ]; then
+  if [ -z "${RELEASE}" ]; then
     echo "Usage: create-release-branch.sh <tag>"
     exit 1
   fi
