@@ -73,6 +73,7 @@ tag_repos() {
 
     git commit -am "release $RELEASE_TAG"
     git tag "$RELEASE_TAG"
+    git tag "docs/$RELEASE"
     push_branch
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -118,6 +119,12 @@ checks() {
     if [ -n "${TAG_EXISTS}" ]; then
       echo "Tag $RELEASE_TAG already exists in ${operator}"
       exit 1
+    fi
+    DOC_TAG_EXISTS=$(git tag -l | grep "docs/$RELEASE")
+    # docs tag is just major/minor and will be re-used for the latest release tag
+    if [ -n "$DOC_TAG_EXISTS" ]; then
+      echo "Tag docs/$RELEASE already exists in $DOCKER_IMAGES_REPO but will be re-assigned"
+      git tag -d "docs/$RELEASE"
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
