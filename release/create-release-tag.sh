@@ -135,18 +135,27 @@ update_code() {
     yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
   fi
 
-  #-----------------------------------------------------------
-  # Replace spec.version for *.stackable.tech documents
-  #-----------------------------------------------------------
+  #--------------------------------------------------------------------------
+  # Replace .spec.image.stackableVersion for getting-started examples.
+  # N.B. yaml files should contain a single document.
+  #--------------------------------------------------------------------------
   if [ -d "$1/docs/modules/getting_started/examples/code" ]; then
     for file in "$1"/docs/modules/getting_started/examples/code/*.yaml; do
-        # FIXME update following PIS changes
-      if yq ".apiVersion | select(. | contains(\"stackable.tech\")) | parent | .spec | select (. | has(\"version\"))" "$file" | grep version
+      STACKABLE_VERSION=$(yq ".spec.image.stackableVersion" "$file")
+      if [ "${STACKABLE_VERSION}" != "null" ];
       then
-        yq -i ".spec.version = \"${RELEASE_TAG}\"" "$file"
+        yq -i ".spec.image.stackableVersion = ${RELEASE_TAG}" "$file"
       fi
     done
   fi
+
+    #--------------------------------------------------------------------------
+    # Replace .spec.image.stackableVersion for kuttl tests.
+    # Use sed as yq does not process .j2 file syntax properly.
+    #--------------------------------------------------------------------------
+    for file in $(find "$1/tests/templates/kuttl" -name "*.yaml" -or -name "*.j2"); do
+      sed -i "s/\(.*stackableVersion\):.*/\\1:${RELEASE_TAG}/g" "$file"
+    done
 }
 
 push_branch() {
