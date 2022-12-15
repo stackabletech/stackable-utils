@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+source repos
+# Disable gh paging for results.
+PAGER=
+for product in "${products[@]}"; do
+    echo "#### PRs for $product ###"
+    gh pr list -R stackabletech/${product}-operator
+done
