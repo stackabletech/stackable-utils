@@ -1,7 +1,6 @@
 ---
-images-repo: test-platform-release-images #docker-images
+images-repo: docker-images
 operators:
-  - test-platform-release-zk
-  #- airflow
-  #- secret
-  #- commons
+  - zookeeper-operator
+  - secret-operator
+  - commons-operator

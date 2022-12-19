@@ -49,12 +49,15 @@ tag_repos() {
   git tag "$RELEASE_TAG"
   push_branch
 
-  cd "$TEMP_RELEASE_FOLDER"
-
   while IFS="" read -r operator || [ -n "$operator" ]
   do
-    cd "$operator"
+    cd "${TEMP_RELEASE_FOLDER}/${operator}"
     git switch "$RELEASE_BRANCH"
+
+    # Update git submodules if needed
+    if [ -f .gitmodules ]; then
+      git submodule update --recursive --init
+    fi
 
     CARGO_VERSION="$INITIAL_DIR"/release/cargo-version.py
     $CARGO_VERSION --set "$RELEASE_TAG"
@@ -144,7 +147,7 @@ update_code() {
       STACKABLE_VERSION=$(yq ".spec.image.stackableVersion" "$file")
       if [ "${STACKABLE_VERSION}" != "null" ];
       then
-        yq -i ".spec.image.stackableVersion = ${RELEASE_TAG}" "$file"
+        yq -i ".spec.image.stackableVersion = \"${RELEASE_TAG}\"" "$file"
       fi
     done
   fi

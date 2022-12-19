@@ -22,7 +22,8 @@
 set -euo pipefail
 set -x
 
-BASE_BRANCH="main"
+# TODO: update base branch to main
+BASE_BRANCH="template_e2be5bb"
 REPOSITORY="origin"
 #----------------------------------------------------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1 and not 23.01
@@ -39,7 +40,7 @@ update_repos() {
   else
     git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
+    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REPOSITORY}/${BASE_BRANCH}"
   fi
 
   push_branch "$DOCKER_IMAGES_REPO"
@@ -52,7 +53,7 @@ update_repos() {
     else
       git clone "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
       cd "$BASE_DIR/${operator}"
-      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${BASE_BRANCH}"
+      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REPOSITORY}/${BASE_BRANCH}"
     fi
     push_branch "$operator"
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
