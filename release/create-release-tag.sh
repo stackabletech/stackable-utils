@@ -159,6 +159,14 @@ update_code() {
     for file in $(find "$1/tests/templates/kuttl" -name "*.yaml" -or -name "*.j2"); do
       sed -i "s/\(.*stackableVersion\):.*/\\1:${RELEASE_TAG}/g" "$file"
     done
+
+    #--------------------------------------------------------------------------
+    # Replace "nightly" link so the documentation refers to the current version
+    # TODO test this!
+    #--------------------------------------------------------------------------
+    for file in $(find "$1/docs" -name "*.adoc"); do
+      sed -i "s/nightly@home/home/g" "$file"
+    done
 }
 
 push_branch() {
