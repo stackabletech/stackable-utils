@@ -4,3 +4,15 @@ operators:
   - zookeeper-operator
   - secret-operator
   - commons-operator
+  - airflow-operator
+  - superset-operator
+  - hive-operator
+  - hdfs-operator
+  - hbase-operator
+  - kafka-operator
+  - nifi-operator
+  - spark-k8s-operator
+  - opa-operator
+  - listener-operator
+  - trino-operator
+  - druid-operator
