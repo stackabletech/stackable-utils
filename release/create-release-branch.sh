@@ -1,24 +1,7 @@
 #!/usr/bin/env bash
-#----------------------------------------------------------------------------------------------------
-# Usage: create-release-branch.sh -b <release-branch> [-p]
 #
-# -b <release-branch> : e.g. "23.1"
-# [-p]: push changes (otherwise is effectively a dry run)
-# This script requires https://github.com/mikefarah/yq (not to be confused with https://github.com/kislyuk/yq)
+# See README.adoc
 #
-# What this script does:
-# - checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
-# - strips this argument of any leading or trailing quote marks
-# - for docker images:
-#   - creates a new folder in a temporary folder and clones the images repository
-#   - creates a new branch (and pushes it if the push argument is provided)
-# - for operators:
-#   - iterates over a list of operator repository names (config.yaml), and for each one:
-#   - creates a new folder in a temporary folder and clones the operator repository
-#   - creates a new branch
-#   - creates a one-off commit in the branch (i.e. the changes are valid for the branch lifetime)
-#   - pushes the commit if the push argument is provided
-#----------------------------------------------------------------------------------------------------
 set -euo pipefail
 set -x
 
