@@ -14,8 +14,7 @@ A set of scripts that automates some release steps. The release process has thre
 
 3. Call `create-release-tag.sh`- This will:
 
-- create a temporary folder
-- clone operator and image repositories
+- checks that the appropriate release branch exists
 - switch to the previously-created release branch in each repository
 - conduct code refactoring
 - commit and tag these changes
@@ -56,8 +55,8 @@ To create release branches use the `create-release-branch.sh` script. The syntax
 ----
 
 - `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
-- `-p`: push flag (optional). If provided, the created branches plus any changes made as part fo this process will be pushed to the origin.
-- `-c`: cleanup flag (optional). If provided, the repository folders will be torn down on completion.
+- `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part fo this process will be pushed to the origin.
+- `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
@@ -65,7 +64,7 @@ e.g.
 
 [source]
 ----
-./release/create-release-branch.sh 23.1 -p -c
+./release/create-release-branch.sh -b 23.1 -p -c
 ----
 
 #### What this script does
@@ -73,16 +72,16 @@ e.g.
 * checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
 * strips this argument of any leading or trailing quote marks
 * for docker images
-** creates a new folder in a temporary folder and clones the images repository (given in `config.yaml`)
-** creates a new branch (and pushes it if the push argument is provided)
-** deletes the branch if the cleanup flag is provided
+** creates or updates a temporary folder with clones of the images repository (given in `config.yaml`)
+** creates the new branch according to the release version
+** pushes the new branch (if requested with "-p")
+** deletes the temporary folder (if requested with "-c")
 * for operators:
 ** iterates over a list of operator repository names (listed in `config.yaml`), and for each one:
-** creates a new folder in a temporary folder and clones the operator repository
-** creates a new branch
-** creates a one-off commit in the branch (i.e. the changes are valid for the branch lifetime)
-** pushes the commit if the push argument is provided
-** deletes the temporary folder if the cleanup flag is provided
+** clones or updates operator and product images repositories
+** creates the new branch according to the release version
+** pushes the new branch (if requested with "-p")
+** deletes the temporary folder (if requested with "-c")
 
 
 ### Release tags
@@ -91,38 +90,34 @@ To create release tags use the `create-release-tag.sh` script. The syntax is giv
 
 [source]
 ----
-./release/create-release-branch.sh -t <release-tag> [-p] [-c]
+./release/create-release-tag.sh -t <release-tag> [-p] [-c]
 ----
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
-- `-p`: push flag (optional). If provided, the created commits and tags made as part of this process will be pushed to the origin.
-- `-c`: cleanup flag (optional). If provided, the repository folders will be torn down on completion.
+- `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
+- `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
 #### What this script does
 
 * checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
-* strips this argument of any leading or trailing quote marks and derives the corresponding branch name
 * for docker images:
-** creates a new folder in a temporary folder and clones the images repository (given in `config.yaml`)
-** switches to the release branch
+
 ** tags the branch and pushes it if the push argument is provided
 * for operators:
-** iterates over a list of operator repository names (listed in `config.yaml`), and for each one:
-** creates a new folder in a temporary folder and clones the operator repository
-** switches to the release branch
-** makes the following changes:
-*** adapts the versions in all cargo.toml to `release-tag` argument
-*** adapts the versions in all helm charts to `release-tag` argument
-*** updates the workspace
-*** rebuilds the helm charts
-*** bumps the changelog
-*** adapts the versions in CRDs in the getting started section to `release-tag` argument
-*** runs the templating script to propagate changes to script files
+** checks that the release branch exists and the tag doesn't
+** adapts the versions in all cargo.toml to `release-tag` argument
+** update all "stackableVersion" fields in the getting started guides
+** update all "stackableVersion" fields in the kuttl tests
+** update the antora.yaml
+** update the  `release-tag` in helm charts
+** updates the cargo workspace
+** rebuilds the helm charts
+** bumps the changelog
 ** creates a tagged commit in the branch (i.e. the changes are valid for the branch lifetime)
-** pushes the commit and tag if the push argument is provided
-** deletes the temporary folder if the cleanup flag is provided
+** pushes the commit and tag (if requested with "-p")
+** deletes the temporary folder (if requested with "-c")
 
 #### Build actions
 
@@ -130,7 +125,7 @@ When a tag is pushed, the images for products and operators are built via github
 
 ##### Product images
 
-The build action script `release.yml` builds all product images that exist in the docker-images repository, with an explicit filtering provided by the following `matrix` section:
+The build action script `release.yml` builds all product images that defined in the `release.yaml` matrix section:
 
 [source, yaml]
 ----
@@ -164,10 +159,10 @@ Operator images are built by iterating over and pushing tags for the operator-re
 
 [source, yaml]
 ----
-images-repo: test-platform-release-images #docker-images
+images-repo: docker-images
   operators:
-    - test-platform-release-zk
-    #- airflow
-    #- secret
-    #- commons
+    - airflow
+    - secret
+    - commons
+    - ...
 ----
