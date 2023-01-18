@@ -1,34 +1,7 @@
 #!/usr/bin/env bash
-#----------------------------------------------------------------------------------------------------
-# Usage: create-release-tag.sh -t <release-tag> [-p] [-c]
 #
-# -t <release-tag> : e.g. "23.1.42"
-# [-p]: push changes (otherwise is effectively a dry run)
-# [-c]: cleanup i.e. delete temporary folder(s)
-# This script requires https://github.com/mikefarah/yq (not to be confused with https://github.com/kislyuk/yq)
+# See README.adoc
 #
-# What this script does:
-# - checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
-# - strips this argument of any leading or trailing quote marks and derives the corresponding branch name
-# - for docker images:
-#   - creates a new folder in a temporary folder and clones the images repository
-#   - switches to the release branch
-#   - tags the branch and pushes it if the push argument is provided
-# - for operators:
-#   - iterates over a list of operator repository names (config.yaml), and for each one:
-#   - creates a new folder in a temporary folder and clones the operator repository
-#   - switches to the release branch
-#   - makes the following changes:
-#     - adapts the versions in all cargo.toml to <release-tag> argument
-#     - adapts the versions in all helm charts to <release-tag> argument
-#     - updates the workspace
-#     - rebuilds the helm charts
-#     - bumps the changelog
-#     - adapts the versions in CRDs in the getting started section to <release-tag> argument
-#     - runs the templating script to propagate changes to script files
-#   - creates a commit in the branch (i.e. the changes are valid for the branch lifetime)
-#   - pushes the commit if the push argument is provided
-#----------------------------------------------------------------------------------------------------
 set -euo pipefail
 set -x
 #-----------------------------------------------------------
