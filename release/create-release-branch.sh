@@ -5,8 +5,7 @@
 set -euo pipefail
 set -x
 
-# TODO: update base branch to main
-BASE_BRANCH="template_e2be5bb"
+BASE_BRANCH="main"
 REPOSITORY="origin"
 #----------------------------------------------------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1 and not 23.01

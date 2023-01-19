@@ -106,7 +106,7 @@ update_code() {
   # Not all operators have a getting started guide
   # that's why we verify if templating_vars.yaml exists.
   if [ -f "$1/docs/templating_vars.yaml" ]; then
-    yq -i ".versions[] = \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+    yq -i "(.versions.[] | select(. == \"*nightly\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
   fi
@@ -116,7 +116,7 @@ update_code() {
   # N.B. yaml files should contain a single document.
   #--------------------------------------------------------------------------
   if [ -d "$1/docs/modules/getting_started/examples/code" ]; then
-    for file in "$1"/docs/modules/getting_started/examples/code/*.yaml; do
+    for file in $(find "$1/docs/modules/getting_started/examples/code" -name "*.yaml"); do
       STACKABLE_VERSION=$(yq ".spec.image.stackableVersion" "$file")
       if [ "${STACKABLE_VERSION}" != "null" ];
       then

@@ -47,7 +47,7 @@ This script requires https://github.com/mikefarah/yq (not to be confused with ht
 
 ### Release branches
 
-To create release branches use the `create-release-branch.sh` script. The syntax is given below:
+To create release branches use the `create-release-branch.sh` script, called from the repository root folder. The syntax is given below:
 
 [source]
 ----
@@ -86,7 +86,7 @@ e.g.
 
 ### Release tags
 
-To create release tags use the `create-release-tag.sh` script. The syntax is given below:
+To create release tags use the `create-release-tag.sh` script, called from the repository root folder. The syntax is given below:
 
 [source]
 ----
@@ -98,6 +98,13 @@ To create release tags use the `create-release-tag.sh` script. The syntax is giv
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
+
+e.g.
+
+[source]
+----
+./release/create-release-tag.sh -b 23.1.0 -p -c
+----
 
 #### What this script does
 
