@@ -129,13 +129,14 @@ update_code() {
     # Replace .spec.image.stackableVersion for kuttl tests.
     # Use sed as yq does not process .j2 file syntax properly.
     #--------------------------------------------------------------------------
-    for file in $(find "$1/tests/templates/kuttl" -name "*.yaml" -or -name "*.j2"); do
-      sed -i "s/\(.*stackableVersion\):.*/\\1:${RELEASE_TAG}/g" "$file"
-    done
+    # TODO old product images won't be tested any longer
+    if [ -f "$1/tests/test-definition.yaml" ]; then
+      # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
+      sed -i "s/-stackable.*/-stackable${RELEASE_TAG}/" "$1/tests/test-definition.yaml"
+    fi
 
     #--------------------------------------------------------------------------
     # Replace "nightly" link so the documentation refers to the current version
-    # TODO test this!
     #--------------------------------------------------------------------------
     for file in $(find "$1/docs" -name "*.adoc"); do
       sed -i "s/nightly@home/home/g" "$file"
