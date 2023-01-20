@@ -169,7 +169,7 @@ push_branch() {
   if $PUSH; then
     echo "Pushing changes..."
     git push "${REPOSITORY}" "${RELEASE_BRANCH}"
-    git push "${RELEASE_TAG}"
+    git push "${REPOSITORY}" "${RELEASE_TAG}"
     git switch main
   else
     echo "(Dry-run: not pushing...)"
