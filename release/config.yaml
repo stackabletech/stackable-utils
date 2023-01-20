@@ -1,18 +1,18 @@
 ---
 images-repo: docker-images
 operators:
-  - zookeeper-operator
-  - secret-operator
-  - commons-operator
   - airflow-operator
-  - superset-operator
-  - hive-operator
-  - hdfs-operator
-  - hbase-operator
-  - kafka-operator
-  - nifi-operator
-  - spark-k8s-operator
-  - opa-operator
-  - listener-operator
-  - trino-operator
+  - commons-operator
   - druid-operator
+  - hbase-operator
+  - hdfs-operator
+  - hive-operator
+  - kafka-operator
+  - listener-operator
+  - nifi-operator
+  - opa-operator
+  - trino-operator
+  - secret-operator
+  - spark-k8s-operator
+  - superset-operator
+  - zookeeper-operator
