@@ -14,8 +14,7 @@ REPOSITORY="origin"
 #----------------------------------------------------------------------------------------------------
 RELEASE_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
 
-update_repos() {
-  local BASE_DIR="$1";
+update_products() {
   if [ -d "$BASE_DIR/$DOCKER_IMAGES_REPO" ]; then
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
     git pull && git switch "${RELEASE_BRANCH}"
@@ -26,7 +25,9 @@ update_repos() {
   fi
 
   push_branch "$DOCKER_IMAGES_REPO"
+}
 
+update_operators() {
   while IFS="" read -r operator || [ -n "$operator" ]
   do
     if [ -d "$BASE_DIR/${operator}" ]; then
@@ -39,6 +40,17 @@ update_repos() {
     fi
     push_branch "$operator"
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+}
+
+update_repos() {
+  local BASE_DIR="$1";
+
+  if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+    update_products
+  fi
+  if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+    update_operators
+  fi
 }
 
 push_branch() {
@@ -65,10 +77,12 @@ parse_inputs() {
   RELEASE=""
   PUSH=false
   CLEANUP=false
+  WHAT=""
 
   while [[ "$#" -gt 0 ]]; do
       case $1 in
           -b|--branch) RELEASE="$2"; shift ;;
+          -w|--what) WHAT="$2"; shift ;;
           -p|--push) PUSH=true ;;
           -c|--cleanup) CLEANUP=true ;;
           *) echo "Unknown parameter passed: $1"; exit 1 ;;

@@ -11,7 +11,7 @@ set -x
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
 REPOSITORY="origin"
 
-tag_repos() {
+tag_products() {
   # assume that the branch exists and has either been pushed or has been created locally
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   #-----------------------------------------------------------
@@ -21,7 +21,9 @@ tag_repos() {
   # TODO where to conduct the tag-not-already-exists check?
   git tag "$RELEASE_TAG"
   push_branch
+}
 
+tag_operators() {
   while IFS="" read -r operator || [ -n "$operator" ]
   do
     cd "${TEMP_RELEASE_FOLDER}/${operator}"
@@ -53,7 +55,16 @@ tag_repos() {
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
-checks() {
+tag_repos() {
+  if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+    tag_products
+  fi
+  if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+    tag_operators
+  fi
+}
+
+check_products() {
   if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
     echo "Expected folder is missing: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
     exit 1
@@ -75,7 +86,9 @@ checks() {
     echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
     exit 1
   fi
+}
 
+check_operators() {
   while IFS="" read -r operator || [ -n "$operator" ]
   do
     echo "Operator: $operator"
@@ -96,6 +109,15 @@ checks() {
       exit 1
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+}
+
+checks() {
+  if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+    check_products
+  fi
+  if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+    check_operators
+  fi
 }
 
 update_code() {
@@ -147,7 +169,7 @@ push_branch() {
   if $PUSH; then
     echo "Pushing changes..."
     git push "${REPOSITORY}" "${RELEASE_BRANCH}"
-    git push --tags
+    git push "${RELEASE_TAG}"
     git switch main
   else
     echo "(Dry-run: not pushing...)"
@@ -170,10 +192,12 @@ parse_inputs() {
   RELEASE_TAG=""
   PUSH=false
   CLEANUP=false
+  WHAT=""
 
   while [[ "$#" -gt 0 ]]; do
       case $1 in
           -t|--tag) RELEASE_TAG="$2"; shift ;;
+          -w|--what) WHAT="$2"; shift ;;
           -p|--push) PUSH=true ;;
           -c|--cleanup) CLEANUP=true ;;
           *) echo "Unknown parameter passed: $1"; exit 1 ;;

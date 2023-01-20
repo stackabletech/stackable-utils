@@ -51,12 +51,13 @@ To create release branches use the `create-release-branch.sh` script, called fro
 
 [source]
 ----
-./release/create-release-branch.sh -b <release> [-p] [-c]
+./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|both]
 ----
 
 - `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
 - `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part fo this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
+- `-w`: where to create the branch. It can be "products", "operators", "both".
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
@@ -64,7 +65,7 @@ e.g.
 
 [source]
 ----
-./release/create-release-branch.sh -b 23.1 -p -c
+./release/create-release-branch.sh -b 23.1 -p -c -w both
 ----
 
 #### What this script does
@@ -90,12 +91,13 @@ To create release tags use the `create-release-tag.sh` script, called from the r
 
 [source]
 ----
-./release/create-release-tag.sh -t <release-tag> [-p] [-c]
+./release/create-release-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|both]
 ----
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "both".
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
@@ -103,7 +105,7 @@ e.g.
 
 [source]
 ----
-./release/create-release-tag.sh -b 23.1.0 -p -c
+./release/create-release-tag.sh -t 23.1.0 -p -c -w both
 ----
 
 #### What this script does
