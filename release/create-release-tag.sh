@@ -140,11 +140,7 @@ update_code() {
   #--------------------------------------------------------------------------
   if [ -d "$1/docs/modules/getting_started/examples/code" ]; then
     for file in $(find "$1/docs/modules/getting_started/examples/code" -name "*.yaml"); do
-      STACKABLE_VERSION=$(yq ".spec.image.stackableVersion" "$file")
-      if [ "${STACKABLE_VERSION}" != "null" ];
-      then
-        yq -i ".spec.image.stackableVersion = \"${RELEASE_TAG}\"" "$file"
-      fi
+      yq -i "(.spec | select(has(\"image\")).image | (select(has(\"stackableVersion\")).stackableVersion)) = \"${RELEASE_TAG}\"" "$file"
     done
   fi
 
