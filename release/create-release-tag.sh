@@ -122,7 +122,8 @@ checks() {
 
 update_code() {
   echo "Updating antora docs for $1"
-  yq -i ".version = \"${RELEASE_TAG}\"" "$1/docs/antora.yml"
+  # antora version should be major.minor, not patch level
+  yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
   yq -i '.prerelease = false' "$1/docs/antora.yml"
 
   # Not all operators have a getting started guide
