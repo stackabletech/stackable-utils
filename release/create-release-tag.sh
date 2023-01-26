@@ -225,7 +225,7 @@ main() {
   # check if tag argument provided
   #-----------------------------------------------------------
   if [ -z "${RELEASE_TAG}" ]; then
-    echo "Usage: create-release-tag.sh -t <tag>"
+    echo "Usage: create-release-tag.sh [OPTIONS (see README.md)]"
     exit 1
   fi
   #-----------------------------------------------------------
