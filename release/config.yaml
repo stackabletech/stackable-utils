@@ -1,0 +1,18 @@
+---
+images-repo: docker-images
+operators:
+  - airflow-operator
+  - commons-operator
+  - druid-operator
+  - hbase-operator
+  - hdfs-operator
+  - hive-operator
+  - kafka-operator
+  - listener-operator
+  - nifi-operator
+  - opa-operator
+  - trino-operator
+  - secret-operator
+  - spark-k8s-operator
+  - superset-operator
+  - zookeeper-operator

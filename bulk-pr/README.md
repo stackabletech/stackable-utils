@@ -54,3 +54,7 @@ The displayed status per PR can have the following values:
 |--------|------------------------------------------------|
 | 0      | All checks were finished and successful        | 
 | 1      | One or more checks failed or are still running | 
+
+### pr_list
+List all open PRs in all `repos`.
+

@@ -1,0 +1,177 @@
+# Release scripts
+
+A set of scripts that automates some release steps. The release process has three steps:
+
+1. Call `create-release-branch.sh`- This will:
+
+- create a temporary folder
+- clone operator and image repositories
+- create a new release branch for each repository
+
+2. Test and fix things in the release branches
+
+- changes should be done by making changes in the main branch and then cherry-picking these changes back into the release branch
+
+3. Call `create-release-tag.sh`- This will:
+
+- checks that the appropriate release branch exists
+- switch to the previously-created release branch in each repository
+- conduct code refactoring
+- commit and tag these changes
+- push the resulting commits and tags, triggering github actions to build the product images and operators
+
+These steps are summarised in the two diagrams below:
+
+image::images/rb-flow.png[]
+
+image::images/rb-utils.png[]
+
+## Install requirements
+
+### Python 3
+
+A working python 3 installation is required by the `cargo-version.py` script.
+
+Install required packages:
+
+[source]
+----
+pip install -r release/requirements.txt
+----
+
+### yq (yaml parser)
+
+This script requires https://github.com/mikefarah/yq (not to be confused with https://github.com/kislyuk/yq)
+
+## Usage
+
+### Release branches
+
+To create release branches use the `create-release-branch.sh` script, called from the repository root folder. The syntax is given below:
+
+[source]
+----
+./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|both]
+----
+
+- `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
+- `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part fo this process will be pushed to the origin.
+- `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
+- `-w`: where to create the branch. It can be "products", "operators", "both".
+
+N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
+
+e.g.
+
+[source]
+----
+./release/create-release-branch.sh -b 23.1 -p -c -w both
+----
+
+#### What this script does
+
+* checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
+* strips this argument of any leading or trailing quote marks
+* for docker images
+** creates or updates a temporary folder with clones of the images repository (given in `config.yaml`)
+** creates the new branch according to the release version
+** pushes the new branch (if requested with "-p")
+** deletes the temporary folder (if requested with "-c")
+* for operators:
+** iterates over a list of operator repository names (listed in `config.yaml`), and for each one:
+** clones or updates operator and product images repositories
+** creates the new branch according to the release version
+** pushes the new branch (if requested with "-p")
+** deletes the temporary folder (if requested with "-c")
+
+
+### Release tags
+
+To create release tags use the `create-release-tag.sh` script, called from the repository root folder. The syntax is given below:
+
+[source]
+----
+./release/create-release-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|both]
+----
+
+- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
+- `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
+- `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "both".
+
+N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
+
+e.g.
+
+[source]
+----
+./release/create-release-tag.sh -t 23.1.0 -p -c -w both
+----
+
+#### What this script does
+
+* checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
+* for docker images:
+
+** tags the branch and pushes it if the push argument is provided
+* for operators:
+** checks that the release branch exists and the tag doesn't
+** adapts the versions in all cargo.toml to `release-tag` argument
+** update all "stackableVersion" fields in the getting started guides
+** update all "stackableVersion" fields in the kuttl tests
+** update the antora.yaml
+** update the  `release-tag` in helm charts
+** updates the cargo workspace
+** rebuilds the helm charts
+** bumps the changelog
+** creates a tagged commit in the branch (i.e. the changes are valid for the branch lifetime)
+** pushes the commit and tag (if requested with "-p")
+** deletes the temporary folder (if requested with "-c")
+
+#### Build actions
+
+When a tag is pushed, the images for products and operators are built via github actions. The following points should be noted:
+
+##### Product images
+
+The build action script `release.yml` builds all product images that defined in the `release.yaml` matrix section:
+
+[source, yaml]
+----
+
+name: Release product images
+on:
+  push:
+    tags:
+      - '[0-9][0-9].[0-9]+.[0-9]+'
+
+jobs:
+  ...
+  strategy:
+    fail-fast: false
+    # If we want more parallelism we can schedule a dedicated task for every tuple (product, product version)
+    matrix:
+      product:
+        # N.B. exclude base images!
+        - airflow
+        - zookeeper
+        ...
+----
+
+Base images should be excluded from the build action as they need to be referenced by their manifest hashes in the product Dockerfiles and therefore should be built independently of the product images.
+
+Also note that the tag pattern above is not using a regex (this functionality is not available for tag filtering) but uses glob-operators. The check is not totally watertight - we cannot for example enforce the "minor" version of the release to be limited to a digit between 1 and 12 - but this check is covered by the calling script `create-release-tag.sh`.
+
+##### Operator images
+
+Operator images are built by iterating over and pushing tags for the operator-repositories listed in the `operators` section of `config.yaml`:
+
+[source, yaml]
+----
+images-repo: docker-images
+  operators:
+    - airflow
+    - secret
+    - commons
+    - ...
+----
