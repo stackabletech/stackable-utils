@@ -158,7 +158,7 @@ update_code() {
     # Replace "nightly" link so the documentation refers to the current version
     #--------------------------------------------------------------------------
     for file in $(find "$1/docs" -name "*.adoc"); do
-      sed -i "s/nightly@home/home/g" "$file"
+      sed -i "s/nightly@home/${RELEASE}@home/g" "$file"
     done
 }
 
