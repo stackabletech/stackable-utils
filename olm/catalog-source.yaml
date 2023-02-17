@@ -1,11 +1,4 @@
 ---
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: stackable-operators
-  labels:
-    name: stackable-operators
----
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
