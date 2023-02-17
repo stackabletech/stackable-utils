@@ -1,1 +1,4 @@
 /.idea
+olm/catalog.Dockerfile
+olm/catalog/
+olm/subscriptions/
