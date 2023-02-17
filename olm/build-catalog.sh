@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Usage:
-#   ./olm/build-catalog.sh <release as x.y.z> [-n] [-s]
+#   ./olm/build-catalog.sh <release as x.y.z> [-n] [-d] [-s]
 #   -r <release>: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
 #   -n: create namespace stackable-operators (optional, default is "false").
+#   -d: deploy catalog and group (optional, default is "false").
 #   -s: deploy subscriptions (optional, default is "false").
 
 set -euo pipefail
@@ -13,11 +14,13 @@ parse_inputs() {
   VERSION=""
   NAMESPACE=false
   SUBSCRIPTIONS=false
+  DEPLOY=false
 
   while [[ "$#" -gt 0 ]]; do
       case $1 in
           -r|--release) VERSION="$2"; shift ;;
           -n|--namespace) NAMESPACE=true ;;
+          -d|--deploy) DEPLOY=true ;;
           -s|--subscriptions) SUBSCRIPTIONS=true ;;
           *) echo "Unknown parameter passed: $1"; exit 1 ;;
       esac
@@ -36,6 +39,7 @@ setup() {
   mkdir -p catalog
   mkdir -p subscriptions
   rm -f catalog.Dockerfile
+  rm -f catalog-source.yaml
 }
 
 prerequisites() {
@@ -105,6 +109,30 @@ subscriptions() {
   done < <(yq '... comments="" | .operators[] ' config.yaml)
 }
 
+deploy() {
+  if $DEPLOY; then
+    {
+    echo "---"
+    echo "apiVersion: operators.coreos.com/v1alpha1"
+    echo "kind: CatalogSource"
+    echo "metadata:"
+    echo "  name: stackable-operators-catalog"
+    echo "  namespace: stackable-operators"
+    echo "spec:"
+    echo "  sourceType: grpc"
+    echo "  image: docker.stackable.tech/sandbox/test/stackable-operators-catalog:${VERSION}"
+    echo "  displayName: Stackable Catalog"
+    echo "  publisher: Stackable GmbH"
+    echo "  updateStrategy:"
+    echo "    registryPoll:"
+    echo "      interval: 10m"
+    } >> catalog-source.yaml
+
+    kubectl apply -f catalog-source.yaml
+    kubectl apply -f operator-group.yaml
+  fi
+}
+
 main() {
   parse_inputs "$@"
   if [ -z "${VERSION}" ]; then
@@ -117,11 +145,7 @@ main() {
   setup
   prerequisites
   catalog
-
-  # install catalog/group for all operators
-  kubectl apply -f catalog-source.yaml
-  kubectl apply -f operator-group.yaml
-
+  deploy
   subscriptions
 
   popd
