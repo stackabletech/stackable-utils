@@ -1,0 +1,14 @@
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: stackable-operators-catalog
+  namespace: stackable-operators
+spec:
+  sourceType: grpc
+  image: docker.stackable.tech/sandbox/test/stackable-operators-catalog:23.1.0
+  displayName: Stackable Catalog
+  publisher: Stackable GmbH
+  updateStrategy:
+    registryPoll:
+      interval: 10m
