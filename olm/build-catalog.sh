@@ -120,7 +120,7 @@ deploy() {
     echo "  namespace: stackable-operators"
     echo "spec:"
     echo "  sourceType: grpc"
-    echo "  image: docker.stackable.tech/sandbox/test/stackable-operators-catalog:${VERSION}"
+    echo "  image: docker.stackable.tech/stackable/stackable-operators-catalog:${VERSION}"
     echo "  displayName: Stackable Catalog"
     echo "  publisher: Stackable GmbH"
     echo "  updateStrategy:"
