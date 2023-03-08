@@ -2,3 +2,4 @@
 operators:
   - commons
   - zookeeper
+  - hdfs
