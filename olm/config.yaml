@@ -3,3 +3,4 @@ operators:
   - commons
   - zookeeper
   - hdfs
+  - hbase
