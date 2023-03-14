@@ -4,3 +4,4 @@ operators:
   - zookeeper
   - hdfs
   - hbase
+  - secret
