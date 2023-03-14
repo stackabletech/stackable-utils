@@ -2,3 +2,6 @@
 operators:
   - commons
   - zookeeper
+  - hdfs
+  - hbase
+  - secret

@@ -43,8 +43,8 @@ setup() {
 }
 
 prerequisites() {
-  echo "Deploy custom scc..."
-  kubectl apply -f scc.yaml
+  echo "Deploy custom product scc..."
+  kubectl apply -f product_scc.yaml
 
   if $NAMESPACE; then
     echo "Creating namespace..."
