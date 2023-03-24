@@ -5,3 +5,4 @@ operators:
   - hdfs
   - hbase
   - secret
+  - airflow
