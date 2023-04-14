@@ -73,9 +73,9 @@ check_products() {
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   #-----------------------------------------------------------
   # the up-to-date release branch has already been pulled
-  # N.B. look for exact match
+  # N.B. look for exact match (no -rcXXX)
   #-----------------------------------------------------------
-  BRANCH_EXISTS=$(git branch -l | grep -x "$RELEASE_BRANCH")
+  BRANCH_EXISTS=$(git branch -l | grep -E "$RELEASE_BRANCH$") # NB change back to -r
 
   if [ -z "${BRANCH_EXISTS}" ]; then
     echo "Expected release branch is missing: $RELEASE_BRANCH"
@@ -84,8 +84,8 @@ check_products() {
 
   git fetch --tags
 
-  # N.B. look for exact match
-  TAG_EXISTS=$(git tag -l | grep -x "$RELEASE_TAG")
+  # N.B. look for exact match (no -rcXXX)
+  TAG_EXISTS=$(git tag -l | grep -E "$RELEASE_TAG&")
   if [ -n "$TAG_EXISTS" ]; then
     echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
     exit 1
@@ -101,7 +101,7 @@ check_operators() {
       exit 1
     fi
     cd "$TEMP_RELEASE_FOLDER/${operator}"
-    BRANCH_EXISTS=$(git branch -r | grep "$RELEASE_BRANCH")
+    BRANCH_EXISTS=$(git branch -l | grep "$RELEASE_BRANCH") # NB change back to -r
     if [ -z "${BRANCH_EXISTS}" ]; then
       echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
       exit 1
