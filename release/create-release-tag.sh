@@ -18,6 +18,7 @@ tag_products() {
   # the release branch should already exist
   #-----------------------------------------------------------
   git switch "$RELEASE_BRANCH"
+  update_product_images_changelogs
   # TODO where to conduct the tag-not-already-exists check?
   git tag "$RELEASE_TAG"
   push_branch
@@ -72,8 +73,9 @@ check_products() {
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   #-----------------------------------------------------------
   # the up-to-date release branch has already been pulled
+  # N.B. look for exact match
   #-----------------------------------------------------------
-  BRANCH_EXISTS=$(git branch -r | grep "$RELEASE_BRANCH")
+  BRANCH_EXISTS=$(git branch -l | grep -x "$RELEASE_BRANCH")
 
   if [ -z "${BRANCH_EXISTS}" ]; then
     echo "Expected release branch is missing: $RELEASE_BRANCH"
@@ -81,7 +83,9 @@ check_products() {
   fi
 
   git fetch --tags
-  TAG_EXISTS=$(git tag -l | grep "$RELEASE_TAG")
+
+  # N.B. look for exact match
+  TAG_EXISTS=$(git tag -l | grep -x "$RELEASE_TAG")
   if [ -n "$TAG_EXISTS" ]; then
     echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
     exit 1
@@ -183,6 +187,11 @@ cleanup() {
 update_changelog() {
   TODAY=$(date +'%Y-%m-%d')
   sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" "$1"/CHANGELOG.md
+}
+
+update_product_images_changelogs() {
+  TODAY=$(date +'%Y-%m-%d')
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./**/CHANGELOG.md
 }
 
 parse_inputs() {
