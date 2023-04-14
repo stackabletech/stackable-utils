@@ -19,7 +19,8 @@ tag_products() {
   #-----------------------------------------------------------
   git switch "$RELEASE_BRANCH"
   update_product_images_changelogs
-  # TODO where to conduct the tag-not-already-exists check?
+
+  git commit -am "release $RELEASE_TAG"
   git tag "$RELEASE_TAG"
   push_branch
 }
