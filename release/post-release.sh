@@ -14,15 +14,11 @@ REPOSITORY="origin"
 parse_inputs() {
   RELEASE_TAG=""
   PUSH=false
-  CLEANUP=false
-  WHAT=""
 
   while [[ "$#" -gt 0 ]]; do
       case $1 in
           -t|--tag) RELEASE_TAG="$2"; shift ;;
-          -w|--what) WHAT="$2"; shift ;;
           -p|--push) PUSH=true ;;
-          -c|--cleanup) CLEANUP=true ;;
           *) echo "Unknown parameter passed: $1"; exit 1 ;;
       esac
       shift
@@ -39,7 +35,6 @@ parse_inputs() {
   RELEASE_BRANCH="release-$RELEASE"
 
   INITIAL_DIR="$PWD"
-  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
   TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 
   echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
@@ -92,9 +87,10 @@ update_main_changelog() {
       echo "Failed to update CHANGELOG.md in main for operator ${operator}"
       exit 1
     fi
-    # Commit and possibly push the updated CHANGELOG.
+    # Commit the updated CHANGELOG.
     git add CHANGELOG.md
     git commit -m "Update CHANGELOG.md from release $RELEASE_TAG"
+    # Maybe push and create pull request
     if "$PUSH"; then
       git push -u "$REPOSITORY" "$CHANGELOG_BRANCH"
       gh pr create --fill -- reviewer stackable/developer
@@ -111,9 +107,7 @@ main() {
   if [ -z "${RELEASE_TAG}" ]; then
     echo "Usage: post-release.sh [options]"
     echo "-t <tag>"
-    echo "-w <what> Where 'what' can be operators, products or both"
     echo "-p Push changes. Default: false"
-    echo "-c Cleanup. Default: false"
     exit 1
   fi
   #-----------------------------------------------------------
@@ -130,7 +124,7 @@ main() {
   checks_operators
   set -e
 
-  echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
+  echo "Update main changelog from release $RELEASE_TAG"
   update_main_changelog
 }
 
