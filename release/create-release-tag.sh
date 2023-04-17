@@ -134,7 +134,7 @@ update_code() {
   # Not all operators have a getting started guide
   # that's why we verify if templating_vars.yaml exists.
   if [ -f "$1/docs/templating_vars.yaml" ]; then
-    yq -i "(.versions.[] | select(. == \"*nightly\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+    yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
   fi
