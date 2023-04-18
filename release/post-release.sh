@@ -37,7 +37,7 @@ parse_inputs() {
   INITIAL_DIR="$PWD"
   TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 
-  echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
+  echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH"
 }
 
 check_operators() {
@@ -93,7 +93,7 @@ update_main_changelog() {
     # Maybe push and create pull request
     if "$PUSH"; then
       git push -u "$REPOSITORY" "$CHANGELOG_BRANCH"
-      gh pr create --fill -- reviewer stackable/developer
+      gh pr create --fill --reviewer stackable/developers
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
