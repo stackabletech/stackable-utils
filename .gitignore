@@ -3,3 +3,4 @@ olm/catalog.Dockerfile
 olm/catalog/
 olm/subscriptions/
 olm/catalog-source.yaml
+stackable-bcrypt/target

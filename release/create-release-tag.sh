@@ -18,7 +18,9 @@ tag_products() {
   # the release branch should already exist
   #-----------------------------------------------------------
   git switch "$RELEASE_BRANCH"
-  # TODO where to conduct the tag-not-already-exists check?
+  update_product_images_changelogs
+
+  git commit -am "release $RELEASE_TAG"
   git tag "$RELEASE_TAG"
   push_branch
 }
@@ -72,8 +74,9 @@ check_products() {
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   #-----------------------------------------------------------
   # the up-to-date release branch has already been pulled
+  # N.B. look for exact match (no -rcXXX)
   #-----------------------------------------------------------
-  BRANCH_EXISTS=$(git branch -r | grep "$RELEASE_BRANCH")
+  BRANCH_EXISTS=$(git branch -r | grep -E "$RELEASE_BRANCH$")
 
   if [ -z "${BRANCH_EXISTS}" ]; then
     echo "Expected release branch is missing: $RELEASE_BRANCH"
@@ -81,7 +84,9 @@ check_products() {
   fi
 
   git fetch --tags
-  TAG_EXISTS=$(git tag -l | grep "$RELEASE_TAG")
+
+  # N.B. look for exact match (no -rcXXX)
+  TAG_EXISTS=$(git tag -l | grep -E "$RELEASE_TAG&")
   if [ -n "$TAG_EXISTS" ]; then
     echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
     exit 1
@@ -129,7 +134,7 @@ update_code() {
   # Not all operators have a getting started guide
   # that's why we verify if templating_vars.yaml exists.
   if [ -f "$1/docs/templating_vars.yaml" ]; then
-    yq -i "(.versions.[] | select(. == \"*nightly\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+    yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
   fi
@@ -183,6 +188,11 @@ cleanup() {
 update_changelog() {
   TODAY=$(date +'%Y-%m-%d')
   sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" "$1"/CHANGELOG.md
+}
+
+update_product_images_changelogs() {
+  TODAY=$(date +'%Y-%m-%d')
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./**/CHANGELOG.md
 }
 
 parse_inputs() {
