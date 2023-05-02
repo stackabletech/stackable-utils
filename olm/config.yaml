@@ -2,6 +2,7 @@
 operators:
   - airflow
   - commons
+  - druid
   - hbase
   - hdfs
   - hive
