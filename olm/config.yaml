@@ -1,8 +1,9 @@
 ---
 operators:
-  - commons
-  - zookeeper
-  - hdfs
-  - hbase
-  - secret
   - airflow
+  - commons
+  - hbase
+  - hdfs
+  - hive
+  - secret
+  - zookeeper
