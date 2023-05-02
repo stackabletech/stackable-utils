@@ -9,4 +9,5 @@ operators:
   - kafka
   - opa
   - secret
+  - spark-k8s
   - zookeeper
