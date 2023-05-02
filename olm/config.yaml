@@ -6,6 +6,7 @@ operators:
   - hbase
   - hdfs
   - hive
+  - kafka
   - opa
   - secret
   - zookeeper
