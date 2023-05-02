@@ -10,4 +10,5 @@ operators:
   - opa
   - secret
   - spark-k8s
+  - superset
   - zookeeper
