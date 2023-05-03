@@ -12,4 +12,5 @@ operators:
   - secret
   - spark-k8s
   - superset
+  - trino
   - zookeeper
