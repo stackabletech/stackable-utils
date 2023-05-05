@@ -43,8 +43,9 @@ setup() {
 }
 
 prerequisites() {
-  echo "Deploy custom product scc..."
-  kubectl apply -f product_scc.yaml
+  # do not include the SCC here as it is included in secret operator manifests
+  #echo "Deploy custom product scc..."
+  #kubectl apply -f product_scc.yaml
 
   if $NAMESPACE; then
     echo "Creating namespace..."

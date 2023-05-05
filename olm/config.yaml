@@ -1,8 +1,16 @@
 ---
 operators:
-  - commons
-  - zookeeper
-  - hdfs
-  - hbase
-  - secret
   - airflow
+  - commons
+  - druid
+  - hbase
+  - hdfs
+  - hive
+  - kafka
+  - nifi
+  - opa
+  - secret
+  - spark-k8s
+  - superset
+  - trino
+  - zookeeper
