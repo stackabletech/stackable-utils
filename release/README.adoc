@@ -199,3 +199,45 @@ images-repo: docker-images
     - commons
     - ...
 ----
+
+### Bugfix/patch tags
+
+To create release tags for bugfix/patch releases use the `create-bugfix-tag.sh` script, called from the repository root folder. The syntax is given below:
+
+[source]
+----
+./release/create-bugfix-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|both]
+----
+
+- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
+- `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
+- `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "both".
+
+N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
+
+e.g.
+
+[source]
+----
+./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w both
+----
+
+#### What this script does
+
+* checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
+* strips this argument of any leading or trailing quote marks
+* for docker images
+** creates a temporary folder with clones of the images repository (given in `config.yaml`)
+** clones the docker images repository
+** checks that the release branch exists and the tag doesn't
+** switches to the release branch
+** tags the branch and pushes it if the push argument is provided
+** deletes the temporary folder (if requested with "-c")
+* for operators:
+** iterates over a list of operator repository names (listed in `config.yaml`), and for each one:
+** clones the operator repositories
+** checks that the release branch exists and the tag doesn't
+** switches to the release branch
+** tags the branch and pushes it if the push argument is provided
+** deletes the temporary folder (if requested with "-c")
