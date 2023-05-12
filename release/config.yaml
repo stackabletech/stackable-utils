@@ -11,8 +11,8 @@ operators:
   - listener-operator
   - nifi-operator
   - opa-operator
-  - trino-operator
   - secret-operator
   - spark-k8s-operator
   - superset-operator
+  - trino-operator
   - zookeeper-operator
