@@ -213,6 +213,7 @@ To create release tags for bugfix/patch releases use the `create-bugfix-tag.sh` 
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 - `-w`: where to create the tag and update versions in code. It can be "products", "operators", "both".
+- `-i`: product image versioning flag (optional, default is "false"). If provided, updates test definitions with product image versions from this release version (i.e. assumes products have been released/tagged, too).
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
@@ -220,7 +221,7 @@ e.g.
 
 [source]
 ----
-./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w both
+./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w both -i
 ----
 
 #### What this script does
@@ -239,5 +240,7 @@ e.g.
 ** clones the operator repositories
 ** checks that the release branch exists and the tag doesn't
 ** switches to the release branch
+** updates crate versions and the workspace
+** updates test definitions to use product image versions that match the release tag (if requested with "-i")
 ** tags the branch and pushes it if the push argument is provided
 ** deletes the temporary folder (if requested with "-c")
