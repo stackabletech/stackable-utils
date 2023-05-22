@@ -14,6 +14,8 @@ set -euo pipefail
 set -x
 
 
+SCRIPT_NAME=$(basename $0)
+
 parse_inputs() {
   INITIAL_DIR="$PWD"
 
@@ -116,16 +118,8 @@ deploy() {
 
 main() {
   parse_inputs "$@"
-  if [ -z "${VERSION}" ]; then
-    echo "Usage: build-catalog.sh -r <release> -b <branch> -o <operator>"
-    exit 1
-  fi
-  if [ -z "${BRANCH}" ]; then
-    echo "Usage: build-catalog.sh -r <release> -b <branch> -o <operator>"
-    exit 1
-  fi
-  if [ -z "${OPERATOR_NAME}" ]; then
-    echo "Usage: build-catalog.sh -r <release> -b <branch> -o <operator>"
+  if [ -z "${VERSION}" ] || [ -z "${BRANCH}" ] || [ -z "${OPERATOR_NAME}" ]; then
+    echo "Usage: $SCRIPT_NAME -r <release> -b <branch> -o <operator>"
     exit 1
   fi
 
@@ -133,10 +127,7 @@ main() {
   mkdir -p "/tmp/openshift-bundles"
   cd "/tmp/openshift-bundles"
 
-  git clone "git@github.com:stackabletech/openshift-certified-operators.git" "/tmp/openshift-bundles/openshift-certified-operators/"
-
-  cd "/tmp/openshift-bundles/openshift-certified-operators/"
-  git switch "${BRANCH}"
+  git clone "git@github.com:stackabletech/openshift-certified-operators.git" --depth 1 --branch "${BRANCH}" --single-branch "/tmp/openshift-bundles/openshift-certified-operators/"
 
   cd "/tmp/openshift-bundles/openshift-certified-operators/operators/stackable-${OPERATOR}-operator/${VERSION}"
 
