@@ -124,44 +124,13 @@ checks() {
 
 update_code() {
   if $PRODUCT_IMAGE_TAGS; then
-    echo "Updating code..."
-    #--------------------------------------------------------------------------
-    # TODO changes will not be applied to docs: before the 23.7 release the
-    # release refactoring should be changed to use major.minor product image
-    # versions, which will make patch releases easier.
-    #--------------------------------------------------------------------------
-
-    #--------------------------------------------------------------------------
-    # Not all operators have a getting started guide:
-    # that's why we verify if templating_vars.yaml exists.
-    #--------------------------------------------------------------------------
-    #if [ -f "$TEMP_RELEASE_FOLDER/$1/docs/templating_vars.yaml" ]; then
-    #  yq -i "(.versions.[] | select(. == \"*${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$TEMP_RELEASE_FOLDER/$1/docs/templating_vars.yaml"
-    #fi
-    #--------------------------------------------------------------------------
-    # Replace .spec.image.stackableVersion for getting-started examples.
-    # N.B. yaml files should contain a single document.
-    #--------------------------------------------------------------------------
-    #OPERATOR_PREFIX=$(echo "$1" | cut -d- -f1)
-    #echo "Inspecting docs for $OPERATOR_PREFIX"
-    #if [ -d "$TEMP_RELEASE_FOLDER/$1/docs/modules/$OPERATOR_PREFIX/examples/getting_started/code" ]; then
-    #  echo "Folder found for $OPERATOR_PREFIX...."
-    #  for file in $(find "$TEMP_RELEASE_FOLDER/$1/docs/modules/$OPERATOR_PREFIX/examples/getting_started/code" -name "*.yaml"); do
-    #    echo "File: $file"
-    #    yq -i "(.spec | select(has(\"image\")).image | (select(has(\"stackableVersion\")).stackableVersion)) = \"${RELEASE_TAG}\"" "$file"
-    #  done
-    #fi
-
-    #--------------------------------------------------------------------------
-    # Replace .spec.image.stackableVersion for kuttl tests.
-    # Use sed as yq does not process .j2 file syntax properly.
-    #--------------------------------------------------------------------------
+    echo "Updating relase tag in code..."
     if [ -f "$TEMP_RELEASE_FOLDER/$1/tests/test-definition.yaml" ]; then
       # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
       sed -i "s/-stackable.*/-stackable${RELEASE_TAG}/" "$TEMP_RELEASE_FOLDER/$1/tests/test-definition.yaml"
     fi
   else
-    echo "No code changes..."
+    echo "Skip updating relase tag in code..."
   fi
 }
 
@@ -228,7 +197,7 @@ main() {
   # check if tag argument provided
   #-----------------------------------------------------------
   if [ -z "${RELEASE_TAG}" ]; then
-    echo "Usage: create-release-tag.sh -t <tag>"
+    echo "Usage: create-bugfix-tag.sh -t <tag>"
     exit 1
   fi
   #-----------------------------------------------------------
