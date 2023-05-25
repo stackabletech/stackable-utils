@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# This script does the following:
-#   - clones
 # Usage:
 #   ./olm/build-bundles.sh -r <release as x.y.z> -b <branch-name>
 #   -r <release>: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
