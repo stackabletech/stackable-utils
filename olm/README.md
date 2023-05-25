@@ -1,123 +1,90 @@
-# OLM installation files
+# Overview
 
-The following steps describe how to install a Stackable operator - in this, the operator for Apache Zookeeper - using the [Operator Lifecycle Manager](https://olm.operatorframework.io/) (OLM).
+These notes are a summary of the more in-depth, internal documentation [here](https://app.nuclino.com/Stackable/Engineering/Certification-Process-a8cf57d0-bd41-4d56-b505-f59af4159a56).
 
-It specifically installs the version 23.1.0 of the operator. Installing additional versions in the future requires generating new bundle images and updating the catalog as described below.
+# Prerequisites
 
-## Usage
-
-Prerequisite is of course a running OpenShift cluster.
-
-First, install the operator using OLM:
-
-    kubectl apply -f catalog-source.yaml \
-    -f operator-group.yaml \
-    -f subscription.yaml
-
-Then, install the operator dependencies with Helm:
-
-    helm install secret-operator stackable/secret-operator
-    helm install commons-operator stackable/commons-operator
-
-And finally, create an Apache Zookeeper cluster:
-
-    kubectl create -f examples/simple-zookeeper-cluster.yaml
-
-NOTE: The `kuttl` tests don't work because they themselves require SCCs which are not available.
-
-## OLM packaging requirements
-
-- An [OpenShift](https://developers.redhat.com/products/openshift-local/overview) cluster.
+- an [OpenShift](https://developers.redhat.com/products/openshift-local/overview) cluster with the `stackable-operators` namespace
 - [opm](https://github.com/operator-framework/operator-registry/)
 - docker and kubectl
-- `kubeadmin` access
+- `kubeadmin` access: once logged in to an openshift cluster a secret is needed
+```
+export KUBECONFIG=~/.kube/config
+oc create secret generic kubeconfig --from-file=kubeconfig=$KUBECONFIG --namespace stackable-operators
+```
+- [tkn](https://github.com/tektoncd/cli)
+- a secret for `pyxis_api_key`: a token giving access to Redhat Connect 
+- a secret for `github-api-token`: a token giving access to the RH repo
 
-It was tested with:
+# Deployment
 
-    $ crc version
-    WARN A new version (2.5.1) has been published on https://developers.redhat.com/content-gateway/file/pub/openshift-v4/clients/crc/2.5.1/crc-linux-amd64.tar.xz
-    CRC version: 2.4.1+b877358
-    OpenShift version: 4.10.14
-    Podman version: 4.0.2
+Stackable operators can be deployed to Openshift in one of three ways:
 
-    $ oc version
-    Client Version: 4.10.14
-    Server Version: 4.10.14
-    Kubernetes Version: v1.23.5+b463d71
+- Helm: either natively, or by using stackablectl
+- Operator Catalog
+- Certified Operators
 
-    $ opm version
-    Version: version.Version{OpmVersion:"v1.23.2", GitCommit:"82505333", BuildDate:"2022-07-04T13:45:39Z", GoOs:"linux", GoArch:"amd64"}
+The latter two require an operator to be deployed to an Openshift cluster, from where the operator (and its dependencies, if these have been defined) can be installed from the console UI. Both pathways use version-specific manifest files which are created in the [Stackable repository](https://github.com/stackabletech/openshift-certified-operators) that is forked from [here](https://github.com/redhat-openshift-ecosystem/certified-operators). These manifests are largely based on the templates used by helm, with the addition of Openshift-specific items (such as a ClusterServiceVersion manifest).
 
-## Open questions
+## Build the bundle
 
-- OLM [doesn't support DaemonSet(s)](https://github.com/operator-framework/operator-lifecycle-manager/issues/1022) and we need them for the secret-operator. Currently we can deploy the secret-operator using Helm but this means we cannot configure the [required](https://olm.operatorframework.io/docs/tasks/creating-operator-manifests/#required-apis) apis of the Zookeeper bundle. What are the consequences for publishing and certification ?
-- Here we create a catalog for a single operator. We probably want a catalog for all Stackable operators in the future but this will get large very quickly. Figure out how to handle this. Especially figure out what happens with new versions of the same operator.
-- OLM cannot create SecurityContextConstraints objects. The Zookeeper cluster (not the operator) cannot run with the default `restricted` SCC. The current solution is to use the `hostmount-anyuid` SCC for the `zookeeper-clusterrole`. Will this pass the certification process ?
-- Everything (catalog, subscription, etc) is installed in the `stackable-operators` namespace. Is this a good idea ?
-- The Subscription object uses `installPlanApproval: Automatic` which means the operator is updated automatically for every new version. Is this a good idea?
+An operator bundle and catalog can be built and deployed using the `build-bundle.sh` script e.g.
 
-See the [OLM documentation](https://olm.operatorframework.io/docs/tasks/) for details.
+```
+./olm/build-bundles.sh -r 23.4.1 -b secret-23.4.1 -o secret-operator -d
+```
 
-## Build and publish operator bundle image
+Where:
+- `-r <release>`: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
+- `-b <branch>`: the branch name (mandatory) in the (stackable forked) openshift-certified-operators repository.
+- `-o <operator-name>`: the operator name (mandatory) e.g. airflow-operator.
+- `-d <deploy>`: optional flag for catalog deployment.
 
-Each catalog can contain several operator packages, and each operator package can contain multiple channels, each with its own bundles of different versions of the operator.
+The script creates a catalog specific to an operator. A catalog can contain bundles for multiple operators, but a 1:1 deployment makes it easier to deploy and test operators independently. Testing with a deployed catalog is essential as the certification pipeline should only be used for stable operators, and a certified operator can only be changed if a new version is specified.
 
-### Generate operator bundle (this is operator-specific)
+## Use the CI pipeline
 
-    opm alpha bundle generate --directory manifests --package zookeeper-operator-package --output-dir bundle --channels stable --default stable
+### Testing
 
-### Build bundle image
+This should either be called from the stackable-utils root folder, or the `volumeClaimTemplateFile` path should be changed accordingly.
 
-    docker build -t docker.stackable.tech/stackable/zookeeper-operator-bundle:23.1.0 -f bundle.Dockerfile .
-  	docker push docker.stackable.tech/stackable/zookeeper-operator-bundle:23.1.0
+```
+export GIT_REPO_URL=https://github.com/stackabletech/openshift-certified-operators
+export BUNDLE_PATH=operators/stackable-commons-operator/23.4.1
+export LOCAL_BRANCH=commons-23.4.1
 
-### Validate bundle image
+tkn pipeline start operator-ci-pipeline \
+  --namespace stackable-operators \
+  --param git_repo_url=$GIT_REPO_URL \
+  --param git_branch=$LOCAL_BRANCH \
+  --param bundle_path=$BUNDLE_PATH \
+  --param env=prod \
+  --param kubeconfig_secret_name=kubeconfig \
+  --workspace name=pipeline,volumeClaimTemplateFile=olm/templates/workspace-template.yml \
+  --showlog
+```
 
-  	opm alpha bundle validate --tag docker.stackable.tech/stackable/zookeeper-operator-bundle:23.1.0 --image-builder docker
+### Certifying
 
-## Create catalog
+This callout is identical to the previous one, with the addition of the last two parameters `upstream_repo_name` and `submit=true`:
 
-    mkdir catalog
-    opm generate dockerfile catalog
+```
+export GIT_REPO_URL=https://github.com/stackabletech/openshift-certified-operators
+export BUNDLE_PATH=operators/stackable-commons-operator/23.4.1
+export LOCAL_BRANCH=commons-23.4.1
 
-## Create a package for each operator
+tkn pipeline start operator-ci-pipeline \
+  --namespace stackable-operators \
+  --param git_repo_url=$GIT_REPO_URL \
+  --param git_branch=$LOCAL_BRANCH \
+  --param bundle_path=$BUNDLE_PATH \
+  --param env=prod \
+  --param kubeconfig_secret_name=kubeconfig \
+  --workspace name=pipeline,volumeClaimTemplateFile=olm/templates/workspace-template.yml \
+  --showlog \
+  --param upstream_repo_name=redhat-openshift-ecosystem/certified-operators \
+  --param submit=true
+```
 
-    opm init zookeeper-operator-package \
-      --default-channel=stable \
-      --description=./README.md \
-      --output yaml > catalog/zookeeper-operator-package.yaml
+A successful callout will result in a PR being opened in the Redhat repository, from where progress can be tracked.
 
-    {
-        echo "---"
-        echo "schema: olm.channel"
-        echo "package: zookeeper-operator-package"
-        echo "name: stable"
-        echo "entries:"
-        echo "- name: zookeeper-operator.v23.1.0"
-    } >> catalog/zookeeper-operator-package.yaml
-
-NOTE: with the command below we can add the Stackable logo as icon.
-
-    # add for each operator...
-    opm render docker.stackable.tech/stackable/zookeeper-operator-bundle:23.1.0 --output=yaml >> catalog/zookeeper-operator-package.yaml
-
-    # ...and then validate the entire catalog
-    opm validate catalog
-
-The catalog is correct if the command above returns successfully without any message. If the catalog doesn't validate, the operator will not install. Now build a catalog image and push it to the repository:
-
-    docker build .  -f catalog.Dockerfile -t docker.stackable.tech/stackable/zookeeper-operator-catalog:latest
-    docker push docker.stackable.tech/stackable/zookeeper-operator-catalog:latest
-
-## Install catalog and the operator group
-
-    kubectl apply -f catalog-source.yaml
-    kubectl apply -f operator-group.yaml
-
-## List available operators
-
-    kubectl get packagemanifest -n stackable-operators
-
-## Install operator
-
-    kubectl apply -f subscription.yaml
