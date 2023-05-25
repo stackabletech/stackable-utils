@@ -123,13 +123,12 @@ main() {
     exit 1
   fi
 
-  rm -rf "/tmp/openshift-bundles"
-  mkdir -p "/tmp/openshift-bundles"
-  cd "/tmp/openshift-bundles"
+  TMPFOLDER=$(mktemp -d -t 'openshift-bundles-XXXXXXXX')
+  cd "${TMPFOLDER}"
 
-  git clone "git@github.com:stackabletech/openshift-certified-operators.git" --depth 1 --branch "${BRANCH}" --single-branch "/tmp/openshift-bundles/openshift-certified-operators/"
+  git clone "git@github.com:stackabletech/openshift-certified-operators.git" --depth 1 --branch "${BRANCH}" --single-branch "${TMPFOLDER}/openshift-certified-operators/"
 
-  cd "/tmp/openshift-bundles/openshift-certified-operators/operators/stackable-${OPERATOR}-operator/${VERSION}"
+  cd "${TMPFOLDER}/openshift-certified-operators/operators/stackable-${OPERATOR}-operator/${VERSION}"
 
   # clean up any residual files from previous actions
   bundle-clean
