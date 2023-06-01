@@ -109,7 +109,7 @@ main() {
   # check if tag argument provided
   #-----------------------------------------------------------
   if [ -z "${RELEASE}" ]; then
-    echo "Usage: create-release-branch.sh <tag>"
+    echo "Usage: create-release-branch.sh [OPTIONS (see README.md)]"
     exit 1
   fi
   #-----------------------------------------------------------
