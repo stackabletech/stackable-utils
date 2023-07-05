@@ -126,7 +126,7 @@ update_code() {
   if $PRODUCT_IMAGE_TAGS; then
     echo "Updating relase tag in code..."
     if [ -f "$TEMP_RELEASE_FOLDER/$1/tests/test-definition.yaml" ]; then
-      # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
+      # e.g. 2.2.4-stackable23.1 -> 2.2.4-stackable23.1.1, since the release tag will use major.minor only
       sed -i "s/-stackable.*/-stackable${RELEASE_TAG}/" "$TEMP_RELEASE_FOLDER/$1/tests/test-definition.yaml"
     fi
   else

@@ -56,7 +56,7 @@ To create release branches use the `create-release-branch.sh` script, called fro
 ----
 
 - `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
-- `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part fo this process will be pushed to the origin.
+- `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 - `-w`: where to create the branch. It can be "products", "operators", "both".
 
@@ -141,11 +141,6 @@ Some post release steps are performed with `release/post-release.sh` script, cal
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 
-[source]
-----
-./release/create-release-tag.sh -t 23.1.0 -p -c
-----
-
 #### What this script does
 
 * checks that the release tag exists and that the all operator repositories have a clean working copy
@@ -206,7 +201,7 @@ To create release tags for bugfix/patch releases use the `create-bugfix-tag.sh` 
 
 [source]
 ----
-./release/create-bugfix-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|both]
+./release/create-bugfix-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|both] [-i]
 ----
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
