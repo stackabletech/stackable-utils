@@ -92,7 +92,10 @@ update_main_changelog() {
     git commit -m "Update CHANGELOG.md from release $RELEASE_TAG"
     # Maybe push and create pull request
     if "$PUSH"; then
-      git push -u "$REPOSITORY" "$CHANGELOG_BRANCH"
+      # Let gh push the remote branch too because otherwise GraphQL might complain
+      # that we are createing prs too fast.
+      # Jul 14 2023: this was not tested.
+      #git push -u "$REPOSITORY" "$CHANGELOG_BRANCH"
       gh pr create --fill --reviewer stackable/developers
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
