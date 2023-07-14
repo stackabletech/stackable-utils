@@ -57,7 +57,7 @@ check_operators() {
       exit 1
     fi
     TAG_EXISTS=$(git tag | grep "$RELEASE_TAG")
-    if [ -z "${BRANCH_EXISTS}" ]; then
+    if [ -z "${TAG_EXISTS}" ]; then
       echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
       exit 1
     fi
@@ -121,7 +121,7 @@ main() {
   # sanity checks before we start: folder, branches etc.
   # deactivate -e so that piped commands can be used
   set +e
-  checks_operators
+  check_operators
   set -e
 
   echo "Update main changelog from release $RELEASE_TAG"
