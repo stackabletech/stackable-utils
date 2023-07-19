@@ -35,7 +35,7 @@ tag_operators() {
     cargo update --workspace
     make regenerate-charts
 
-    update_code "${operator}"
+    update_code "$TEMP_RELEASE_FOLDER/${operator}"
     #-----------------------------------------------------------
     # ensure .j2 changes are resolved
     #-----------------------------------------------------------
@@ -124,13 +124,25 @@ checks() {
 
 update_code() {
   if $PRODUCT_IMAGE_TAGS; then
-    echo "Updating relase tag in code..."
-    if [ -f "$TEMP_RELEASE_FOLDER/$1/tests/test-definition.yaml" ]; then
+    echo "Updating release tag in code..."
+    if [ -f "$1/tests/test-definition.yaml" ]; then
       # e.g. 2.2.4-stackable23.1 -> 2.2.4-stackable23.1.1, since the release tag will use major.minor only
-      sed -i "s/-stackable.*/-stackable${RELEASE_TAG}/" "$TEMP_RELEASE_FOLDER/$1/tests/test-definition.yaml"
+      sed -i "s/-stackable.*/-stackable${RELEASE_TAG}/" "$1/tests/test-definition.yaml"
     fi
   else
-    echo "Skip updating relase tag in code..."
+    echo "Skip updating release tag in test-definition.yaml..."
+  fi
+
+  if [ -f "$1/docs/templating_vars.yaml" ]; then
+    echo "Updating templating_vars.yaml..."
+    #-----------------------------------------------------------------------------
+    # this should always be done as the templating vars are used for both product
+    # versions (can be just major.minor) and helm charts (major.minor.patch). We
+    # assume that the tag (e.g. 23.7.1) is applied to an earlier tag in the same
+    # release (e.g. 23.7.0) so search+replace on the major.minor tag will suffice.
+    # TODO: this may pick up versions of external components as well.
+    #-----------------------------------------------------------------------------
+    yq -i "(.versions.[] | select(. == \"${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
   fi
 }
 

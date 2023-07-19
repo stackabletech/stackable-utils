@@ -133,37 +133,37 @@ update_code() {
   # Not all operators have a getting started guide
   # that's why we verify if templating_vars.yaml exists.
   if [ -f "$1/docs/templating_vars.yaml" ]; then
-    yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE}\"" "$1/docs/templating_vars.yaml"
+    yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
     yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
   fi
 
   #--------------------------------------------------------------------------
   # Replace .spec.image.stackableVersion for getting-started examples.
-  # N.B. yaml files should contain a single document.
+  # This should be done by using the templating script as the paths
+  # are not always consistent.
   #--------------------------------------------------------------------------
-  if [ -d "$1/docs/modules/getting_started/examples/code" ]; then
-    for file in $(find "$1/docs/modules/getting_started/examples/code" -name "*.yaml"); do
-      yq -i "(.spec | select(has(\"image\")).image | (select(has(\"stackableVersion\")).stackableVersion)) = \"${RELEASE}\"" "$file"
-    done
+  #if [ -d "$1/docs/modules/getting_started/examples/code" ]; then
+  #  for file in $(find "$1/docs/modules/getting_started/examples/code" -name "*.yaml"); do
+  #    yq -i "(.spec | select(has(\"image\")).image | (select(has(\"stackableVersion\")).stackableVersion)) = \"${RELEASE}\"" "$file"
+  #  done
+  #fi
+
+  #--------------------------------------------------------------------------
+  # Replace .spec.image.stackableVersion for kuttl tests.
+  # Use sed as yq does not process .j2 file syntax properly.
+  #--------------------------------------------------------------------------
+  if [ -f "$1/tests/test-definition.yaml" ]; then
+    # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
+    sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
   fi
 
-    #--------------------------------------------------------------------------
-    # Replace .spec.image.stackableVersion for kuttl tests.
-    # Use sed as yq does not process .j2 file syntax properly.
-    #--------------------------------------------------------------------------
-    # TODO old product images won't be tested any longer
-    if [ -f "$1/tests/test-definition.yaml" ]; then
-      # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
-      sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
-    fi
-
-    #--------------------------------------------------------------------------
-    # Replace "nightly" link so the documentation refers to the current version
-    #--------------------------------------------------------------------------
-    for file in $(find "$1/docs" -name "*.adoc"); do
-      sed -i "s/nightly@home/home/g" "$file"
-    done
+  #--------------------------------------------------------------------------
+  # Replace "nightly" link so the documentation refers to the current version
+  #--------------------------------------------------------------------------
+  for file in $(find "$1/docs" -name "*.adoc"); do
+    sed -i "s/nightly@home/home/g" "$file"
+  done
 }
 
 push_branch() {
