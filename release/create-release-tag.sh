@@ -139,17 +139,6 @@ update_code() {
   fi
 
   #--------------------------------------------------------------------------
-  # Replace .spec.image.stackableVersion for getting-started examples.
-  # This should be done by using the templating script as the paths
-  # are not always consistent.
-  #--------------------------------------------------------------------------
-  #if [ -d "$1/docs/modules/getting_started/examples/code" ]; then
-  #  for file in $(find "$1/docs/modules/getting_started/examples/code" -name "*.yaml"); do
-  #    yq -i "(.spec | select(has(\"image\")).image | (select(has(\"stackableVersion\")).stackableVersion)) = \"${RELEASE}\"" "$file"
-  #  done
-  #fi
-
-  #--------------------------------------------------------------------------
   # Replace .spec.image.stackableVersion for kuttl tests.
   # Use sed as yq does not process .j2 file syntax properly.
   #--------------------------------------------------------------------------
