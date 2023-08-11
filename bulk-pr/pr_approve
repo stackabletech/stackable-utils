@@ -5,7 +5,7 @@ for product in "${products[@]}"; do
   if [[ $STATE -eq "OPEN" ]]; then
     echo "Approving ${product}"
     gh pr review $1 --approve -R stackabletech/${product}-operator
-    gh pr review $1 --comment -b "bors r+" -R stackabletech/${product}-operator
+    gh pr merge $1 -R stackabletech/${product}-operator
   else
     echo "Skipping ${product}, PR already closed"
   fi
