@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
 source repos
 for product in "${products[@]}"; do
-    gh pr checks $1 -R stackabletech/${product}-operator 
+    gh pr checks ${PR_BRANCH_NAME} -R stackabletech/${product}-operator
 done
 

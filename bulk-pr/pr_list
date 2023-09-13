@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
 source repos
 # Disable gh paging for results.
 PAGER=
