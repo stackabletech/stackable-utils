@@ -21,7 +21,7 @@ tag_products() {
   update_product_images_changelogs
 
   git commit -am "release $RELEASE_TAG"
-  git tag "$RELEASE_TAG"
+  git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
   push_branch
 }
 
@@ -52,7 +52,7 @@ tag_operators() {
     update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
     git commit -am "release $RELEASE_TAG"
-    git tag "$RELEASE_TAG"
+    git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
     push_branch
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -76,7 +76,7 @@ check_products() {
   # the up-to-date release branch has already been pulled
   # N.B. look for exact match (no -rcXXX)
   #-----------------------------------------------------------
-  BRANCH_EXISTS=$(git branch -r | grep -E "$RELEASE_BRANCH$")
+  BRANCH_EXISTS=$(git branch -l | grep -E "$RELEASE_BRANCH$")
 
   if [ -z "${BRANCH_EXISTS}" ]; then
     echo "Expected release branch is missing: $RELEASE_BRANCH"
@@ -101,7 +101,7 @@ check_operators() {
       exit 1
     fi
     cd "$TEMP_RELEASE_FOLDER/${operator}"
-    BRANCH_EXISTS=$(git branch -r | grep -E "$RELEASE_BRANCH$")
+    BRANCH_EXISTS=$(git branch -l | grep -E "$RELEASE_BRANCH$")
     if [ -z "${BRANCH_EXISTS}" ]; then
       echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
       exit 1
@@ -141,11 +141,12 @@ update_code() {
   #--------------------------------------------------------------------------
   # Replace .spec.image.stackableVersion for kuttl tests.
   # Use sed as yq does not process .j2 file syntax properly.
+  # N.B. commented out as the tests assume same stackable version as operator
   #--------------------------------------------------------------------------
-  if [ -f "$1/tests/test-definition.yaml" ]; then
-    # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
-    sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
-  fi
+  #if [ -f "$1/tests/test-definition.yaml" ]; then
+  #  # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
+  #  sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
+  #fi
 
   #--------------------------------------------------------------------------
   # Replace "nightly" link so the documentation refers to the current version
@@ -180,7 +181,7 @@ update_changelog() {
 
 update_product_images_changelogs() {
   TODAY=$(date +'%Y-%m-%d')
-  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./**/CHANGELOG.md
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./CHANGELOG.md
 }
 
 parse_inputs() {

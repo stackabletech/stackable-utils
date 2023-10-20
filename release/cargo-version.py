@@ -80,6 +80,7 @@ class Crate:
         with open(cargo_file, 'r') as r:
             for line in r.readlines():
                 if line.startswith("version"):
+                    print(f"replacing [{previous.version}] with [{self.version}]")
                     line = line.replace(previous.version, self.version)
                 else:
                     for dname, dversion in self.dependencies.items():
@@ -140,9 +141,13 @@ class Workspace:
 def load(root):
     r = toml.load(f"{root}/Cargo.toml")
     if "workspace" in r:
-        return Workspace([load(f"{root}/{path}") for path in r["workspace"]["members"]]) 
+        return Workspace([load_with_version(root=f"{root}/{path}", version=r["workspace"]["package"]["version"]) for path in r["workspace"]["members"]])
     else:
         return Crate(path=root, name=r["package"]["name"], version=r["package"]["version"], dependencies={dn: r["dependencies"][dn]["version"] for dn in r["dependencies"] if "version" in r["dependencies"][dn]})
+
+def load_with_version(root, version):
+    r = toml.load(f"{root}/Cargo.toml")
+    return Crate(path=root, name=r["package"]["name"], version=version, dependencies={dn: r["dependencies"][dn]["version"] for dn in r["dependencies"] if "version" in r["dependencies"][dn]})
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Change versions of cargo projects.")
