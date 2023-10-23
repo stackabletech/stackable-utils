@@ -76,7 +76,7 @@ check_products() {
   # the up-to-date release branch has already been pulled
   # N.B. look for exact match (no -rcXXX)
   #-----------------------------------------------------------
-  BRANCH_EXISTS=$(git branch -l | grep -E "$RELEASE_BRANCH$")
+  BRANCH_EXISTS=$(git branch -r | grep -E "$RELEASE_BRANCH$")
 
   if [ -z "${BRANCH_EXISTS}" ]; then
     echo "Expected release branch is missing: $RELEASE_BRANCH"
@@ -101,7 +101,7 @@ check_operators() {
       exit 1
     fi
     cd "$TEMP_RELEASE_FOLDER/${operator}"
-    BRANCH_EXISTS=$(git branch -l | grep -E "$RELEASE_BRANCH$")
+    BRANCH_EXISTS=$(git branch -r | grep -E "$RELEASE_BRANCH$")
     if [ -z "${BRANCH_EXISTS}" ]; then
       echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
       exit 1
