@@ -31,7 +31,7 @@ image::images/rb-utils.png[]
 
 ### Python 3
 
-A working python 3 installation is required by the `cargo-version.py` script.
+A working python 3 installation is required by the `cargo-set-version.py` script.
 
 Install required packages:
 

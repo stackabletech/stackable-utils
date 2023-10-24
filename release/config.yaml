@@ -6,6 +6,7 @@ operators:
   - druid-operator
   - hbase-operator
   - hdfs-operator
+  - hello-world-operator
   - hive-operator
   - kafka-operator
   - listener-operator
