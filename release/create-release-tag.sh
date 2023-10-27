@@ -37,9 +37,9 @@ tag_operators() {
     fi
 
     CARGO_VERSION="$INITIAL_DIR"/release/cargo-set-version.py
-    $CARGO_VERSION --set "$RELEASE_TAG" # TODO!!
+    $CARGO_VERSION --set "$RELEASE_TAG"
     cargo update --workspace
-    make regenerate-charts # TODO?
+    make regenerate-charts
 
     update_code "$TEMP_RELEASE_FOLDER/${operator}"
     #-----------------------------------------------------------
@@ -76,7 +76,7 @@ check_products() {
   # the up-to-date release branch has already been pulled
   # N.B. look for exact match (no -rcXXX)
   #-----------------------------------------------------------
-  BRANCH_EXISTS=$(git branch -r| grep -E "$RELEASE_BRANCH$")
+  BRANCH_EXISTS=$(git branch -r | grep -E "$RELEASE_BRANCH$")
 
   if [ -z "${BRANCH_EXISTS}" ]; then
     echo "Expected release branch is missing: $RELEASE_BRANCH"
@@ -125,17 +125,28 @@ checks() {
 }
 
 update_code() {
-  echo "Updating antora docs for $1"
-  # antora version should be major.minor, not patch level
-  yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
-  yq -i '.prerelease = false' "$1/docs/antora.yml"
+  if [ -d "$1/docs" ]; then
+    echo "Updating antora docs for $1"
+    # antora version should be major.minor, not patch level
+    yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
+    yq -i '.prerelease = false' "$1/docs/antora.yml"
 
-  # Not all operators have a getting started guide
-  # that's why we verify if templating_vars.yaml exists.
-  if [ -f "$1/docs/templating_vars.yaml" ]; then
-    yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
-    yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
-    yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
+    # Not all operators have a getting started guide
+    # that's why we verify if templating_vars.yaml exists.
+    if [ -f "$1/docs/templating_vars.yaml" ]; then
+      yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+      yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
+      yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
+    fi
+
+    #--------------------------------------------------------------------------
+    # Replace "nightly" link so the documentation refers to the current version
+    #--------------------------------------------------------------------------
+    for file in $(find "$1/docs" -name "*.adoc"); do
+      sed -i "s/nightly@home/home/g" "$file"
+    done
+  else
+     echo "No docs found under $1."
   fi
 
   #--------------------------------------------------------------------------
@@ -147,13 +158,6 @@ update_code() {
   #  # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
   #  sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
   #fi
-
-  #--------------------------------------------------------------------------
-  # Replace "nightly" link so the documentation refers to the current version
-  #--------------------------------------------------------------------------
-  for file in $(find "$1/docs" -name "*.adoc"); do
-    sed -i "s/nightly@home/home/g" "$file"
-  done
 }
 
 push_branch() {
