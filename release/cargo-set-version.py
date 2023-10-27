@@ -35,6 +35,14 @@ if __name__ == "__main__":
     if args.set:
         # sanity check
         semver.VersionInfo.parse(args.set)
-        old["workspace"]["package"]["version"]=args.set
-        with open(cargo_file, 'w') as f:
-            toml.dump(old, f)
+        old_version=old["workspace"]["package"]["version"]
+        new_version=args.set
+
+        contents = []
+        with open(cargo_file, 'r') as r:
+            for line in r.readlines():
+                if line.startswith("version"):
+                    line = line.replace(old_version, new_version)
+                contents.append(line)
+        with open(cargo_file, 'w') as w:
+            w.write(''.join(contents))
