@@ -5,6 +5,7 @@ VERSION=23.4.1
 OPERATOR=zookeeper
 
 REPOSITORY=registry.private.stackable.tech:5000
+ORGANIZATION=sandbox
 
 #git clone "git@github.com:stackabletech/openshift-certified-operators.git" --depth 1 --branch "${BRANCH}" --single-branch
 
