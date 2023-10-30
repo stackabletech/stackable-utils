@@ -21,7 +21,7 @@ tag_products() {
   update_product_images_changelogs
 
   git commit -am "release $RELEASE_TAG"
-  git tag "$RELEASE_TAG"
+  git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
   push_branch
 }
 
@@ -36,8 +36,7 @@ tag_operators() {
       git submodule update --recursive --init
     fi
 
-    CARGO_VERSION="$INITIAL_DIR"/release/cargo-version.py
-    $CARGO_VERSION --set "$RELEASE_TAG"
+    cargo set-version --offline --workspace "$RELEASE_TAG"
     cargo update --workspace
     make regenerate-charts
 
@@ -52,7 +51,7 @@ tag_operators() {
     update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
     git commit -am "release $RELEASE_TAG"
-    git tag "$RELEASE_TAG"
+    git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
     push_branch
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -125,34 +124,39 @@ checks() {
 }
 
 update_code() {
-  echo "Updating antora docs for $1"
-  # antora version should be major.minor, not patch level
-  yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
-  yq -i '.prerelease = false' "$1/docs/antora.yml"
+  if [ -d "$1/docs" ]; then
+    echo "Updating antora docs for $1"
+    # antora version should be major.minor, not patch level
+    yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
+    yq -i '.prerelease = false' "$1/docs/antora.yml"
 
-  # Not all operators have a getting started guide
-  # that's why we verify if templating_vars.yaml exists.
-  if [ -f "$1/docs/templating_vars.yaml" ]; then
-    yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
-    yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
-    yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
+    # Not all operators have a getting started guide
+    # that's why we verify if templating_vars.yaml exists.
+    if [ -f "$1/docs/templating_vars.yaml" ]; then
+      yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+      yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
+      yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
+    fi
+
+    #--------------------------------------------------------------------------
+    # Replace "nightly" link so the documentation refers to the current version
+    #--------------------------------------------------------------------------
+    for file in $(find "$1/docs" -name "*.adoc"); do
+      sed -i "s/nightly@home/home/g" "$file"
+    done
+  else
+     echo "No docs found under $1."
   fi
 
   #--------------------------------------------------------------------------
   # Replace .spec.image.stackableVersion for kuttl tests.
   # Use sed as yq does not process .j2 file syntax properly.
+  # N.B. commented out as the tests assume same stackable version as operator
   #--------------------------------------------------------------------------
-  if [ -f "$1/tests/test-definition.yaml" ]; then
-    # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
-    sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
-  fi
-
-  #--------------------------------------------------------------------------
-  # Replace "nightly" link so the documentation refers to the current version
-  #--------------------------------------------------------------------------
-  for file in $(find "$1/docs" -name "*.adoc"); do
-    sed -i "s/nightly@home/home/g" "$file"
-  done
+  #if [ -f "$1/tests/test-definition.yaml" ]; then
+  #  # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
+  #  sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
+  #fi
 }
 
 push_branch() {
@@ -180,7 +184,7 @@ update_changelog() {
 
 update_product_images_changelogs() {
   TODAY=$(date +'%Y-%m-%d')
-  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./**/CHANGELOG.md
+  sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./CHANGELOG.md
 }
 
 parse_inputs() {

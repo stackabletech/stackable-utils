@@ -30,8 +30,8 @@ tag_operators() {
     fi
 
     # set tag version where relevant
-    CARGO_VERSION="$INITIAL_DIR"/release/cargo-version.py
-    $CARGO_VERSION --set "$RELEASE_TAG"
+    cargo set-version --offline --workspace "$RELEASE_TAG"
+
     cargo update --workspace
     make regenerate-charts
 
