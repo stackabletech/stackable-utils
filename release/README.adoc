@@ -29,15 +29,16 @@ image::images/rb-utils.png[]
 
 ## Install requirements
 
-### Python 3
+### cargo-edit plugin
 
-A working python 3 installation is required by the `cargo-set-version.py` script.
 
-Install required packages:
+The `cargo-edit` plugin is used to update operator versions in `cargo` workspaces.
 
-[source]
+Install it like this:
+
+[source,bash]
 ----
-pip install -r release/requirements.txt
+cargo install cargo-edit --version 0.11.11
 ----
 
 ### yq (yaml parser)

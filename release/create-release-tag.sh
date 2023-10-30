@@ -36,8 +36,7 @@ tag_operators() {
       git submodule update --recursive --init
     fi
 
-    CARGO_VERSION="$INITIAL_DIR"/release/cargo-set-version.py
-    $CARGO_VERSION --set "$RELEASE_TAG"
+    cargo set-version --offline --workspace "$RELEASE_TAG"
     cargo update --workspace
     make regenerate-charts
 
