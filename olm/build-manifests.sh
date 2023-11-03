@@ -18,19 +18,18 @@
 # * Remove all Helm labels in all remaining files.
 
 set -euo pipefail
-#set -x
+set -x
 
 # CLI args
 OPENSHIFT_ROOT=""
 OP_ROOT=""
 RELEASE_VERSION=""
 
-# derived from OP_ROOT
+# derived from CLI args
 PRODUCT=""
-
-OPERATOR="$PRODUCT-operator"
-MANIFESTS_DIR="$OPENSHIFT_ROOT/operators/stackable-$OPERATOR/$RELEASE_VERSION/manifests"
-METADATA_DIR="$OPENSHIFT_ROOT/operators/stackable-$OPERATOR/$RELEASE_VERSION/metadata"
+OPERATOR=""
+MANIFESTS_DIR=""
+METADATA_DIR=""
 
 generate_metadata() {
 
@@ -193,7 +192,7 @@ parse_inputs() {
       case $1 in
           -r) RELEASE_VERSION="$2"; shift ;;
           -o) OP_ROOT="$2"; shift ;;
-          -c) OPENSHIFT_ROOT=true ;;
+          -c) OPENSHIFT_ROOT="$2"; shift ;;
           *) echo "Unknown parameter passed: $1"; exit 1 ;;
       esac
       shift
@@ -201,6 +200,10 @@ parse_inputs() {
 
   # e.g. "airflow" instead of "airflow-operator"
   PRODUCT=$(basename "${OP_ROOT}" | cut -d- -f1)
+
+  OPERATOR="$PRODUCT-operator"
+  MANIFESTS_DIR="$OPENSHIFT_ROOT/operators/stackable-$OPERATOR/$RELEASE_VERSION/manifests"
+  METADATA_DIR="$OPENSHIFT_ROOT/operators/stackable-$OPERATOR/$RELEASE_VERSION/metadata"
 }
 
 maybe_print_help() {
@@ -228,8 +231,8 @@ HELP
 }
 
 main() {
+  parse_inputs "$@"
   maybe_print_help
-  parse_inputs
   generate_metadata
   generate_manifests
 }
