@@ -231,11 +231,29 @@ HELP
   fi
 }
 
+patch_cluster_roles() {
+  pushd "$MANIFESTS_DIR"
+
+  # Add product SCC to product cluster role
+  if [ -f "$PRODUCT-clusterrole.yml" ]; then
+    yq -i '.rules += { "apiGroups": [ "security.openshift.io" ], "resources": [ "securitycontextconstraints" ], "resourceNames": ["stackable-products-scc" ], "verbs": ["use"]}' "$PRODUCT-clusterrole.yml"
+  fi
+
+  # Add hostmount-anyuid SCC to operator cluster role
+  if [ -f "$OPERATOR-clusterrole.yml" ]; then
+    yq -i '.rules += { "apiGroups": [ "security.openshift.io" ], "resources": [ "securitycontextconstraints" ], "resourceNames": ["hostmount-anyuid" ], "verbs": ["use"]}' "$OPERATOR-clusterrole.yml"
+  fi
+
+  popd
+ 
+}
+
 main() {
   parse_inputs "$@"
   maybe_print_help
   generate_metadata
   generate_manifests
+  patch_cluster_roles
 }
 
 main "$@"
