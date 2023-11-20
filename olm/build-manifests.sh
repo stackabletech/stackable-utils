@@ -10,6 +10,9 @@
 #
 #   ./olm/build-manifests.sh -r 23.11.0 -c $HOME/repo/stackable/openshift-certified-operators -o $HOME/repo/stackable/zookeeper-operator
 #
+# Before running the script:
+# * Update the supported OpenShift version range in the `generate_metadata()` function.
+#
 # The generated manifests need to be updated manually with the following steps:
 # * Copy the cluster service version file from the previous package version.
 # * Replace the contents of the deployment, and cluster role with the `spec` and `rules` from the newly generated files.
@@ -50,7 +53,7 @@ generate_metadata() {
 		  operators.operatorframework.io.bundle.metadata.v1: metadata/
 		  operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-		  com.redhat.openshift.versions: v4.10-v4.11
+		  com.redhat.openshift.versions: v4.10-v4.13
 	ANNOS
 
 	cat >dependencies.yaml <<-DEPS
