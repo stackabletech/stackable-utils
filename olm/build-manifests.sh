@@ -4,7 +4,7 @@
 #
 # Usage:
 #
-#   ./olm/build-manifests.sh -r <release as x.y.z> -p <product> -c <location of the RH cert operators repo> -o <location of the oeprator repo>
+#   ./olm/build-manifests.sh -r <release as x.y.z> -c <location of the RH cert operators repo> -o <location of the operator repo>
 #
 # Example:
 #
