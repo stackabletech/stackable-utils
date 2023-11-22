@@ -33,8 +33,8 @@ parse_inputs() {
       shift
   done
 
-  # e.g. "airflow" instead of "airflow-operator"
-  OPERATOR=$(echo "${OPERATOR_NAME}" | cut -d- -f1)
+  # e.g. "airflow" , "spark-k8s"
+  OPERATOR=$(basename "${OPERATOR_NAME}" | rev | cut -d- -f2- | rev)
 }
 
 bundle-clean() {

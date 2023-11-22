@@ -11,6 +11,7 @@
 #   ./olm/build-manifests.sh -r 23.11.0 -c $HOME/repo/stackable/openshift-certified-operators -o $HOME/repo/stackable/zookeeper-operator
 #
 # Before running the script:
+# * Ensure the certified-operators and operator repos are located on the correct branches (the branches are not supplied as arguments).
 # * Update the supported OpenShift version range in the `generate_metadata()` function.
 #
 # The generated manifests need to be updated manually with the following steps:
@@ -111,8 +112,8 @@ parse_inputs() {
 		shift
 	done
 
-	# e.g. "airflow" instead of "airflow-operator"
-	PRODUCT=$(basename "${OP_ROOT}" | cut -d- -f1)
+	# e.g. "airflow" instead of "airflow-operator", "spark-k8s" instead of "spark-k8s-operator"
+	PRODUCT=$(basename "${OP_ROOT}" | rev | cut -d- -f2- | rev)
 
 	OPERATOR="$PRODUCT-operator"
 	MANIFESTS_DIR="$OPENSHIFT_ROOT/operators/stackable-$OPERATOR/$RELEASE_VERSION/manifests"
