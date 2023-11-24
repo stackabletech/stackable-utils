@@ -123,7 +123,6 @@ e.g.
 * for operators:
 ** checks that the release branch exists and the tag doesn't
 ** adapts the versions in all cargo.toml to `release-tag` argument
-** update all "stackableVersion" fields in the getting started guides
 ** update all "stackableVersion" fields in the kuttl tests
 ** update the antora.yaml
 ** update the  `release-tag` in helm charts
@@ -244,3 +243,19 @@ e.g.
 ** updates test definitions to use product image versions that match the release tag (if requested with "-i")
 ** tags the branch and pushes it if the push argument is provided
 ** deletes the temporary folder (if requested with "-c")
+
+## Troubleshooting
+
+This section collects problems and errors that happened on different platforms.
+
+### create-release-tag.sh
+
+#### yq stat file not found
+
+If you installed `yq` via snap there is a strict confinement which means it does not have direct access to root files. The scripts provided here use the `/tmp` folder to check out and adapt branches.
+
+You can adapt the `/tmp` folder in  `TEMP_RELEASE_FOLDER` in the `create-release-branch.sh`, `create-release-tag.sh` and `post-release.sh` scripts to a path in your home folder (do not commit this change!) or follow instructions provided here see https://github.com/mikefarah/yq#snap-notes.
+
+#### missing libraries
+
+When building the secret-operator some libraries may be missing. See https://docs.stackable.tech/home/stable/secret-operator/building#_local_builds[secret-operator local builds] for requirements):
