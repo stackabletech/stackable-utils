@@ -30,7 +30,7 @@ Edit this file if you want to exclude operators from bulk operations for some re
 
 ## Scripts
 ### pr_approve
-Approves all pull requests and adds a `bors r+` comment to start the bors merge process.
+Approves all pull requests and merges them via merge queue.
 
 ### pr_checks
 Shows all checks for all PRs and their current status. 
