@@ -200,6 +200,10 @@ images-repo: docker-images
     - ...
 ----
 
+### Post-release steps
+
+Once the release is complete and all steps above have been verified, the documentation needs to be updated and built. This is done in a separate suite of scripts found https://github.com/stackabletech/documentation/tree/main/scripts[here]. Follow the steps given in the two scripts (there are prompts provided which allow for early-exit if things are not as they should be!).
+
 ### Bugfix/patch tags
 
 To create release tags for bugfix/patch releases use the `create-bugfix-tag.sh` script, called from the repository root folder. The syntax is given below:
