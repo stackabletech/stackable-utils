@@ -118,7 +118,7 @@ catalog() {
     echo "- name: ${OPERATOR}-operator.v${VERSION}"
   } >>"catalog/stackable-${OPERATOR}-operator.yaml"
   echo "Render operator: ${OPERATOR}"
-  opm render "docker.stackable.tech/sandbox/${OPERATOR}-operator-bundle:${VERSION}" --output=yaml >>"catalog/stackable-${OPERATOR}-operator.yaml"
+  opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" --output=yaml >>"catalog/stackable-${OPERATOR}-operator.yaml"
 
   echo "Validating catalog..."
   opm validate catalog
@@ -156,6 +156,7 @@ catalog() {
     echo "  name: stackable-${OPERATOR}-operator" # this is the package name NOT the operator-name
     echo "  source: stackable-${OPERATOR}-catalog"
     echo "  sourceNamespace: stackable-operators"
+    echo "  startingCSV: ${OPERATOR}-operator.v${VERSION}"
   } >subscription.yaml
 
   echo "Generating operator group ..."
