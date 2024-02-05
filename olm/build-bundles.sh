@@ -40,13 +40,10 @@
 set -euo pipefail
 set -x
 
-SCRIPT_NAME=$(basename $0)
+SCRIPT_NAME=$(basename "$0")
 
 parse_inputs() {
-  INITIAL_DIR="$PWD"
-
   VERSION=""
-  BRANCH=""
   OPERATOR=""
   DEPLOY=false
 
