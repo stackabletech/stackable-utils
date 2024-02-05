@@ -9,7 +9,7 @@
 #
 # This script makes the following *assumptions*:
 #
-# - There is a clone of the opernshift-certified-operators repository in the folder passed as -c argument.
+# - There is a clone of the openshift-certified-operators repository in the folder passed as -c argument.
 #   This is the same as the build-manifests.sh script.
 #
 # - The operator manifests for the given version have been generated with the build-manifests.sh script
