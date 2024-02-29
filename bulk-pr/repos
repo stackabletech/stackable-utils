@@ -3,7 +3,9 @@ products=(
     airflow
     commons
     druid
+    edc
     hbase
+    hello-world
     hdfs
     hive
     kafka
