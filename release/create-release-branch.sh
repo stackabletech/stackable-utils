@@ -34,7 +34,7 @@ update_operators() {
       cd "$BASE_DIR/${operator}"
       git pull && git switch "${RELEASE_BRANCH}"
     else
-      git clone "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
+      git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
       cd "$BASE_DIR/${operator}"
       git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REPOSITORY}/${BASE_BRANCH}"
     fi
@@ -116,7 +116,7 @@ main() {
   # check if argument matches our tag regex
   #-----------------------------------------------------------
   if [[ ! $RELEASE =~ $RELEASE_REGEX ]]; then
-    echo "Provided tag [$RELEASE] does not match the required tag regex pattern [$RELEASE_REGEX]"
+    echo "Provided branch name [$RELEASE] does not match the required regex pattern [$RELEASE_REGEX]"
     exit 1
   fi
 

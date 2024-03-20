@@ -146,15 +146,9 @@ update_code() {
 		echo "No docs found under $1."
 	fi
 
-	#--------------------------------------------------------------------------
-	# Replace .spec.image.stackableVersion for kuttl tests.
-	# Use sed as yq does not process .j2 file syntax properly.
-	# N.B. commented out as the tests assume same stackable version as operator
-	#--------------------------------------------------------------------------
-	#if [ -f "$1/tests/test-definition.yaml" ]; then
-	#  # e.g. 2.2.4-stackable0.5.0 -> 2.2.4-stackable23.1
-	#  sed -i "s/-stackable.*/-stackable${RELEASE}/" "$1/tests/test-definition.yaml"
-	#fi
+	# Update operator version for the integration tests
+	# this is used when installing the operators.
+	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" tests/release.yaml
 }
 
 push_branch() {
