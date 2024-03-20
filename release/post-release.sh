@@ -56,7 +56,7 @@ check_operators() {
       echo "Dirty working copy found for operator ${operator}"
       exit 1
     fi
-    TAG_EXISTS=$(git tag | grep "$RELEASE_TAG")
+    BRANCH_EXISTS=$(git branch | grep "$RELEASE_BRANCH")
     if [ -z "${BRANCH_EXISTS}" ]; then
       echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
       exit 1
@@ -93,7 +93,7 @@ update_main_changelog() {
     # Maybe push and create pull request
     if "$PUSH"; then
       git push -u "$REPOSITORY" "$CHANGELOG_BRANCH"
-      gh pr create --fill --reviewer stackable/developers
+      gh pr create --fill --reviewer stackable/developers --head "$CHANGELOG_BRANCH" --base main
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -121,7 +121,7 @@ main() {
   # sanity checks before we start: folder, branches etc.
   # deactivate -e so that piped commands can be used
   set +e
-  checks_operators
+  check_operators
   set -e
 
   echo "Update main changelog from release $RELEASE_TAG"
