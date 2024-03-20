@@ -148,7 +148,7 @@ update_code() {
 
 	# Update operator version for the integration tests
 	# this is used when installing the operators.
-	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" tests/release.yaml
+	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" "$1/tests/release.yaml"
 }
 
 push_branch() {
