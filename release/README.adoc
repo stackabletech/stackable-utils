@@ -1,3 +1,34 @@
+# Release workflow
+
+This is the recommended release flow in a nutshell for the release 24.3:
+
+----
+# start with the product images ...
+# create and push the release branch
+./release/create-release-branch.sh -b 24.3 -w products -p
+
+# create and push the release tag
+./release/create-release-tag.sh -t 24.3.0 -w products -p
+
+# monior the GH action that builds ~80 images for success
+
+# continue with the operators ...
+# create and push the release branch
+./release/create-release-branch.sh -b 24.3 -w operators -p
+
+# create and push the release tag
+./release/create-release-tag.sh -t 24.3.0 -w operators -p
+
+# monior the GH actions that build the oeprator images for success
+
+# finally patch the changelog file in the main branch
+# create PRs for all operators
+./release/post-release.sh -t 24.3.0 -p
+
+# and that is it!
+# (now the tedious post release steps start ...)
+----
+
 # Release scripts
 
 A set of scripts that automates some release steps. The release process has multiple steps:
@@ -124,7 +155,7 @@ e.g.
 * for operators:
 ** checks that the release branch exists and the tag doesn't
 ** adapts the versions in all cargo.toml to `release-tag` argument
-** update all "stackableVersion" fields in the kuttl tests
+** update all "operatorVersion" fields in the tests/release.yaml files
 ** update the antora.yaml
 ** update the  `release-tag` in helm charts
 ** updates the cargo workspace
