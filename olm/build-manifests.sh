@@ -54,8 +54,8 @@ generate_metadata() {
       operators.operatorframework.io.bundle.metadata.v1: metadata/
       operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-      com.redhat.openshift.versions: v4.10-v4.13
-  ANNOS
+      com.redhat.openshift.versions: v4.11-v4.15
+ANNOS
 
   cat >dependencies.yaml <<-DEPS
     ---
@@ -68,7 +68,7 @@ generate_metadata() {
         value:
           packageName: stackable-secret-operator
           version: "$RELEASE_VERSION"
-  DEPS
+DEPS
 
   popd
 }
@@ -138,7 +138,7 @@ maybe_print_help() {
           Example:
 
             $SCRIPT_NAME -r 23.11.0 -c $HOME/repo/stackable/openshift-certified-operators -o $HOME/repo/stackable/zookeeper-operator
-    HELP
+HELP
 
     exit 1
   fi
