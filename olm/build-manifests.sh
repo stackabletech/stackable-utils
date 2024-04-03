@@ -16,7 +16,7 @@
 #
 # The generated manifests need to be updated manually with the following steps:
 # * Copy the cluster service version file from the previous package version.
-# * Replace the contents of the deployment, and cluster role with the `spec` and `rules` from the newly generated files.
+# * Replace the contents of the deployment, and cluster role with the `template.spec` and `rules` from the newly generated files.
 # * Remove the unused generated files : service account, operator cluster role (not the product cluster role), role binding, deployment.
 # * Remove all Helm labels in all remaining files.
 # * Check or update the metadata/dependencies.yaml
@@ -45,29 +45,29 @@ generate_metadata() {
   pushd "$METADATA_DIR"
 
   cat >annotations.yaml <<-ANNOS
-    ---
-    annotations:
-      operators.operatorframework.io.bundle.channel.default.v1: stable
-      operators.operatorframework.io.bundle.channels.v1: stable
-      operators.operatorframework.io.bundle.manifests.v1: manifests/
-      operators.operatorframework.io.bundle.mediatype.v1: registry+v1
-      operators.operatorframework.io.bundle.metadata.v1: metadata/
-      operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
+---
+annotations:
+  operators.operatorframework.io.bundle.channel.default.v1: stable
+  operators.operatorframework.io.bundle.channels.v1: stable
+  operators.operatorframework.io.bundle.manifests.v1: manifests/
+  operators.operatorframework.io.bundle.mediatype.v1: registry+v1
+  operators.operatorframework.io.bundle.metadata.v1: metadata/
+  operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-      com.redhat.openshift.versions: v4.11-v4.15
+  com.redhat.openshift.versions: v4.11-v4.15
 ANNOS
 
   cat >dependencies.yaml <<-DEPS
-    ---
-    dependencies:
-      - type: olm.package
-        value:
-          packageName: stackable-commons-operator
-          version: "$RELEASE_VERSION"
-      - type: olm.package
-        value:
-          packageName: stackable-secret-operator
-          version: "$RELEASE_VERSION"
+---
+dependencies:
+  - type: olm.package
+    value:
+      packageName: stackable-commons-operator
+      version: "$RELEASE_VERSION"
+  - type: olm.package
+    value:
+      packageName: stackable-secret-operator
+      version: "$RELEASE_VERSION"
 DEPS
 
   popd
