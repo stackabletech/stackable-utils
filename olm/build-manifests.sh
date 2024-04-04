@@ -18,7 +18,7 @@
 # * Copy the cluster service version file from the previous package version.
 # * Replace the contents of the deployment, and cluster role with the `template.spec` and `rules` from the newly generated files.
 # * Remove the unused generated files : service account, operator cluster role (not the product cluster role), role binding, deployment.
-# * Remove all Helm labels in all remaining files.
+# * Remove all Helm labels in all remaining files (including all labels from the cluster role).
 # * Check or update the metadata/dependencies.yaml
 # * Update image tags and hashes
 
