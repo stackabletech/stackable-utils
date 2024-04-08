@@ -173,9 +173,11 @@ catalog() {
 
 deploy() {
 	if $DEPLOY; then
-		kubectl apply --namespace stackable-operators -f catalog-source.yaml
-		kubectl apply --namespace stackable-operators -f subscription.yaml
-		kubectl apply --namespace stackable-operators -f operator-group.yaml
+		kubectl describe namespace stackable-operators || kubectl create namespace stackable-operators
+		kubectl apply --namespace stackable-operators \
+			-f catalog-source.yaml \
+			-f subscription.yaml \
+			-f operator-group.yaml
 		echo "Operator deployment done!"
 	else
 		echo "Skip operator deployment!"
