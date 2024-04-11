@@ -9,6 +9,7 @@ import re
 import shutil
 import sys
 import subprocess
+import textwrap
 
 import yaml
 
@@ -138,8 +139,9 @@ def generate_manifests(args: argparse.Namespace) -> None:
         / "crds"
         / "crds.yaml"
     )
-    to_dump = generate_crds(crd_path, dest_dir)
+    crds = generate_crds(crd_path, dest_dir)
 
+    to_dump = crds[:]
     template_path = args.repo_operator / "deploy" / "helm" / args.repo_operator.name
     manifests = generate_helm_templates(product, op_name, template_path, dest_dir)
     to_dump.extend(
@@ -148,19 +150,26 @@ def generate_manifests(args: argparse.Namespace) -> None:
         )
     )
 
-    csv = generate_csv(manifests, dest_dir)
+    dest = (
+        dest_dir
+        / "manifests"
+        / f"stackable-{op_name}.v{args.release}.clusterserviceversion.yaml"
+    )
+    dest.write_text(yaml.dump(generate_csv(op_name, args.release, crds, manifests)))
 
     for y in to_dump:
         dest = dest_dir / "manifests" / f"{y['metadata']['name']}.yaml"
         dest.write_text(yaml.dump(y))
 
 
-def generate_csv(manifests: list[dict], dest_dir: pathlib.Path) -> None:
-    """
+def generate_csv(
+    op_name: str, version: str, crds: list[dict], manifests: list[dict]
+) -> dict:
+    csv_template = textwrap.dedent(f"""
     apiVersion: operators.coreos.com/v1alpha1
     kind: ClusterServiceVersion
     metadata:
-      name: airflow-operator.v24.3.0
+      name: {op_name}.v{version}
       annotations:
         features.operators.openshift.io/disconnected: "false"
         features.operators.openshift.io/fips-compliant: "false"
@@ -192,7 +201,7 @@ def generate_csv(manifests: list[dict], dest_dir: pathlib.Path) -> None:
       provider:
         name: Stackable GmbH
         url: https://stackable.tech
-      version: 24.3.0
+      version: {version}
       minKubeVersion: 1.23.0
 
       installModes:
@@ -209,18 +218,18 @@ def generate_csv(manifests: list[dict], dest_dir: pathlib.Path) -> None:
         owned:
           # a list of CRDs that this operator owns
           # name is the metadata.name of the CRD (which is of the form <plural>.<group>)
-          - name: airflowclusters.airflow.stackable.tech
-            # version is the spec.versions[].name value defined in the CRD
-            version: v1alpha1
-            # kind is the CamelCased singular value defined in spec.names.kind of the CRD.
-            kind: AirflowCluster
-            # human-friendly display name of the CRD for rendering in graphical consoles (optional)
-            displayName: Apache Airflow Cluster
-            # a short description of the CRDs purpose for rendering in graphical consoles (optional)
-            description: Represents an Airflow cluster
+          #- name: airflowclusters.airflow.stackable.tech
+          #  # version is the spec.versions[].name value defined in the CRD
+          #  version: v1alpha1
+          #  # kind is the CamelCased singular value defined in spec.names.kind of the CRD.
+          #  kind: AirflowCluster
+          #  # human-friendly display name of the CRD for rendering in graphical consoles (optional)
+          #  displayName: Apache Airflow Cluster
+          #  # a short description of the CRDs purpose for rendering in graphical consoles (optional)
+          #  description: Represents an Airflow cluster
 
       relatedImages:
-        - name: airflow-operator
+        - name: {op_name}
           image: quay.io/stackable/airflow-operator@sha256:c3553d5d347c769b54643c0b0791beb6b7dc45ad74724c1afebf3540f4b5b493
       install:
         # strategy indicates what type of deployment artifacts are used
@@ -237,8 +246,30 @@ def generate_csv(manifests: list[dict], dest_dir: pathlib.Path) -> None:
             - name: airflow-operator
               # operator deployment
               # spec:
-    """
-    pass
+    """)
+
+    result = yaml.load(csv_template, Loader=yaml.SafeLoader)
+
+    ### Add list of owned crds
+    owned_crd_dicts = []
+    for c in crds:
+        for v in c["spec"]["versions"]:
+            owned_crd_dicts.append(
+                {
+                    "name": c["metadata"]["name"],
+                    "displayName": c["metadata"]["name"],
+                    "kind": c["spec"]["names"]["kind"],
+                    "version": v["name"],
+                    # we use this field instead of schema.openAPIV3Schema.description
+                    # because that one is not set by the Rust->CRD serialization
+                    "description": v["schema"]["openAPIV3Schema"]["properties"]["spec"][
+                        "description"
+                    ],
+                }
+            )
+    result["spec"]["customresourcedefinitions"]["owned"] = owned_crd_dicts
+
+    return result
 
 
 def generate_helm_templates(
