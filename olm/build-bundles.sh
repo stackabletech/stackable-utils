@@ -166,6 +166,8 @@ catalog() {
 		echo "kind: OperatorGroup"
 		echo "metadata:"
 		echo "  name: stackable-operator-group"
+		echo "spec:"
+		echo "  targetNamespaces: stackable-operators"
 	} >operator-group.yaml
 
 	echo "Catalog, operator group and subscription built (but not deployed) successfully!"
