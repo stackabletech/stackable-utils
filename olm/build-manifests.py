@@ -73,7 +73,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=logging.INFO,
     )
 
+    parser.add_argument(
+        "--openshift-versions",
+        help="OpenShift target versions. Example: v4.11-v4.13",
+        type=cli_validate_openshift_range,
+        required=True,
+    )
+
     args = parser.parse_args(argv)
+
     if not args.repo_certified_operators:
         args.repo_certified_operators = (
             args.repo_operator.parent / "openshift-certified-operators"
@@ -85,6 +93,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     # This has historical reasons and because it's impossible to rename the path of an existing operator
     # in the certification repository.
     args.op_name = f"{args.product}-operator"
+
+    args.dest_dir = (
+        args.repo_certified_operators
+        / "operators"
+        / f"stackable-{args.op_name}"
+        / args.release
+    )
 
     ### Validate paths
     if not (args.repo_operator / "deploy" / "helm" / args.repo_operator.name).exists():
@@ -99,6 +114,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         )
 
     return args
+
+
+def cli_validate_openshift_range(cli_arg: str) -> str:
+    if not re.match(r"^v4\.\d{2}-v4\.\d{2}$", cli_arg):
+        raise argparse.ArgumentTypeError("Invalid OpenShift version range")
+    return cli_arg
 
 
 def cli_parse_release(cli_arg: str) -> str:
@@ -128,7 +149,7 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
     crds = generate_crds(args.repo_operator)
 
     # Parse Helm manifests
-    manifests = generate_helm_templates(args.product, args.op_name, args.repo_operator)
+    manifests = generate_helm_templates(args.op_name, args.repo_operator)
 
     #
     # Prepare various pieces for the CSV
@@ -173,36 +194,21 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
 def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
     """Write the manifests to the certification repository."""
     try:
-        dest_dir: pathlib.Path = (
-            args.repo_certified_operators
-            / "operators"
-            / f"stackable-{args.op_name}"
-            / args.release
-        )
-
-        if dest_dir.exists():
-            logging.info(f"Removing directory {dest_dir}")
-            shutil.rmtree(dest_dir)
-
-        manifests_dir = dest_dir / "manifests"
+        manifests_dir = args.dest_dir / "manifests"
         logging.info(f"Creating directory {manifests_dir}")
-        os.makedirs(dest_dir / "manifests")
-
-        metadata_dir = dest_dir / "metadata"
-        logging.info(f"Creating directory {metadata_dir}")
-        os.makedirs(dest_dir / "metadata")
+        os.makedirs(manifests_dir)
 
         for m in manifests:
             dest_file = None
             if m["kind"] == "ClusterServiceVersion":
                 dest_file = (
-                    dest_dir
+                    args.dest_dir
                     / "manifests"
                     / f"stackable-{args.op_name}.v{args.release}.clusterserviceversion.yaml"
                 )
             elif m["kind"] == "CustomResourceDefinition":
                 dest_file = (
-                    dest_dir
+                    args.dest_dir
                     / "manifests"
                     / f"{m['metadata']['name']}.customresourcedefinition.yaml"
                 )
@@ -214,12 +220,16 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
                 m["kind"] == "ClusterRole"
                 and m["metadata"]["name"] == f"{args.product}-clusterrole"
             ):
-                dest_file = dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
+                dest_file = (
+                    args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
+                )
             elif (
                 m["kind"] == "ConfigMap"
                 and m["metadata"]["name"] == f"{args.op_name}-configmap"
             ):
-                dest_file = dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
+                dest_file = (
+                    args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
+                )
 
             if dest_file:
                 logging.info(f"Writing {dest_file}")
@@ -305,9 +315,7 @@ def generate_csv(
     return result
 
 
-def generate_helm_templates(
-    product: str, op_name: str, repo_operator: pathlib.Path
-) -> list[dict]:
+def generate_helm_templates(op_name: str, repo_operator: pathlib.Path) -> list[dict]:
     logging.debug(f"start generate_helm_templates for {repo_operator}")
     template_path = repo_operator / "deploy" / "helm" / repo_operator.name
     helm_template_cmd = ["helm", "template", op_name, template_path]
@@ -382,14 +390,46 @@ def op_image(op_name: str, release: str) -> str:
         return result
 
 
+def write_metadata(args: argparse.Namespace) -> None:
+    logging.debug("start write_metadata")
+
+    try:
+        metadata_dir = args.dest_dir / "metadata"
+        logging.info(f"Creating directory {metadata_dir}")
+        os.makedirs(metadata_dir)
+
+        annos = yaml.load(ANNOTATIONS_TEMPLATE, Loader=yaml.SafeLoader)
+
+        annos["annotations"]["operators.operatorframework.io.bundle.package.v1"] = (
+            f"stackable-{args.op_name}"
+        )
+        annos["annotations"]["com.redhat.openshift.versions"] = args.openshift_versions
+
+        anno_file = metadata_dir / "annotations.yaml"
+        logging.info(f"Writing {anno_file}")
+        anno_file.write_text(yaml.dump(annos))
+    except yaml.YAMLError:
+        raise ManifestException("Failed to load annotations template")
+
+    logging.debug("finish write_metadata")
+
+
 def main(argv) -> int:
     ret = 0
     try:
         opts = parse_args(argv[1:])
         logging.basicConfig(encoding="utf-8", level=opts.log_level)
-        logging.debug(f"Options: {opts}")
+
+        # logging.debug(f"Options: {opts}")
+
         manifests = generate_manifests(opts)
+
+        if opts.dest_dir.exists():
+            logging.info(f"Removing directory {opts.dest_dir}")
+            shutil.rmtree(opts.dest_dir)
+
         write_manifests(opts, manifests)
+        write_metadata(opts)
     except Exception as e:
         logging.error(e)
         ret = 1
