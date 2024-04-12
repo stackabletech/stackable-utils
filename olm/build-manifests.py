@@ -9,7 +9,10 @@ import re
 import shutil
 import subprocess
 import sys
-import textwrap
+import urllib.request
+import urllib.parse
+import json
+
 
 import yaml
 
@@ -137,23 +140,28 @@ def generate_manifests(args: argparse.Namespace) -> None:
     )
 
     # Generate CSV
-    op_cluster_role = filter(
-        lambda m: m["metadata"]["name"] == f"{op_name}-clusterrole", manifests
+    op_cluster_role = next(
+        filter(lambda m: m["metadata"]["name"] == f"{op_name}-clusterrole", manifests)
     )
-    op_service_account = filter(
-        lambda m: m["metadata"]["name"] == f"{op_name}-serviceaccount", manifests
+    op_service_account = next(
+        filter(
+            lambda m: m["metadata"]["name"] == f"{op_name}-serviceaccount", manifests
+        )
     )
-    op_deployment = filter(
-        lambda m: m["metadata"]["name"] == f"{op_name}-deployment", manifests
+    op_deployment = next(
+        filter(lambda m: m["metadata"]["name"] == f"{op_name}-deployment", manifests)
     )
+
+    related_images = [{"image": op_image(op_name, args.release), "name": op_name}]
 
     csv = generate_csv(
         op_name,
         args.release,
         owned_crds,
-        next(op_service_account),
-        next(op_cluster_role),
-        next(op_deployment),
+        op_service_account,
+        op_cluster_role,
+        op_deployment,
+        related_images,
     )
 
     # Finally dump everything into yaml files
@@ -211,21 +219,30 @@ def generate_csv(
     service_account: dict,
     cluster_role: dict,
     deployment: dict,
+    related_images: list[dict[str, str]],
 ) -> dict:
+    logging.debug(f"start generate_csv for operator {op_name} and version {version}")
+
     assert owned_crds
     assert service_account
     assert cluster_role
     assert deployment
+    assert related_images
 
     result = yaml.load(CSV_TEMPLATE, Loader=yaml.SafeLoader)
 
+    op_image = related_images[0]["image"]
+
     result["metadata"]["name"] = f"{op_name}.v{version}"
     result["spec"]["version"] = version
+    result["metadata"]["annotations"]["containerImage"] = op_image
 
     ### 1. Add list of owned crds
     result["spec"]["customresourcedefinitions"]["owned"] = owned_crds
 
     ### 2. Add list of related images
+    result["spec"]["relatedImages"] = related_images
+
     ### 3. Add cluster permissions and service account name
     result["spec"]["install"]["spec"]["clusterPermissions"] = [
         {
@@ -234,6 +251,11 @@ def generate_csv(
         }
     ]
     ### 4. Add deployments
+    # patch the image of the operator container
+    for c in deployment["spec"]["template"]["spec"]["containers"]:
+        if c["name"] == op_name:
+            c["image"] = op_image
+
     result["spec"]["install"]["spec"]["deployments"] = [
         {
             "name": deployment["metadata"]["name"],
@@ -241,12 +263,15 @@ def generate_csv(
         }
     ]
 
+    logging.debug("finish generate_csv")
+
     return result
 
 
 def generate_helm_templates(
     product: str, op_name: str, repo_operator: pathlib.Path
 ) -> list[dict]:
+    logging.debug(f"start generate_helm_templates for {repo_operator}")
     template_path = repo_operator / "deploy" / "helm" / repo_operator.name
     helm_template_cmd = ["helm", "template", op_name, template_path]
     try:
@@ -261,6 +286,8 @@ def generate_helm_templates(
         for man in manifests:
             del man["metadata"]["labels"]["app.kubernetes.io/managed-by"]
             del man["metadata"]["labels"]["helm.sh/chart"]
+
+        logging.debug("finish generate_helm_templates")
 
         return manifests
 
@@ -277,6 +304,7 @@ def generate_helm_templates(
 
 
 def generate_crds(repo_operator: pathlib.Path) -> list[dict]:
+    logging.debug(f"start generate_crds for {repo_operator}")
     crd_path = (
         repo_operator / "deploy" / "helm" / repo_operator.name / "crds" / "crds.yaml"
     )
@@ -290,7 +318,29 @@ def generate_crds(repo_operator: pathlib.Path) -> list[dict]:
             raise ManifestException(
                 f'Expected "CustomResourceDefinition" but found kind "{crd['kind']}" in CRD file "{crd_path}"'
             )
+    logging.debug("finish generate_crds")
     return crds
+
+
+def op_image(op_name: str, release: str) -> str:
+    """Get the images for the operator from quay.io. See: https://docs.quay.io/api/swagger"""
+    logging.debug(f"start op_image for {op_name} {release}")
+    release_tag = urllib.parse.urlencode({"specificTag": release})
+    tag_url = f"https://quay.io/api/v1/repository/stackable/{op_name}/tag?{release_tag}"
+    with urllib.request.urlopen(tag_url) as response:
+        data = json.load(response)
+        if not data["tags"]:
+            raise ManifestException(
+                f"Could not find manifest digest for request {tag_url}"
+            )
+
+        manifest_digest = [
+            t["manifest_digest"] for t in data["tags"] if t["name"] == release
+        ][0]
+
+        result = f"quay.io/stackable/{op_name}@{manifest_digest}"
+        logging.debug(f"finish op_image with result {result}")
+        return result
 
 
 def main(argv) -> int:
