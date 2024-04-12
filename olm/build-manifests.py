@@ -179,8 +179,7 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
 
     # Generate the CSV
     csv = generate_csv(
-        args.op_name,
-        args.release,
+        args,
         owned_crds,
         op_service_account,
         op_cluster_role,
@@ -260,15 +259,16 @@ def to_owned_crds(crds: list[dict]) -> list[dict]:
 
 
 def generate_csv(
-    op_name: str,
-    version: str,
+    args: argparse.Namespace,
     owned_crds: list[dict],
     service_account: dict,
     cluster_role: dict,
     deployment: dict,
     related_images: list[dict[str, str]],
 ) -> dict:
-    logging.debug(f"start generate_csv for operator {op_name} and version {version}")
+    logging.debug(
+        f"start generate_csv for operator {args.op_name} and version {args.release}"
+    )
 
     assert owned_crds
     assert service_account
@@ -280,9 +280,13 @@ def generate_csv(
 
     op_image = related_images[0]["image"]
 
-    result["metadata"]["name"] = f"{op_name}.v{version}"
-    result["spec"]["version"] = version
+    result["spec"]["version"] = args.release
+    result["spec"]["keywords"] = [args.product]
+    result["metadata"]["name"] = f"{args.op_name}.v{args.release}"
     result["metadata"]["annotations"]["containerImage"] = op_image
+    result["metadata"]["annotations"]["repository"] = (
+        f"https://github.com/stackabletech/{args.op_name}"
+    )
 
     ### 1. Add list of owned crds
     result["spec"]["customresourcedefinitions"]["owned"] = owned_crds
@@ -300,7 +304,7 @@ def generate_csv(
     ### 4. Add deployments
     # patch the image of the operator container
     for c in deployment["spec"]["template"]["spec"]["containers"]:
-        if c["name"] == op_name:
+        if c["name"] == args.op_name:
             c["image"] = op_image
 
     result["spec"]["install"]["spec"]["deployments"] = [
