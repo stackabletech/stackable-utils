@@ -346,14 +346,20 @@ def generate_helm_templates(op_name: str, repo_operator: pathlib.Path) -> list[d
     template_path = repo_operator / "deploy" / "helm" / repo_operator.name
     helm_template_cmd = ["helm", "template", op_name, template_path]
     try:
-        logging.info(f"Reading Helm templates from {template_path}")
+        logging.debug("start generate_helm_templates")
+        logging.info(f"Running {helm_template_cmd}")
         completed_proc = subprocess.run(
             helm_template_cmd,
             capture_output=True,
             check=True,
         )
         manifests = list(
-            yaml.load_all(completed_proc.stdout.decode("utf-8"), Loader=yaml.SafeLoader)
+            filter(
+                lambda x: x,  # filter out empty objects like the deployment of the secret operator
+                yaml.load_all(
+                    completed_proc.stdout.decode("utf-8"), Loader=yaml.SafeLoader
+                ),
+            )
         )
         for man in manifests:
             try:
