@@ -356,8 +356,11 @@ def generate_helm_templates(op_name: str, repo_operator: pathlib.Path) -> list[d
             yaml.load_all(completed_proc.stdout.decode("utf-8"), Loader=yaml.SafeLoader)
         )
         for man in manifests:
-            del man["metadata"]["labels"]["app.kubernetes.io/managed-by"]
-            del man["metadata"]["labels"]["helm.sh/chart"]
+            try:
+                del man["metadata"]["labels"]["app.kubernetes.io/managed-by"]
+                del man["metadata"]["labels"]["helm.sh/chart"]
+            except KeyError:
+                pass
 
         logging.debug("finish generate_helm_templates")
 
