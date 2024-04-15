@@ -13,7 +13,13 @@ import sys
 import urllib.parse
 import urllib.request
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:
+    print(
+        "Module 'pyyaml' not found. Install using: pip install -r olm/requirements.txt"
+    )
+    sys.exit(1)
 
 __version__ = "0.0.1"
 
@@ -162,10 +168,36 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
     op_cluster_role, op_service_account, op_deployment = filter_op_objects(
         args, manifests
     )
+    cluster_permissions = [(op_service_account["metadata"]["name"], op_cluster_role)]
+    deployments = [op_deployment]
 
-    related_images = [
-        {"image": op_image(args.op_name, args.release), "name": args.op_name}
-    ]
+    if args.op_name == "secret-operator":
+        cluster_permissions.append(
+            (
+                "secret-operator-deployer",
+                yaml.load(
+                    SECRET_DEPLOYER_CLUSTER_ROLE_TEMPLATE, Loader=yaml.SafeLoader
+                ),
+            )
+        )
+
+    related_images = quay_image([(args.op_name, args.release)])
+
+    if args.op_name == "secret-operator":
+        related_images.extend(
+            quay_image(
+                [
+                    ("tools", f"1.0.0-stackable{args.release}"),
+                    ("sig-storage/csi-provisioner", "v3.1.0"),
+                    ("sig-storage/csi-node-driver-registrar", "v2.5.0"),
+                ]
+            )
+        )
+
+    # patch the image of the operator container
+    for c in op_deployment["spec"]["template"]["spec"]["containers"]:
+        if c["name"] == args.op_name:
+            c["image"] = related_images[0]["image"]
 
     owned_crds = to_owned_crds(crds)
 
@@ -173,9 +205,8 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
     csv = generate_csv(
         args,
         owned_crds,
-        op_service_account,
-        op_cluster_role,
-        op_deployment,
+        cluster_permissions,
+        deployments,
         related_images,
     )
 
@@ -189,6 +220,7 @@ def filter_op_objects(args: argparse.Namespace, manifests) -> tuple[dict, dict, 
         * the operator cluster role
         * the operator service account
         * the operator deployment.
+    For the secret operator the "deployer" deployment is used.
     """
     logging.debug("start filter_op_objects")
     names = [
@@ -204,7 +236,19 @@ def filter_op_objects(args: argparse.Namespace, manifests) -> tuple[dict, dict, 
                 next(filter(lambda m: m["metadata"]["name"] == name, manifests))
             )
         except StopIteration:
-            raise ManifestException(f"Could not find '{name}' in Helm templates")
+            # The secret op doesn't have a deployment,
+            # we need to add the "deployer" to the CSV
+            if (
+                args.op_name == "secret-operator"
+                and name == "secret-operator-deployment"
+            ):
+                result.append(
+                    yaml.load(
+                        SECRET_DEPLOYER_DEPLOYMENT_TEMPLATE, Loader=yaml.SafeLoader
+                    )
+                )
+            else:
+                raise ManifestException(f"Could not find '{name}' in Helm templates")
 
     logging.debug("finish filter_op_objects")
     return tuple(result)
@@ -263,19 +307,32 @@ def to_owned_crds(crds: list[dict]) -> list[dict]:
     owned_crd_dicts = []
     for c in crds:
         for v in c["spec"]["versions"]:
+            ### Extract CRD description from different properties
+            description = "No description available"
+            try:
+                # we use this field instead of schema.openAPIV3Schema.description
+                # because that one is not set by the Rust->CRD serialization
+                description = v["schema"]["openAPIV3Schema"]["properties"]["spec"][
+                    "description"
+                ]
+            except KeyError:
+                pass
+            try:
+                # The OPA CRD has this field set
+                description = v["schema"]["openAPIV3Schema"]["description"]
+            except KeyError:
+                pass
+
             owned_crd_dicts.append(
                 {
                     "name": c["metadata"]["name"],
                     "displayName": c["metadata"]["name"],
                     "kind": c["spec"]["names"]["kind"],
                     "version": v["name"],
-                    # we use this field instead of schema.openAPIV3Schema.description
-                    # because that one is not set by the Rust->CRD serialization
-                    "description": v["schema"]["openAPIV3Schema"]["properties"]["spec"][
-                        "description"
-                    ],
+                    "description": description,
                 }
             )
+
     logging.debug("finish to_owned_crds")
     return owned_crd_dicts
 
@@ -283,29 +340,20 @@ def to_owned_crds(crds: list[dict]) -> list[dict]:
 def generate_csv(
     args: argparse.Namespace,
     owned_crds: list[dict],
-    service_account: dict,
-    cluster_role: dict,
-    deployment: dict,
+    cluster_permissions: list[tuple[str, dict]],
+    deployments: list[dict],
     related_images: list[dict[str, str]],
 ) -> dict:
     logging.debug(
         f"start generate_csv for operator {args.op_name} and version {args.release}"
     )
 
-    assert owned_crds
-    assert service_account
-    assert cluster_role
-    assert deployment
-    assert related_images
-
     result = yaml.load(CSV_TEMPLATE, Loader=yaml.SafeLoader)
-
-    op_image = related_images[0]["image"]
 
     result["spec"]["version"] = args.release
     result["spec"]["keywords"] = [args.product]
     result["metadata"]["name"] = f"{args.op_name}.v{args.release}"
-    result["metadata"]["annotations"]["containerImage"] = op_image
+    result["metadata"]["annotations"]["containerImage"] = related_images[0]["image"]
     result["metadata"]["annotations"]["repository"] = (
         f"https://github.com/stackabletech/{args.op_name}"
     )
@@ -316,24 +364,21 @@ def generate_csv(
     ### 2. Add list of related images
     result["spec"]["relatedImages"] = related_images
 
-    ### 3. Add cluster permissions and service account name
+    ### 3. Add cluster permissions
     result["spec"]["install"]["spec"]["clusterPermissions"] = [
         {
-            "serviceAccountName": service_account["metadata"]["name"],
+            "serviceAccountName": service_account,
             "rules": cluster_role["rules"],
         }
+        for service_account, cluster_role in cluster_permissions
     ]
     ### 4. Add deployments
-    # patch the image of the operator container
-    for c in deployment["spec"]["template"]["spec"]["containers"]:
-        if c["name"] == args.op_name:
-            c["image"] = op_image
-
     result["spec"]["install"]["spec"]["deployments"] = [
         {
-            "name": deployment["metadata"]["name"],
-            "spec": deployment["spec"],
+            "name": dplmt["metadata"]["name"],
+            "spec": dplmt["spec"],
         }
+        for dplmt in deployments
     ]
 
     logging.debug("finish generate_csv")
@@ -404,25 +449,31 @@ def generate_crds(repo_operator: pathlib.Path) -> list[dict]:
     return crds
 
 
-def op_image(op_name: str, release: str) -> str:
+def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
     """Get the images for the operator from quay.io. See: https://docs.quay.io/api/swagger"""
-    logging.debug(f"start op_image for {op_name} {release}")
-    release_tag = urllib.parse.urlencode({"specificTag": release})
-    tag_url = f"https://quay.io/api/v1/repository/stackable/{op_name}/tag?{release_tag}"
-    with urllib.request.urlopen(tag_url) as response:
-        data = json.load(response)
-        if not data["tags"]:
-            raise ManifestException(
-                f"Could not find manifest digest for request {tag_url}"
+    logging.debug("start op_image")
+    result = []
+    for image, release in images:
+        release_tag = urllib.parse.urlencode({"specificTag": release})
+        tag_url = (
+            f"https://quay.io/api/v1/repository/stackable/{image}/tag?{release_tag}"
+        )
+        with urllib.request.urlopen(tag_url) as response:
+            data = json.load(response)
+            if not data["tags"]:
+                raise ManifestException(
+                    f"Could not find manifest digest for request {tag_url}"
+                )
+
+            manifest_digest = [
+                t["manifest_digest"] for t in data["tags"] if t["name"] == release
+            ][0]
+
+            result.append(
+                {"name": image, "image": f"quay.io/stackable/{image}@{manifest_digest}"}
             )
-
-        manifest_digest = [
-            t["manifest_digest"] for t in data["tags"] if t["name"] == release
-        ][0]
-
-        result = f"quay.io/stackable/{op_name}@{manifest_digest}"
-        logging.debug(f"finish op_image with result {result}")
-        return result
+    logging.debug("finish op_image")
+    return result
 
 
 def write_metadata(args: argparse.Namespace) -> None:
@@ -552,6 +603,103 @@ annotations:
   operators.operatorframework.io.bundle.package.v1: placeholder stackable-airflow-operator
 
   com.redhat.openshift.versions: v4.11-v4.15 placeholder
+"""
+
+SECRET_DEPLOYER_DEPLOYMENT_TEMPLATE = """
+metadata:
+  name: secret-operator-deployer
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: secret-operator-deployer
+      app.kubernetes.io/instance: secret-operator-deployer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: secret-operator-deployer
+        app.kubernetes.io/instance: secret-operator-deployer
+    spec:
+      serviceAccountName: secret-operator-deployer
+      securityContext: {}
+      containers:
+        - name: secret-operator-deployer
+          securityContext: {}
+          image: "quay.io/stackable/tools@sha256:e8bb355ef43debba8b7ddc3c95b5ba67903607bcc95799190ad982edd1a52230"
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/bin/bash", "/manifests/deploy.sh"]
+          resources:
+            limits:
+              cpu: 100m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 512Mi
+          volumeMounts:
+            - name: manifests
+              mountPath: /manifests
+      volumes:
+        - name: manifests
+          configMap:
+            name: secret-operator-deployer-manifests
+"""
+
+SECRET_DEPLOYER_CLUSTER_ROLE_TEMPLATE = """
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+      - patch
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - csidrivers
+      - storageclasses
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+      - patch
+  - apiGroups:
+      - secrets.stackable.tech
+    resources:
+      - secretclasses
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+      - patch
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+      - patch
 """
 
 if __name__ == "__main__":
