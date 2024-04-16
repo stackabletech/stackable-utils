@@ -97,6 +97,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     args.product = args.repo_operator.name.rsplit("-", maxsplit=1)[0]
     args.op_name = args.repo_operator.name
 
+    if args.op_name in {"secret-operator", "listener-operator"}:
+        raise ManifestException(
+            f"Operator '{args.op_name}' is not supported by this script. Use the 'build-manifests.sh' for it."
+        )
+
+    args.op_name = args.repo_operator.name
+
     # In case of spark, -k8s is still in the product name but the target directory
     # in the certification repository is without -k8s.
     # This has historical reasons and because it's impossible to rename the path of an existing operator
@@ -171,28 +178,7 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
     cluster_permissions = [(op_service_account["metadata"]["name"], op_cluster_role)]
     deployments = [op_deployment]
 
-    if args.op_name == "secret-operator":
-        cluster_permissions.append(
-            (
-                "secret-operator-deployer",
-                yaml.load(
-                    SECRET_DEPLOYER_CLUSTER_ROLE_TEMPLATE, Loader=yaml.SafeLoader
-                ),
-            )
-        )
-
     related_images = quay_image([(args.op_name, args.release)])
-
-    if args.op_name == "secret-operator":
-        related_images.extend(
-            quay_image(
-                [
-                    ("tools", f"1.0.0-stackable{args.release}"),
-                    ("sig-storage/csi-provisioner", "v3.1.0"),
-                    ("sig-storage/csi-node-driver-registrar", "v2.5.0"),
-                ]
-            )
-        )
 
     # patch the image of the operator container
     for c in op_deployment["spec"]["template"]["spec"]["containers"]:
@@ -220,7 +206,6 @@ def filter_op_objects(args: argparse.Namespace, manifests) -> tuple[dict, dict, 
         * the operator cluster role
         * the operator service account
         * the operator deployment.
-    For the secret operator the "deployer" deployment is used.
     """
     logging.debug("start filter_op_objects")
     names = [
@@ -236,19 +221,7 @@ def filter_op_objects(args: argparse.Namespace, manifests) -> tuple[dict, dict, 
                 next(filter(lambda m: m["metadata"]["name"] == name, manifests))
             )
         except StopIteration:
-            # The secret op doesn't have a deployment,
-            # we need to add the "deployer" to the CSV
-            if (
-                args.op_name == "secret-operator"
-                and name == "secret-operator-deployment"
-            ):
-                result.append(
-                    yaml.load(
-                        SECRET_DEPLOYER_DEPLOYMENT_TEMPLATE, Loader=yaml.SafeLoader
-                    )
-                )
-            else:
-                raise ManifestException(f"Could not find '{name}' in Helm templates")
+            raise ManifestException(f"Could not find '{name}' in Helm templates")
 
     logging.debug("finish filter_op_objects")
     return tuple(result)
@@ -400,7 +373,7 @@ def generate_helm_templates(op_name: str, repo_operator: pathlib.Path) -> list[d
         )
         manifests = list(
             filter(
-                lambda x: x,  # filter out empty objects like the deployment of the secret operator
+                lambda x: x,  # filter out empty objects
                 yaml.load_all(
                     completed_proc.stdout.decode("utf-8"), Loader=yaml.SafeLoader
                 ),
@@ -603,103 +576,6 @@ annotations:
   operators.operatorframework.io.bundle.package.v1: placeholder stackable-airflow-operator
 
   com.redhat.openshift.versions: v4.11-v4.15 placeholder
-"""
-
-SECRET_DEPLOYER_DEPLOYMENT_TEMPLATE = """
-metadata:
-  name: secret-operator-deployer
-spec:
-  replicas: 1
-  strategy:
-    type: Recreate
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: secret-operator-deployer
-      app.kubernetes.io/instance: secret-operator-deployer
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: secret-operator-deployer
-        app.kubernetes.io/instance: secret-operator-deployer
-    spec:
-      serviceAccountName: secret-operator-deployer
-      securityContext: {}
-      containers:
-        - name: secret-operator-deployer
-          securityContext: {}
-          image: "quay.io/stackable/tools@sha256:e8bb355ef43debba8b7ddc3c95b5ba67903607bcc95799190ad982edd1a52230"
-          imagePullPolicy: IfNotPresent
-          command: ["/usr/bin/bash", "/manifests/deploy.sh"]
-          resources:
-            limits:
-              cpu: 100m
-              memory: 512Mi
-            requests:
-              cpu: 100m
-              memory: 512Mi
-          volumeMounts:
-            - name: manifests
-              mountPath: /manifests
-      volumes:
-        - name: manifests
-          configMap:
-            name: secret-operator-deployer-manifests
-"""
-
-SECRET_DEPLOYER_CLUSTER_ROLE_TEMPLATE = """
-rules:
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-    verbs:
-      - get
-      - list
-  - apiGroups:
-      - apps
-    resources:
-      - daemonsets
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - delete
-      - patch
-  - apiGroups:
-      - storage.k8s.io
-    resources:
-      - csidrivers
-      - storageclasses
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - delete
-      - patch
-  - apiGroups:
-      - secrets.stackable.tech
-    resources:
-      - secretclasses
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - delete
-      - patch
-  - apiGroups:
-      - security.openshift.io
-    resources:
-      - securitycontextconstraints
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - delete
-      - patch
 """
 
 if __name__ == "__main__":
