@@ -325,7 +325,7 @@ def generate_csv(
 
     result["spec"]["version"] = args.release
     result["spec"]["keywords"] = [args.product]
-    result["spec"]["diplayName"] = CSV_DISPLAY_NAME[args.product]
+    result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
     result["metadata"]["name"] = f"{args.op_name}.v{args.release}"
     result["metadata"]["annotations"]["containerImage"] = related_images[0]["image"]
     result["metadata"]["annotations"]["description"] = CSV_DISPLAY_NAME[args.product]
@@ -521,7 +521,7 @@ metadata:
 spec:
     displayName: placeholder
     description: |
-        The Stackable Data Platform was designed with openness and flexibility in mind. It provides a curated selection of the best open source data apps like Apache Kafka®, Apache Druid, Trino and Apache Spark™. All data apps work together seamlessly, and can be added or removed in no time. Based on Kubernetes, it runs everywhere – on-prem or in the cloud.
+        The Stackable Data Platform was designed with openness and flexibility in mind. It provides a curated selection of the best open source data apps like Apache Kafka, Apache Druid, Trino and Apache Spark. All data apps work together seamlessly, and can be added or removed in no time. Based on Kubernetes, it runs everywhere – on-prem or in the cloud.
 
         For more information please visit our [web page](https://stackable.tech/en/open-source-data-platform)
     icon:
