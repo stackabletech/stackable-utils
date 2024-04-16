@@ -167,7 +167,7 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
     crds = generate_crds(args.repo_operator)
 
     # Parse Helm manifests
-    manifests = generate_helm_templates(args.op_name, args.repo_operator)
+    manifests = generate_helm_templates(args)
 
     #
     # Prepare various pieces for the CSV
@@ -361,10 +361,10 @@ def generate_csv(
     return result
 
 
-def generate_helm_templates(op_name: str, repo_operator: pathlib.Path) -> list[dict]:
-    logging.debug(f"start generate_helm_templates for {repo_operator}")
-    template_path = repo_operator / "deploy" / "helm" / repo_operator.name
-    helm_template_cmd = ["helm", "template", op_name, template_path]
+def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
+    logging.debug(f"start generate_helm_templates for {args.repo_operator}")
+    template_path = args.repo_operator / "deploy" / "helm" / args.repo_operator.name
+    helm_template_cmd = ["helm", "template", args.op_name, template_path]
     try:
         logging.debug("start generate_helm_templates")
         logging.info(f"Running {helm_template_cmd}")
@@ -388,6 +388,20 @@ def generate_helm_templates(op_name: str, repo_operator: pathlib.Path) -> list[d
             except KeyError:
                 pass
 
+            ### Patch the product cluster role with the SCC rule
+            if (
+                man["kind"] == "ClusterRole"
+                and man["metadata"]["name"] == f"{args.product}-clusterrole"
+            ):
+                man["rules"].append(
+                    {
+                        "apiGroups": ["security.openshift.io"],
+                        "resources": ["securitycontextconstraints"],
+                        "resourceNames": ["stackable-products-scc"],
+                        "verbs": ["use"],
+                    }
+                )
+
         logging.debug("finish generate_helm_templates")
 
         return manifests
@@ -395,12 +409,12 @@ def generate_helm_templates(op_name: str, repo_operator: pathlib.Path) -> list[d
     except subprocess.CalledProcessError as e:
         logging.error(e.stderr.decode("utf-8"))
         raise ManifestException(
-            f'Failed to generate helm templates for "{op_name}" from "{template_path}"'
+            f'Failed to generate helm templates for "{args.op_name}" from "{template_path}"'
         )
     except yaml.YAMLError as e:
         logging.error(e)
         raise ManifestException(
-            f'Failed to generate helm templates for "{op_name}" from "{template_path}"'
+            f'Failed to generate helm templates for "{args.op_name}" from "{template_path}"'
         )
 
 
