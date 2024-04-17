@@ -195,7 +195,11 @@ main() {
 	fi
 
 	# this is the same folder that is also used by build-manifests.sh
-	cd "${OPENSHIFT_ROOT}/operators/stackable-${OPERATOR}-operator/${VERSION}"
+	if [ "$OPERATOR" == "spark-k8s" ]; then
+		cd "${OPENSHIFT_ROOT}/operators/stackable-spark-operator/${VERSION}"
+	else
+		cd "${OPENSHIFT_ROOT}/operators/stackable-${OPERATOR}-operator/${VERSION}"
+	fi
 
 	# clean up any residual files from previous actions
 	bundle-clean
