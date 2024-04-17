@@ -34,8 +34,8 @@ spec:
       name: Stackable GmbH
     maturity: stable
     provider:
-    name: Stackable GmbH
-    url: https://stackable.tech
+      name: Stackable GmbH
+      url: https://stackable.tech
     version: placeholder
     minKubeVersion: 1.23.0
 
