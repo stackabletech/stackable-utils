@@ -411,6 +411,14 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
                         "verbs": ["use"],
                     }
                 )
+            ### Patch the version label
+            if (
+                crv := man["metadata"]["labels"]["app.kubernetes.io/version"]
+            ) != args.release:
+                logging.warning(
+                    f"Version mismatch for '{man['metadata']['name']}'. Replacing '{crv}' with '{args.release}'"
+                )
+                man["metadata"]["labels"]["app.kubernetes.io/version"] = args.release
 
         logging.debug("finish generate_helm_templates")
 
