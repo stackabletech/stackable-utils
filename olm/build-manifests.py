@@ -56,6 +56,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--replaces",
+        help="CSV version that is replaced by this release. Example: 23.11.0",
+        type=cli_parse_release,
+        required=True,
+    )
+
+    parser.add_argument(
         "-o",
         "--repo-operator",
         help="Path to the root of the operator repository.",
@@ -150,7 +157,9 @@ def cli_parse_release(cli_arg: str) -> str:
         r"^0\.0\.0-dev$", cli_arg
     ):
         return cli_arg
-    raise argparse.ArgumentTypeError("Invalid release")
+    raise argparse.ArgumentTypeError(
+        "Invalid version provided for release or replacement"
+    )
 
 
 def cli_log_level(cli_arg: str) -> int:
@@ -359,6 +368,7 @@ def generate_csv(
     result = load_resource("csv.yaml")
 
     result["spec"]["version"] = args.release
+    result["spec"]["replaces"] = f"{args.op_name}.v{args.replaces}"
     result["spec"]["keywords"] = [args.product]
     result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
     result["metadata"]["name"] = f"{args.op_name}.v{args.release}"
