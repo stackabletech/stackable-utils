@@ -28,7 +28,7 @@
 # See: https://olm.operatorframework.io/docs/reference/catalog-templates/#example
 # for an example catalog with multiple bundles
 #
-export OPERATOR=airflow
+export OPERATOR=commons
 
 rm -rf olm/catalog
 rm -rf olm/catalog.Dockerfile
@@ -48,16 +48,22 @@ echo "Add operator to package: ${OPERATOR}"
 	echo "name: stable"
 	echo "entries:"
 	echo "- name: ${OPERATOR}-operator.v23.11.0"
-	# comment out these two lines to build a single bundle catalog
 	echo "- name: ${OPERATOR}-operator.v24.3.0"
-	echo "  replaces: airflow-operator.v23.11.0"
+	echo "  replaces: ${OPERATOR}-operator.v23.11.0"
+	## comment out these two lines to build a single bundle catalog
+	echo "- name: ${OPERATOR}-operator.v24.3.0-1"
+	echo "  replaces: ${OPERATOR}-operator.v23.11.0"
+	echo "  skips:"
+	echo "  -  ${OPERATOR}-operator.v24.3.0"
 } >>"olm/catalog/stackable-${OPERATOR}-operator.yaml"
+
 echo "Render operator: ${OPERATOR}"
 opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:23.11.0" --output=yaml >>"olm/catalog/stackable-${OPERATOR}.v23.11.0-bundle.yaml"
 
 # Add a new version to the catalog
 # comment out this line to build a single bundle catalog
 opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:24.3.0" --output=yaml >>"olm/catalog/stackable-${OPERATOR}-v24.3.0-bundle.yaml"
+opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:24.3.0-1" --output=yaml >>"olm/catalog/stackable-${OPERATOR}-v24.3.0-1-bundle.yaml"
 
 echo "Validating catalog..."
 opm validate olm/catalog
