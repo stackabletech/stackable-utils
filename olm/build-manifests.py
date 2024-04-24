@@ -56,6 +56,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--quay-release",
+        help="Use this release tag for quay images. Defaults to --release if not provided. Useful when issuing patch releases that use existing images.",
+        type=cli_parse_release,
+    )
+
+    parser.add_argument(
         "--replaces",
         help="CSV version that is replaced by this release. Example: 23.11.0",
         type=cli_parse_release,
@@ -100,6 +106,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
 
     args = parser.parse_args(argv)
+
+    # Default to the actual release if no quay release is given
+    if not args.quay_release:
+        args.quay_release = args.release
 
     if not args.repo_certified_operators:
         args.repo_certified_operators = (
@@ -153,7 +163,7 @@ def cli_validate_openshift_range(cli_arg: str) -> str:
 
 
 def cli_parse_release(cli_arg: str) -> str:
-    if re.match(r"^\d{2}\.([1-9]|1[0-2])\.\d+$", cli_arg) or re.match(
+    if re.match(r"^\d{2}\.([1-9]|1[0-2])\.\d+(-\d*)?$", cli_arg) or re.match(
         r"^0\.0\.0-dev$", cli_arg
     ):
         return cli_arg
@@ -198,7 +208,7 @@ def generate_csv_related_images(
             if c["name"] == args.op_name
         ]
     else:
-        return quay_image([(args.op_name, args.release)])
+        return quay_image([(args.op_name, args.quay_release)])
 
 
 def generate_manifests(args: argparse.Namespace) -> list[dict]:
