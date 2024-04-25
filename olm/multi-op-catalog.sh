@@ -35,6 +35,11 @@
 #
 export OPERATOR="$1"
 
+if [ -z "$OPERATOR" ]; then
+	echo "Usage: $0 <operator>"
+	exit 1
+fi
+
 rm -rf olm/catalog/${OPERATOR}
 rm -rf olm/catalog.Dockerfile
 
