@@ -389,7 +389,7 @@ def generate_csv(
     )
 
     result["spec"]["version"] = args.release
-    result["spec"]["replaces"] = f"${csv_name}.v{args.replaces}"
+    result["spec"]["replaces"] = f"{csv_name}.v{args.replaces}"
     result["spec"]["skips"] = [f"{csv_name}.v{v}" for v in args.skips]
     result["spec"]["keywords"] = [args.product]
     result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
