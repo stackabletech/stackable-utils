@@ -384,12 +384,16 @@ def generate_csv(
 
     result = load_resource("csv.yaml")
 
+    csv_name = (
+        "spark-operator" if args.operator == "spark-k8s-operator" else args.operator
+    )
+
     result["spec"]["version"] = args.release
-    result["spec"]["replaces"] = f"{args.op_name}.v{args.replaces}"
-    result["spec"]["skips"] = [f"{args.op_name}.v{v}" for v in args.skips]
+    result["spec"]["replaces"] = f"${csv_name}.v{args.replaces}"
+    result["spec"]["skips"] = [f"{csv_name}.v{v}" for v in args.skips]
     result["spec"]["keywords"] = [args.product]
     result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
-    result["metadata"]["name"] = f"{args.op_name}.v{args.release}"
+    result["metadata"]["name"] = f"{csv_name}.v{args.release}"
     result["metadata"]["annotations"]["containerImage"] = related_images[0]["image"]
     result["metadata"]["annotations"]["description"] = CSV_DISPLAY_NAME[args.product]
     result["metadata"]["annotations"]["repository"] = (
