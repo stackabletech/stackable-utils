@@ -385,7 +385,7 @@ def generate_csv(
     result = load_resource("csv.yaml")
 
     csv_name = (
-        "spark-operator" if args.operator == "spark-k8s-operator" else args.operator
+        "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
     )
 
     result["spec"]["version"] = args.release
