@@ -65,13 +65,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--replaces",
         help="CSV version that is replaced by this release. Example: 23.11.0",
         type=cli_parse_release,
-        required=True,
     )
 
     parser.add_argument(
         "--skips",
         nargs="*",
         help="CSV versions that are skipped by this release. Example: 24.3.0",
+        default=list(),
         type=cli_parse_release,
     )
 
@@ -165,7 +165,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def cli_validate_openshift_range(cli_arg: str) -> str:
     if not re.match(r"^v4\.\d{2}-v4\.\d{2}$", cli_arg):
-        raise argparse.ArgumentTypeError("Invalid OpenShift version range")
+        raise argparse.ArgumentTypeError(
+            "Invalid OpenShift version range. Example: v4.11-v4.13"
+        )
     return cli_arg
 
 
@@ -240,11 +242,20 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
     )
 
     if not args.use_helm_images:
-        # patch the image of the operator container
-        # with the quay.io image
+        # patch the image of the operator container with the quay.io image
         for c in op_deployment["spec"]["template"]["spec"]["containers"]:
             if c["name"] == args.op_name:
                 c["image"] = related_images[0]["image"]
+        # patch the annotation image of the operator deployment the quay.io image
+        try:
+            if op_deployment["spec"]["template"]["metadata"]["annotations"][
+                "internal.stackable.tech/image"
+            ]:
+                op_deployment["spec"]["template"]["metadata"]["annotations"][
+                    "internal.stackable.tech/image"
+                ] = related_images[0]["image"]
+        except KeyError:
+            pass
 
     owned_crds = to_owned_crds(crds)
 
@@ -389,7 +400,9 @@ def generate_csv(
     )
 
     result["spec"]["version"] = args.release
-    result["spec"]["replaces"] = f"{csv_name}.v{args.replaces}"
+    result["spec"]["replaces"] = (
+        f"{csv_name}.v{args.replaces}" if args.replaces else None
+    )
     result["spec"]["skips"] = [f"{csv_name}.v{v}" for v in args.skips]
     result["spec"]["keywords"] = [args.product]
     result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
@@ -531,7 +544,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
             data = json.load(response)
             if not data["tags"]:
                 raise ManifestException(
-                    f"Could not find manifest digest for request {tag_url}"
+                    f"Could not find manifest digest for release '{release}' on quay.io. Pass '--use-helm-images' to use docker.stackable.tech instead."
                 )
 
             manifest_digest = [
