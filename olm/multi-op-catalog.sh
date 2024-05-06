@@ -74,7 +74,7 @@ echo "Add operator to package: ${OPERATOR}"
 echo "Render operator: ${OPERATOR}"
 opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:23.11.0" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}.v23.11.0-bundle.yaml"
 opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:24.3.0" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-v24.3.0-bundle.yaml"
-opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:24.3.0-1" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-v24.3.0-1-bundle.yaml"
+opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:24.4.0-1" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-v24.4.0-1-bundle.yaml"
 
 echo "Validating catalog..."
 opm validate olm/catalog
