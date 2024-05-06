@@ -18,7 +18,7 @@
 # To start fresh with a single operator remove the olm/catalog/${OPERATOR} directory.
 #
 # This script also generates a catalog source yaml file that you can apply to your cluster.
-# Once the catalog is loaded by OLM, you can update it and OLM is automatically
+# Once the catalog is loaded by OLM, you can update it and OLM will automatically
 # pull in the new versions.
 #
 # To install operators from this catalog, use the OperatorHub UI and filter by "Source: Stackable Catalog".
