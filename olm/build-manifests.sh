@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 #
+# NOTE: This script is intended to be used only with the secret and listener ops.
+# For all other operators, use the Python equivalent script: build-manifests.py
+#
 # Helper script to (re)generate OLM package manifests (skeletons).
 #
 # Usage:
