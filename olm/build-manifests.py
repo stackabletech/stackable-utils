@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 # vim: filetype=python syntax=python tabstop=4 expandtab
 
 import argparse
@@ -56,6 +56,26 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--quay-release",
+        help="Use this release tag for quay images. Defaults to --release if not provided. Useful when issuing patch releases that use existing images.",
+        type=cli_parse_release,
+    )
+
+    parser.add_argument(
+        "--replaces",
+        help="CSV version that is replaced by this release. Example: 23.11.0",
+        type=cli_parse_release,
+    )
+
+    parser.add_argument(
+        "--skips",
+        nargs="*",
+        help="CSV versions that are skipped by this release. Example: 24.3.0",
+        default=list(),
+        type=cli_parse_release,
+    )
+
+    parser.add_argument(
         "-o",
         "--repo-operator",
         help="Path to the root of the operator repository.",
@@ -92,7 +112,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
     )
 
+    parser.add_argument(
+        "--channel",
+        help="Channel name to use for the OLM bundle. Default: <major>.<minor> from the release number or 'alpha' for '0.0.0-dev'",
+    )
+
     args = parser.parse_args(argv)
+
+    # Default to the actual release if no quay release is given
+    if not args.quay_release:
+        args.quay_release = args.release
 
     if not args.repo_certified_operators:
         args.repo_certified_operators = (
@@ -136,21 +165,31 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             f"Certification repository path not found: {args.repo_certified_operators} or it's not a certified operator repository"
         )
 
+    ### Set bundle channel
+    if not args.channel:
+        if args.release == "0.0.0-dev":
+            args.channel = "alpha"
+        else:
+            args.channel = ".".join(args.release.split(".")[:2])
     return args
 
 
 def cli_validate_openshift_range(cli_arg: str) -> str:
     if not re.match(r"^v4\.\d{2}-v4\.\d{2}$", cli_arg):
-        raise argparse.ArgumentTypeError("Invalid OpenShift version range")
+        raise argparse.ArgumentTypeError(
+            "Invalid OpenShift version range. Example: v4.11-v4.13"
+        )
     return cli_arg
 
 
 def cli_parse_release(cli_arg: str) -> str:
-    if re.match(r"^\d{2}\.([1-9]|1[0-2])\.\d+$", cli_arg) or re.match(
+    if re.match(r"^\d{2}\.([1-9]|1[0-2])\.\d+(-\d*)?$", cli_arg) or re.match(
         r"^0\.0\.0-dev$", cli_arg
     ):
         return cli_arg
-    raise argparse.ArgumentTypeError("Invalid release")
+    raise argparse.ArgumentTypeError(
+        "Invalid version provided for release or replacement"
+    )
 
 
 def cli_log_level(cli_arg: str) -> int:
@@ -189,7 +228,7 @@ def generate_csv_related_images(
             if c["name"] == args.op_name
         ]
     else:
-        return quay_image([(args.op_name, args.release)])
+        return quay_image([(args.op_name, args.quay_release)])
 
 
 def generate_manifests(args: argparse.Namespace) -> list[dict]:
@@ -214,11 +253,20 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
     )
 
     if not args.use_helm_images:
-        # patch the image of the operator container
-        # with the quay.io image
+        # patch the image of the operator container with the quay.io image
         for c in op_deployment["spec"]["template"]["spec"]["containers"]:
             if c["name"] == args.op_name:
                 c["image"] = related_images[0]["image"]
+        # patch the annotation image of the operator deployment with the quay.io image
+        try:
+            if op_deployment["spec"]["template"]["metadata"]["annotations"][
+                "internal.stackable.tech/image"
+            ]:
+                op_deployment["spec"]["template"]["metadata"]["annotations"][
+                    "internal.stackable.tech/image"
+                ] = related_images[0]["image"]
+        except KeyError:
+            pass
 
     owned_crds = to_owned_crds(crds)
 
@@ -358,10 +406,18 @@ def generate_csv(
 
     result = load_resource("csv.yaml")
 
+    csv_name = (
+        "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
+    )
+
     result["spec"]["version"] = args.release
+    result["spec"]["replaces"] = (
+        f"{csv_name}.v{args.replaces}" if args.replaces else None
+    )
+    result["spec"]["skips"] = [f"{csv_name}.v{v}" for v in args.skips]
     result["spec"]["keywords"] = [args.product]
     result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
-    result["metadata"]["name"] = f"{args.op_name}.v{args.release}"
+    result["metadata"]["name"] = f"{csv_name}.v{args.release}"
     result["metadata"]["annotations"]["containerImage"] = related_images[0]["image"]
     result["metadata"]["annotations"]["description"] = CSV_DISPLAY_NAME[args.product]
     result["metadata"]["annotations"]["repository"] = (
@@ -437,13 +493,18 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
                     }
                 )
             ### Patch the version label
-            if (
-                crv := man["metadata"]["labels"]["app.kubernetes.io/version"]
-            ) != args.release:
-                logging.warning(
-                    f"Version mismatch for '{man['metadata']['name']}'. Replacing '{crv}' with '{args.release}'"
-                )
-                man["metadata"]["labels"]["app.kubernetes.io/version"] = args.release
+            try:
+                if (
+                    crv := man["metadata"]["labels"]["app.kubernetes.io/version"]
+                ) != args.release:
+                    logging.warning(
+                        f"Version mismatch for '{man['metadata']['name']}'. Replacing '{crv}' with '{args.release}'"
+                    )
+                    man["metadata"]["labels"]["app.kubernetes.io/version"] = (
+                        args.release
+                    )
+            except KeyError:
+                pass
 
         logging.debug("finish generate_helm_templates")
 
@@ -494,7 +555,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
             data = json.load(response)
             if not data["tags"]:
                 raise ManifestException(
-                    f"Could not find manifest digest for request {tag_url}"
+                    f"Could not find manifest digest for release '{release}' on quay.io. Pass '--use-helm-images' to use docker.stackable.tech instead."
                 )
 
             manifest_digest = [
@@ -522,6 +583,13 @@ def write_metadata(args: argparse.Namespace) -> None:
             f"stackable-{args.op_name}"
         )
         annos["annotations"]["com.redhat.openshift.versions"] = args.openshift_versions
+
+        annos["annotations"][
+            "operators.operatorframework.io.bundle.channel.default.v1"
+        ] = args.channel
+        annos["annotations"]["operators.operatorframework.io.bundle.channels.v1"] = (
+            args.channel
+        )
 
         anno_file = metadata_dir / "annotations.yaml"
         logging.info(f"Writing {anno_file}")

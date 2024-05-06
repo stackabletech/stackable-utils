@@ -194,21 +194,22 @@ main() {
 		exit 1
 	fi
 
-	# this is the same folder that is also used by build-manifests.sh
 	if [ "$OPERATOR" == "spark-k8s" ]; then
-		cd "${OPENSHIFT_ROOT}/operators/stackable-spark-operator/${VERSION}"
-	else
-		cd "${OPENSHIFT_ROOT}/operators/stackable-${OPERATOR}-operator/${VERSION}"
+		echo "Renaming operator from spark-k8s to spark"
+		OPERATOR="spark"
 	fi
+
+	# this is the same folder that is also used by build-manifests.sh
+	cd "${OPENSHIFT_ROOT}/operators/stackable-${OPERATOR}-operator/${VERSION}"
 
 	# clean up any residual files from previous actions
 	bundle-clean
 	build-bundle
 
-	catalog-clean
-	catalog
+	#catalog-clean
+	#catalog
 
-	deploy
+	#deploy
 }
 
 main "$@"
