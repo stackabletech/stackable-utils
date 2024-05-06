@@ -7,7 +7,7 @@
 # The catalog is built in ./olm/catalog and doesn't actually require any other OLM manifests
 # because it assumes the bundle images have been built and pushed to a registry.
 #
-# It take as argument the name of an operator to add to the catalog.
+# It takes as argument the name of an operator to add to the catalog.
 #
 # The operator versions and the upgrade paths are hard coded in the script (for now).
 #
