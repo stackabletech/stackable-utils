@@ -257,7 +257,7 @@ def generate_manifests(args: argparse.Namespace) -> list[dict]:
         for c in op_deployment["spec"]["template"]["spec"]["containers"]:
             if c["name"] == args.op_name:
                 c["image"] = related_images[0]["image"]
-        # patch the annotation image of the operator deployment the quay.io image
+        # patch the annotation image of the operator deployment with the quay.io image
         try:
             if op_deployment["spec"]["template"]["metadata"]["annotations"][
                 "internal.stackable.tech/image"
