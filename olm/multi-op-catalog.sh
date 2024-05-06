@@ -5,7 +5,7 @@
 # more operators and one or more versions of each operator.
 #
 # The catalog is built in ./olm/catalog and doesn't actually require any other OLM manifests
-# because is assumes the bundle images have been built and pushed to a registry.
+# because it assumes the bundle images have been built and pushed to a registry.
 #
 # It take as argument the name of an operator to add to the catalog.
 #
