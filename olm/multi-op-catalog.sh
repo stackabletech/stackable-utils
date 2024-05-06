@@ -47,7 +47,7 @@ mkdir -p olm/catalog/${OPERATOR}
 opm generate dockerfile olm/catalog
 
 opm init "stackable-${OPERATOR}-operator" \
-	--default-channel=stable \
+	--default-channel=24.4 \
 	--output yaml >"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-operator.yaml"
 
 echo "Add operator to package: ${OPERATOR}"
