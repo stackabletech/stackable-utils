@@ -8,7 +8,7 @@ The tool reads from stdin.
 
 ## Building
 
-Maven is used as the build tool, simply running `mvn package` will generate the required jars to run this.
+    mvn package
 
 ## Usage
 
