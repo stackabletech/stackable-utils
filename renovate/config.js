@@ -1,8 +1,6 @@
 module.exports = {
   repositories: [
-    "stackabletech/airflow-operator",
     "stackabletech/beku.py",
-    "stackabletech/commons-operator",
     "stackabletech/crddocs",
     "stackabletech/docker-images",
     "stackabletech/documentation",
@@ -10,6 +8,7 @@ module.exports = {
     "stackabletech/druid-opa-authorizer",
     "stackabletech/druid-operator",
     "stackabletech/edc-operator",
+    "stackabletech/feature-tracker",
     "stackabletech/hbase-normalizer",
     "stackabletech/hbase-operator",
     "stackabletech/hdfs-operator",
@@ -18,6 +17,7 @@ module.exports = {
     "stackabletech/hello-world-operator",
     "stackabletech/hive-operator",
     "stackabletech/image-tools",
+    "stackabletech/infrastructure",
     "stackabletech/kafka-operator",
     "stackabletech/listener-operator",
     "stackabletech/nifi-operator",
@@ -28,6 +28,7 @@ module.exports = {
     "stackabletech/product-config",
     "stackabletech/secret-operator",
     "stackabletech/spark-k8s-operator",
+    "stackabletech/stack_scanner",
     "stackabletech/stackable-cockpit",
     "stackabletech/stackable-utils",
     "stackabletech/superset-operator",
