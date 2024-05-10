@@ -17,6 +17,13 @@
         <target>11</target>
     </properties>
 
+    <distributionManagement>
+      <snapshotRepository>
+          <id>nexus</id>
+          <url>https://repo.stackable.tech/repository/m2</url>
+      </snapshotRepository>
+    </distributionManagement>
+
     <dependencies>
         <dependency>
             <groupId>at.favre.lib</groupId>
@@ -73,6 +80,11 @@
                     <artifactId>maven-project-info-reports-plugin</artifactId>
                     <version>3.5.0</version>
                 </plugin>
+                <plugin>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.1.2</version>
+                </plugin>
+
             </plugins>
         </pluginManagement>
         <plugins>
