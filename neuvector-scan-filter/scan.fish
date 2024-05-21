@@ -33,6 +33,7 @@ mkdir --parents scan_results
 for image in $images
     set scan_result_file "scan_results/"(string replace --all : _ "$image" | string replace --all / _)
 
+    docker pull $image-amd64
     docker run --name neuvector neuvector/scanner -i $image-amd64
     docker cp neuvector:/var/neuvector/scan_result.json "$scan_result_file"
     docker stop neuvector
