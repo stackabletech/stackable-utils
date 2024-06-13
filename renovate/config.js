@@ -1,7 +1,11 @@
 module.exports = {
   repositories: [
+    "stackabletech/airflow-operator",
     "stackabletech/beku.py",
+    "stackabletech/commons-operator",
+    "stackabletech/config-utils",
     "stackabletech/crddocs",
+    "stackabletech/crddocs-generator",
     "stackabletech/docker-images",
     "stackabletech/documentation",
     "stackabletech/documentation-ui",
@@ -42,12 +46,12 @@ module.exports = {
   forkProcessing: 'enabled',
   logFileLevel: 'info',
   branchConcurrentLimit: 0,
-  prConcurrentLimit: 0,
   prHourlyLimit: 0,
+  dependencyDashboard: true,
   commitBodyTable: true,
   recreateWhen: "always",
-  prCreation: "immediate",
   force: {
+    prCreation: "immediate",
     schedule: [],
   }
 };
