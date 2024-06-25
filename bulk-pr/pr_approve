@@ -4,7 +4,7 @@ PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
 source repos
 for product in "${products[@]}"; do
   STATE=$(gh pr view ${PR_BRANCH_NAME}  -R stackabletech/${product}-operator --jq '.state' --json state)
-  if [[ $STATE -eq "OPEN" ]]; then
+  if [[ "$STATE" == "OPEN" ]]; then
     echo "Approving ${product}"
     gh pr review ${PR_BRANCH_NAME} --approve -R stackabletech/${product}-operator
     gh pr merge ${PR_BRANCH_NAME} -R stackabletech/${product}-operator
