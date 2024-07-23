@@ -20,8 +20,8 @@ tag_products() {
 	git switch "$RELEASE_BRANCH"
 	update_product_images_changelogs
 
-	git commit -am "release $RELEASE_TAG"
-	git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
+	git commit -sam "release $RELEASE_TAG"
+	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	push_branch
 }
 
@@ -50,8 +50,8 @@ tag_operators() {
 		#-----------------------------------------------------------
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
-		git commit -am "release $RELEASE_TAG"
-		git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
+		git commit -sam "release $RELEASE_TAG"
+		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }

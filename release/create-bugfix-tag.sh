@@ -14,7 +14,7 @@ REPOSITORY="origin"
 tag_products() {
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   git switch "$RELEASE_BRANCH"
-  git tag "$RELEASE_TAG"
+  git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
   push_branch
 }
 
@@ -41,8 +41,8 @@ tag_operators() {
     #-----------------------------------------------------------
     "$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
 
-    git commit -am "release $RELEASE_TAG"    
-    git tag "$RELEASE_TAG"
+    git commit -sam "release $RELEASE_TAG"    
+    git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
     push_branch
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
