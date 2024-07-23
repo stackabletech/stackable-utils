@@ -38,6 +38,7 @@ tag_operators() {
 		cargo set-version --offline --workspace "$RELEASE_TAG"
 		cargo update --workspace
 		make regenerate-charts
+		make regenerate-nix
 
 		update_code "$TEMP_RELEASE_FOLDER/${operator}"
 		#-----------------------------------------------------------
