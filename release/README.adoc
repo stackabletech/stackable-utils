@@ -2,6 +2,7 @@
 
 This is the recommended release flow in a nutshell for the release 24.3:
 
+[source,bash]
 ----
 # start with the product images ...
 # create and push the release branch
