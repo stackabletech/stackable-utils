@@ -30,7 +30,7 @@ This is the recommended release flow in a nutshell for the release 24.3:
 # (now the tedious post release steps start ...)
 ----
 
-# Release scripts
+## Release scripts
 
 A set of scripts that automates some release steps. The release process has multiple steps:
 
@@ -59,9 +59,9 @@ A set of scripts that automates some release steps. The release process has mult
 
 image::images/rb-utils.png[]
 
-## Install requirements
+### Install requirements
 
-### cargo-edit plugin
+#### cargo-edit plugin
 
 
 The `cargo-edit` plugin is used to update operator versions in `cargo` workspaces.
@@ -73,18 +73,18 @@ Install it like this:
 cargo install cargo-edit --version 0.12.3
 ----
 
-### yq (yaml parser)
+#### yq (yaml parser)
 
 This script requires https://github.com/mikefarah/yq (not to be confused with https://github.com/kislyuk/yq).
 
-### gh (github client)
+#### gh (github client)
 
 This script requires https://github.com/cli to be installed.
 You have to be logged in when running the `post-release.sh` script. The easiest way is to have a local env variable `GH_TOKEN` set to a classic token created via https://github.com/settings/tokens with all `repo` and all `admin:org` scopes or follow the login instructions here https://cli.github.com/manual/gh_auth_login.
 
-## Usage
+### Usage
 
-### Release branches
+#### Release branches
 
 To create release branches use the `create-release-branch.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -104,10 +104,10 @@ e.g.
 
 [source]
 ----
-./release/create-release-branch.sh -b 23.1 -p -c -w both
+./release/create-release-branch.sh -b 23.1 -c -w both
 ----
 
-#### What this script does
+##### What this script does
 
 * checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
 * strips this argument of any leading or trailing quote marks
@@ -124,7 +124,7 @@ e.g.
 ** deletes the temporary folder (if requested with "-c")
 
 
-### Release tags
+#### Release tags
 
 To create release tags use the `create-release-tag.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -144,10 +144,10 @@ e.g.
 
 [source]
 ----
-./release/create-release-tag.sh -t 23.1.0 -p -c -w both
+./release/create-release-tag.sh -t 23.1.0 -c -w both
 ----
 
-#### What this script does
+##### What this script does
 
 * checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
 * for docker images:
@@ -166,7 +166,7 @@ e.g.
 ** pushes the commit and tag (if requested with "-p")
 ** deletes the temporary folder (if requested with "-c")
 
-### Post-release steps
+#### Post-release steps
 
 Some post release steps are performed with `release/post-release.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -178,17 +178,17 @@ Some post release steps are performed with `release/post-release.sh` script, cal
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 
-#### What this script does
+##### What this script does
 
 * checks that the release tag exists and that the all operator repositories have a clean working copy
 * merges the CHANGELOG.md from the release tag into main
 * creates PRs for all operators
 
-#### Build actions
+##### Build actions
 
 When a tag is pushed, the images for products and operators are built via github actions. The following points should be noted:
 
-##### Product images
+###### Product images
 
 The build action script `release.yml` builds all product images that defined in the `release.yaml` matrix section:
 
@@ -218,7 +218,7 @@ Base images should be excluded from the build action as they need to be referenc
 
 Also note that the tag pattern above is not using a regex (this functionality is not available for tag filtering) but uses glob-operators. The check is not totally watertight - we cannot for example enforce the "minor" version of the release to be limited to a digit between 1 and 12 - but this check is covered by the calling script `create-release-tag.sh`.
 
-##### Operator images
+###### Operator images
 
 Operator images are built by iterating over and pushing tags for the operator-repositories listed in the `operators` section of `config.yaml`:
 
@@ -232,11 +232,11 @@ images-repo: docker-images
     - ...
 ----
 
-### Post-release steps
+#### Post-release steps
 
 Once the release is complete and all steps above have been verified, the documentation needs to be updated and built. This is done in a separate suite of scripts found https://github.com/stackabletech/documentation/tree/main/scripts[here]. Follow the steps given in the two scripts (there are prompts provided which allow for early-exit if things are not as they should be!).
 
-### Bugfix/patch tags
+#### Bugfix/patch tags
 
 To create release tags for bugfix/patch releases use the `create-bugfix-tag.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -257,10 +257,10 @@ e.g.
 
 [source]
 ----
-./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w both -i
+./release/create-bugfix-tag.sh -t 23.1.0 -c -w both -i
 ----
 
-#### What this script does
+##### What this script does
 
 * checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
 * strips this argument of any leading or trailing quote marks
