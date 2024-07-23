@@ -10,7 +10,7 @@ This is the recommended release flow in a nutshell for the release 24.3:
 # create and push the release tag
 ./release/create-release-tag.sh -t 24.3.0 -w products -p
 
-# monior the GH action that builds ~80 images for success
+# monitor the GH action that builds ~80 images for success
 
 # continue with the operators ...
 # create and push the release branch
@@ -19,7 +19,7 @@ This is the recommended release flow in a nutshell for the release 24.3:
 # create and push the release tag
 ./release/create-release-tag.sh -t 24.3.0 -w operators -p
 
-# monior the GH actions that build the oeprator images for success
+# monitor the GH actions that build the operator images for success
 
 # finally patch the changelog file in the main branch
 # create PRs for all operators
@@ -69,7 +69,7 @@ Install it like this:
 
 [source,bash]
 ----
-cargo install cargo-edit --version 0.11.11
+cargo install cargo-edit --version 0.12.3
 ----
 
 ### yq (yaml parser)
