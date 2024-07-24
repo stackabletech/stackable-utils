@@ -1,30 +1,30 @@
 # Release workflow
 
-This is the recommended release flow in a nutshell for the release 24.3:
+This is the recommended release flow in a nutshell for the release 24.7:
 
 [source,bash]
 ----
 # start with the product images ...
 # create and push the release branch
-./release/create-release-branch.sh -b 24.3 -w products -p
+./release/create-release-branch.sh -b 24.7 -w products # Only add the -p flag after testing locally first
 
 # create and push the release tag
-./release/create-release-tag.sh -t 24.3.0 -w products -p
+./release/create-release-tag.sh -t 24.7.0 -w products # Only add the -p flag after testing locally first
 
 # monitor the GH action that builds ~80 images for success
 
 # continue with the operators ...
 # create and push the release branch
-./release/create-release-branch.sh -b 24.3 -w operators -p
+./release/create-release-branch.sh -b 24.7 -w operators # Only add the -p flag after testing locally first
 
 # create and push the release tag
-./release/create-release-tag.sh -t 24.3.0 -w operators -p
+./release/create-release-tag.sh -t 24.7.0 -w operators # Only add the -p flag after testing locally first
 
 # monitor the GH actions that build the operator images for success
 
 # finally patch the changelog file in the main branch
 # create PRs for all operators
-./release/post-release.sh -t 24.3.0 -p
+./release/post-release.sh -t 24.7.0 # Only add the -p flag after testing locally first
 
 # and that is it!
 # (now the tedious post release steps start ...)
