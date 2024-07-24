@@ -104,7 +104,7 @@ e.g.
 
 [source]
 ----
-./release/create-release-branch.sh -b 23.1 -c -w both
+./release/create-release-branch.sh -b 23.1 -p -c -w both
 ----
 
 ##### What this script does
@@ -144,7 +144,7 @@ e.g.
 
 [source]
 ----
-./release/create-release-tag.sh -t 23.1.0 -c -w both
+./release/create-release-tag.sh -t 23.1.0 -p -c -w both
 ----
 
 ##### What this script does
@@ -257,7 +257,7 @@ e.g.
 
 [source]
 ----
-./release/create-bugfix-tag.sh -t 23.1.0 -c -w both -i
+./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w both -i
 ----
 
 ##### What this script does
