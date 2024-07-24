@@ -53,6 +53,11 @@ A set of scripts that automates some release steps. The release process has mult
 
 ### Install requirements
 
+> [!NOTE]
+> Nix users will not need to install anything, just enter the `nix-shell` in this repository (if not done automatically via `direnv`). 
+> The dependencies will install automatically.
+> A nix-shell will be entered for each operator during certain commands, so operator dependencies will be covered too.
+
 #### cargo-edit plugin
 
 The `cargo-edit` plugin is used to update operator versions in `cargo` workspaces.
