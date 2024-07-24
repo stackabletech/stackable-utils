@@ -33,8 +33,10 @@ tag_operators() {
     cargo set-version --offline --workspace "$RELEASE_TAG"
 
     cargo update --workspace
-    make regenerate-charts
-    make regenerate-nix
+    # Run via nix-shell for the correct dependencies. Makefile already calls
+    # nix stuff, so it shouldn't be a problem for non-nix users.
+    nix-shell --run 'make regenerate-charts'
+    nix-shell --run 'make regenerate-nix'
 
     update_code "$TEMP_RELEASE_FOLDER/${operator}"
     #-----------------------------------------------------------
