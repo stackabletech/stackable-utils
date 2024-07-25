@@ -152,6 +152,10 @@ update_code() {
 	# Update operator version for the integration tests
 	# this is used when installing the operators.
 	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" "$1/tests/release.yaml"
+
+	# Some tests perform label inspection and for these cases only specific labels should be updated.
+	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
+	find "$1/tests/templates/kuttl" -type f -print0 | xargs -0 sed -i "/app.kubernetes.io\/version/{ s/stackable0.0.0-dev/stackable$RELEASE_TAG/ }"
 }
 
 push_branch() {
