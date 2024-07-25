@@ -20,8 +20,8 @@ tag_products() {
 	git switch "$RELEASE_BRANCH"
 	update_product_images_changelogs
 
-	git commit -am "release $RELEASE_TAG"
-	git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
+	git commit -sam "release $RELEASE_TAG"
+	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	push_branch
 }
 
@@ -37,7 +37,10 @@ tag_operators() {
 
 		cargo set-version --offline --workspace "$RELEASE_TAG"
 		cargo update --workspace
-		make regenerate-charts
+		# Run via nix-shell for the correct dependencies. Makefile already calls
+		# nix stuff, so it shouldn't be a problem for non-nix users.
+		nix-shell --run 'make regenerate-charts'
+		nix-shell --run 'make regenerate-nix'
 
 		update_code "$TEMP_RELEASE_FOLDER/${operator}"
 		#-----------------------------------------------------------
@@ -49,8 +52,8 @@ tag_operators() {
 		#-----------------------------------------------------------
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
-		git commit -am "release $RELEASE_TAG"
-		git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
+		git commit -sam "release $RELEASE_TAG"
+		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
