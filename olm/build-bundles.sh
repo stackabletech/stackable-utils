@@ -206,10 +206,10 @@ main() {
 	bundle-clean
 	build-bundle
 
-	#catalog-clean
-	#catalog
+	catalog-clean
+	catalog
 
-	#deploy
+	deploy
 }
 
 main "$@"

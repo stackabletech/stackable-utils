@@ -333,11 +333,14 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
                 )
             # Only the product cluster role and the product configmap are dumped as individual files
             # The other objects are embedded in the CSV. These are:
-            # - the operator cluster role
+            # - the operator cluster role (N.B. some products have more than one cluster role e.g. HDFS)
             # - the operator deployment
             elif (
                 m["kind"] == "ClusterRole"
-                and m["metadata"]["name"] == f"{args.product}-clusterrole"
+                and (
+                    m["metadata"]["name"] == f"{args.product}-clusterrole"
+                    or m["metadata"]["name"] == f"{args.product}-clusterrole-nodes"
+                )
             ):
                 dest_file = (
                     args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
@@ -406,6 +409,8 @@ def generate_csv(
 
     result = load_resource("csv.yaml")
 
+    # In case of spark, -k8s is still in the product name but the bundle name
+    # in the certification repository is without -k8s. See previous comment on this.
     csv_name = (
         "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
     )
@@ -488,7 +493,7 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
                     {
                         "apiGroups": ["security.openshift.io"],
                         "resources": ["securitycontextconstraints"],
-                        "resourceNames": ["stackable-products-scc"],
+                        "resourceNames": ["nonroot-v2"],
                         "verbs": ["use"],
                     }
                 )
@@ -579,8 +584,12 @@ def write_metadata(args: argparse.Namespace) -> None:
 
         annos = load_resource("annotations.yaml")
 
+        bundle_package_name = (
+            "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
+        )
+
         annos["annotations"]["operators.operatorframework.io.bundle.package.v1"] = (
-            f"stackable-{args.op_name}"
+            f"stackable-{bundle_package_name}"
         )
         annos["annotations"]["com.redhat.openshift.versions"] = args.openshift_versions
 
