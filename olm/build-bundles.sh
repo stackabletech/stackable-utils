@@ -77,7 +77,7 @@ bundle-clean() {
 }
 
 build-bundle() {
-	opm alpha bundle generate --directory manifests --package "${OPERATOR}-package" --output-dir bundle --channels stable --default stable
+	opm alpha bundle generate --directory manifests --package "${OPERATOR}-package" --output-dir bundle --channels "stable,$CHANNEL" --default "$CHANNEL"
 	cp metadata/*.yaml bundle/metadata/
 	docker build -t "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" -f bundle.Dockerfile .
 	docker push "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}"
@@ -104,7 +104,7 @@ catalog() {
 
 	echo "Initiating package: ${OPERATOR}"
 	opm init "stackable-${OPERATOR}-operator" \
-		--default-channel=stable \
+		--default-channel="$CHANNEL" \
 		--output yaml >"catalog/stackable-${OPERATOR}-operator.yaml"
 	##--description="TODO: add description here" \
 
@@ -113,9 +113,16 @@ catalog() {
 		echo "---"
 		echo "schema: olm.channel"
 		echo "package: stackable-${OPERATOR}-operator"
+		echo "name: \"$CHANNEL\""
+		echo "entries:"
+		echo "- name: ${OPERATOR}-operator.v${VERSION}"
+		echo "---"
+		echo "schema: olm.channel"
+		echo "package: stackable-${OPERATOR}-operator"
 		echo "name: stable"
 		echo "entries:"
 		echo "- name: ${OPERATOR}-operator.v${VERSION}"
+
 	} >>"catalog/stackable-${OPERATOR}-operator.yaml"
 	echo "Render operator: ${OPERATOR}"
 	opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" --output=yaml >>"catalog/stackable-${OPERATOR}-operator.yaml"
@@ -152,7 +159,7 @@ catalog() {
 		echo "metadata:"
 		echo "  name: stackable-${OPERATOR}-subscription"
 		echo "spec:"
-		echo "  channel: stable"
+		echo "  channel: '$CHANNEL'"
 		echo "  name: stackable-${OPERATOR}-operator" # this is the package name NOT the operator-name
 		echo "  source: stackable-${OPERATOR}-catalog"
 		echo "  sourceNamespace: stackable-operators"
@@ -193,6 +200,8 @@ main() {
 		echo "Usage: $SCRIPT_NAME -r <release> -o <operator> -c <path-to-openshift-repo>"
 		exit 1
 	fi
+
+  CHANNEL="$(echo "$VERSION"|sed 's/\.[^.]*$//')"
 
 	if [ "$OPERATOR" == "spark-k8s" ]; then
 		echo "Renaming operator from spark-k8s to spark"
