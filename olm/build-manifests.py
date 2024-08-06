@@ -165,7 +165,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             f"Certification repository path not found: {args.repo_certified_operators} or it's not a certified operator repository"
         )
 
-    ### Set bundle channel
+    ### Set bundle default channel
     if not args.channel:
         if args.release == "0.0.0-dev":
             args.channel = "alpha"
@@ -596,9 +596,7 @@ def write_metadata(args: argparse.Namespace) -> None:
         annos["annotations"][
             "operators.operatorframework.io.bundle.channel.default.v1"
         ] = args.channel
-        annos["annotations"]["operators.operatorframework.io.bundle.channels.v1"] = (
-            args.channel
-        )
+        annos["annotations"]["operators.operatorframework.io.bundle.channels.v1"] = f"stable,{args.channel}"
 
         anno_file = metadata_dir / "annotations.yaml"
         logging.info(f"Writing {anno_file}")
