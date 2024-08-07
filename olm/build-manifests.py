@@ -428,6 +428,7 @@ def generate_csv(
     result["metadata"]["annotations"]["repository"] = (
         f"https://github.com/stackabletech/{args.op_name}"
     )
+    result["metadata"]["annotations"]["olm.skipRange"] = f'< {args.release}'
 
     ### 1. Add list of owned crds
     result["spec"]["customresourcedefinitions"]["owned"] = owned_crds
