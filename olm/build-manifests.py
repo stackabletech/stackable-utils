@@ -589,9 +589,7 @@ def write_metadata(args: argparse.Namespace) -> None:
             "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
         )
 
-        annos["annotations"]["operators.operatorframework.io.bundle.package.v1"] = (
-            f"stackable-{bundle_package_name}"
-        )
+        annos["annotations"]["operators.operatorframework.io.bundle.package.v1"] = bundle_package_name
         annos["annotations"]["com.redhat.openshift.versions"] = args.openshift_versions
 
         annos["annotations"][
