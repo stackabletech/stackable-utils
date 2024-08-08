@@ -11,6 +11,7 @@
 #
 # - There is a clone of the openshift-certified-operators repository in the folder passed as -c argument.
 #   This is the same as the build-manifests.sh script.
+#   Ensure the openshift-certified-operators repo is located on the correct branch (this is not supplied as an arguments).
 #
 # - The operator manifests for the given version have been generated with the build-manifests.sh script
 #   and are available in that repository under operators/<operator>/version/manifests.
