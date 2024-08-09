@@ -50,14 +50,14 @@ generate_metadata() {
   cat >annotations.yaml <<-ANNOS
 ---
 annotations:
-  operators.operatorframework.io.bundle.channel.default.v1: stable
-  operators.operatorframework.io.bundle.channels.v1: stable
+  operators.operatorframework.io.bundle.channel.default.v1: "${RELEASE}"
+  operators.operatorframework.io.bundle.channels.v1: "stable,${RELEASE}"
   operators.operatorframework.io.bundle.manifests.v1: manifests/
   operators.operatorframework.io.bundle.mediatype.v1: registry+v1
   operators.operatorframework.io.bundle.metadata.v1: metadata/
   operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-  com.redhat.openshift.versions: v4.11-v4.15
+  com.redhat.openshift.versions: v4.12-v4.15
 ANNOS
 
   cat >dependencies.yaml <<-DEPS
@@ -97,6 +97,7 @@ parse_inputs() {
     case $1 in
     -r)
       RELEASE_VERSION="$2"
+      RELEASE="$(cut -d'.' -f1,2 <<<"$RELEASE_VERSION")"
       shift
       ;;
     -o)
@@ -150,14 +151,14 @@ HELP
 patch_cluster_roles() {
   pushd "$MANIFESTS_DIR"
 
-  # Add product SCC to product cluster role
+  # Add nonroot-v2 SCC to product cluster role
   if [ -f "$PRODUCT-clusterrole.yml" ]; then
-    yq -i '.rules += { "apiGroups": [ "security.openshift.io" ], "resources": [ "securitycontextconstraints" ], "resourceNames": ["stackable-products-scc" ], "verbs": ["use"]}' "$PRODUCT-clusterrole.yml"
+    yq -i '.rules += { "apiGroups": [ "security.openshift.io" ], "resources": [ "securitycontextconstraints" ], "resourceNames": ["nonroot-v2" ], "verbs": ["use"]}' "$PRODUCT-clusterrole.yml"
   fi
 
-  # Add hostmount-anyuid SCC to operator cluster role
+  # Add nonroot-v2 SCC to operator cluster role
   if [ -f "$OPERATOR-clusterrole.yml" ]; then
-    yq -i '.rules += { "apiGroups": [ "security.openshift.io" ], "resources": [ "securitycontextconstraints" ], "resourceNames": ["hostmount-anyuid" ], "verbs": ["use"]}' "$OPERATOR-clusterrole.yml"
+    yq -i '.rules += { "apiGroups": [ "security.openshift.io" ], "resources": [ "securitycontextconstraints" ], "resourceNames": ["nonroot-v2" ], "verbs": ["use"]}' "$OPERATOR-clusterrole.yml"
   fi
 
   popd

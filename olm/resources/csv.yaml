@@ -19,6 +19,7 @@ metadata:
         description: Stackable Operator for placeholder
         repository: https://github.com/stackabletech/placeholder
         containerImage: placeholder
+        olm.skipRange: placeholder
 spec:
     displayName: placeholder
     description: |
