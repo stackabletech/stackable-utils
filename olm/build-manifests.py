@@ -485,19 +485,6 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
             except KeyError:
                 pass
 
-            ### Patch the product cluster role with the SCC rule
-            if (
-                man["kind"] == "ClusterRole"
-                and man["metadata"]["name"] == f"{args.product}-clusterrole"
-            ):
-                man["rules"].append(
-                    {
-                        "apiGroups": ["security.openshift.io"],
-                        "resources": ["securitycontextconstraints"],
-                        "resourceNames": ["nonroot-v2"],
-                        "verbs": ["use"],
-                    }
-                )
             ### Patch the version label
             try:
                 if (
