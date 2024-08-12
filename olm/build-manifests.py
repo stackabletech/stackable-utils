@@ -165,7 +165,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             f"Certification repository path not found: {args.repo_certified_operators} or it's not a certified operator repository"
         )
 
-    ### Set bundle channel
+    ### Set bundle default channel
     if not args.channel:
         if args.release == "0.0.0-dev":
             args.channel = "alpha"
@@ -333,11 +333,14 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
                 )
             # Only the product cluster role and the product configmap are dumped as individual files
             # The other objects are embedded in the CSV. These are:
-            # - the operator cluster role
+            # - the operator cluster role (N.B. some products have more than one cluster role e.g. HDFS)
             # - the operator deployment
             elif (
                 m["kind"] == "ClusterRole"
-                and m["metadata"]["name"] == f"{args.product}-clusterrole"
+                and (
+                    m["metadata"]["name"] == f"{args.product}-clusterrole"
+                    or m["metadata"]["name"] == f"{args.product}-clusterrole-nodes"
+                )
             ):
                 dest_file = (
                     args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
@@ -406,6 +409,8 @@ def generate_csv(
 
     result = load_resource("csv.yaml")
 
+    # In case of spark, -k8s is still in the product name but the bundle name
+    # in the certification repository is without -k8s. See previous comment on this.
     csv_name = (
         "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
     )
@@ -423,6 +428,7 @@ def generate_csv(
     result["metadata"]["annotations"]["repository"] = (
         f"https://github.com/stackabletech/{args.op_name}"
     )
+    result["metadata"]["annotations"]["olm.skipRange"] = f'< {args.release}'
 
     ### 1. Add list of owned crds
     result["spec"]["customresourcedefinitions"]["owned"] = owned_crds
@@ -488,7 +494,7 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
                     {
                         "apiGroups": ["security.openshift.io"],
                         "resources": ["securitycontextconstraints"],
-                        "resourceNames": ["stackable-products-scc"],
+                        "resourceNames": ["nonroot-v2"],
                         "verbs": ["use"],
                     }
                 )
@@ -579,17 +585,19 @@ def write_metadata(args: argparse.Namespace) -> None:
 
         annos = load_resource("annotations.yaml")
 
+        bundle_package_name = (
+            "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
+        )
+
         annos["annotations"]["operators.operatorframework.io.bundle.package.v1"] = (
-            f"stackable-{args.op_name}"
+            f"stackable-{bundle_package_name}"
         )
         annos["annotations"]["com.redhat.openshift.versions"] = args.openshift_versions
 
         annos["annotations"][
             "operators.operatorframework.io.bundle.channel.default.v1"
         ] = args.channel
-        annos["annotations"]["operators.operatorframework.io.bundle.channels.v1"] = (
-            args.channel
-        )
+        annos["annotations"]["operators.operatorframework.io.bundle.channels.v1"] = f"stable,{args.channel}"
 
         anno_file = metadata_dir / "annotations.yaml"
         logging.info(f"Writing {anno_file}")
