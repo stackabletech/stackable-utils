@@ -60,19 +60,6 @@ annotations:
   com.redhat.openshift.versions: v4.12-v4.15
 ANNOS
 
-  cat >dependencies.yaml <<-DEPS
----
-dependencies:
-  - type: olm.package
-    value:
-      packageName: stackable-commons-operator
-      version: "$RELEASE_VERSION"
-  - type: olm.package
-    value:
-      packageName: stackable-secret-operator
-      version: "$RELEASE_VERSION"
-DEPS
-
   popd
 }
 
