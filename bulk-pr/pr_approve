@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
+set -euo pipefail
+PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
 source repos
 for product in "${products[@]}"; do
-  STATE=$(gh pr view $1  -R stackabletech/${product}-operator --jq '.state' --json state)
-  if [[ $STATE -eq "OPEN" ]]; then
+  STATE=$(gh pr view ${PR_BRANCH_NAME}  -R stackabletech/${product}-operator --jq '.state' --json state)
+  if [[ "$STATE" == "OPEN" ]]; then
     echo "Approving ${product}"
-    gh pr review $1 --approve -R stackabletech/${product}-operator
-    gh pr merge $1 -R stackabletech/${product}-operator
+    gh pr review ${PR_BRANCH_NAME} --approve -R stackabletech/${product}-operator
+    gh pr merge ${PR_BRANCH_NAME} -R stackabletech/${product}-operator
   else
     echo "Skipping ${product}, PR already closed"
   fi

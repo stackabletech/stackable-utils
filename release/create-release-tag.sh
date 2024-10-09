@@ -20,8 +20,8 @@ tag_products() {
 	git switch "$RELEASE_BRANCH"
 	update_product_images_changelogs
 
-	git commit -am "release $RELEASE_TAG"
-	git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
+	git commit -sam "release $RELEASE_TAG"
+	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	push_branch
 }
 
@@ -37,7 +37,10 @@ tag_operators() {
 
 		cargo set-version --offline --workspace "$RELEASE_TAG"
 		cargo update --workspace
-		make regenerate-charts
+		# Run via nix-shell for the correct dependencies. Makefile already calls
+		# nix stuff, so it shouldn't be a problem for non-nix users.
+		nix-shell --run 'make regenerate-charts'
+		nix-shell --run 'make regenerate-nix'
 
 		update_code "$TEMP_RELEASE_FOLDER/${operator}"
 		#-----------------------------------------------------------
@@ -49,8 +52,8 @@ tag_operators() {
 		#-----------------------------------------------------------
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
-		git commit -am "release $RELEASE_TAG"
-		git tag "$RELEASE_TAG" -m "release $RELEASE_TAG"
+		git commit -sam "release $RELEASE_TAG"
+		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -149,6 +152,10 @@ update_code() {
 	# Update operator version for the integration tests
 	# this is used when installing the operators.
 	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" "$1/tests/release.yaml"
+
+	# Some tests perform label inspection and for these cases only specific labels should be updated.
+	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
+	find "$1/tests/templates/kuttl" -type f -print0 | xargs -0 sed -i "/app.kubernetes.io\/version/{ s/stackable0.0.0-dev/stackable$RELEASE_TAG/ }"
 }
 
 push_branch() {

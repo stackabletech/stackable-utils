@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
+set -euo pipefail
+PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
 source repos
 for product in "${products[@]}"; do
-    STATE=$(gh pr view $1  -R stackabletech/${product}-operator --jq '.state' --json state)
-    gh pr checks $1 -R stackabletech/${product}-operator &> /dev/null
+    STATE=$(gh pr view ${PR_BRANCH_NAME} -R stackabletech/${product}-operator --jq '.state' --json state)
+    # Disable -e option to the "set" command below because it causes the script to stop if checks are in progress.
+    set +e
+    gh pr checks ${PR_BRANCH_NAME} -R stackabletech/${product}-operator &>/dev/null
+    set -e
     status=$?
     echo "${product}(${STATE}): ${status}"
 done

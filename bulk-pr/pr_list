@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
+PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
 source repos
 # Disable gh paging for results.
 PAGER=
