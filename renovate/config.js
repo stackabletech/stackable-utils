@@ -44,7 +44,6 @@ module.exports = {
   ],
   gitAuthor: "\"Stacky McStackface\" <serviceaccounts@stackable.tech>",
   forkProcessing: 'enabled',
-  logFileLevel: 'info',
   branchConcurrentLimit: 0,
   prHourlyLimit: 0,
   dependencyDashboard: true,
@@ -53,5 +52,5 @@ module.exports = {
   force: {
     prCreation: "immediate",
     schedule: [],
-  }
+  },
 };
