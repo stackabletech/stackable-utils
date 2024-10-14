@@ -634,17 +634,17 @@ CSV_DISPLAY_NAME = {
     "airflow": "Stackable Operator for Apache Airflow",
     "commons": "Stackable Commons Operator",
     "druid": "Stackable Operator for Apache Druid",
-    "hbase": "Stackable Operator for Apache Hbase",
-    "hdfs": "Stackable Operator for Apache HDFS",
+    "hbase": "Stackable Operator for Apache HBase",
+    "hdfs": "Stackable Operator for Apache Hadoop HDFS",
     "hello-world": "Stackable Hello World Operator",
     "hive": "Stackable Operator for Apache Hive",
     "kafka": "Stackable Operator for Apache Kafka",
-    "nifi": "Stackable Operator for Apache Nifi",
+    "nifi": "Stackable Operator for Apache NiFi",
     "opa": "Stackable Operator for the Open Policy Agent",
     "spark-k8s": "Stackable Operator for Apache Spark",
     "superset": "Stackable Operator for Apache Superset",
     "trino": "Stackable Operator for Trino",
-    "zookeeper": "Stackable Operator for Apache Zookeeper",
+    "zookeeper": "Stackable Operator for Apache ZooKeeper",
 }
 
 if __name__ == "__main__":
