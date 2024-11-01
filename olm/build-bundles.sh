@@ -153,7 +153,8 @@ spec:
   grpcPodConfig:
     tolerations:
     - key: keep-out
-      operator: Exists
+      value: "yes"
+      operator: Equal
       effect: NoSchedule
 CATALOGSOURCE
 
@@ -173,11 +174,12 @@ spec:
   config:
     tolerations:
     - key: keep-out
-      operator: Exists
+      value: "yes"
+      operator: Equal
       effect: NoSchedule
     env:
     - name: SOME_IMPORTANT_FEATURE_FLAG
-      value: "off"
+      value: "turn-it-on"
 SUBSCRIPTION
 
   echo "Generating operator group ..."
