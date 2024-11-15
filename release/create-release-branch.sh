@@ -45,10 +45,10 @@ update_operators() {
 update_repos() {
   local BASE_DIR="$1";
 
-  if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     update_products
   fi
-  if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     update_operators
   fi
 }
@@ -109,7 +109,7 @@ main() {
   # check if tag argument provided
   #-----------------------------------------------------------
   if [ -z "${RELEASE}" ]; then
-    echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w both|products|operators]"
+    echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w products|operators|all]"
     exit 1
   fi
   #-----------------------------------------------------------
