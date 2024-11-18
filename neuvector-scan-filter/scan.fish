@@ -28,6 +28,8 @@ rm result.csv
 
 mkdir --parents scan_results
 
+docker pull neuvector/scanner
+
 for image in $images
     set scan_result_file "scan_results/"(string replace --all : _ "$image" | string replace --all / _)
 
