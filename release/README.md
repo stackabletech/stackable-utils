@@ -10,7 +10,8 @@ This is the recommended release flow in a nutshell for the release 24.7:
 # create and push the release tag
 ./release/create-release-tag.sh -t 24.7.0 -w products # Only add the -p flag after testing locally first
 
-# monitor the GH action that builds ~80 images for success
+# monitor the GH action that builds ~80 images for success.
+# build failures alerts will appear in the #notifications-container-images channel.
 
 # continue with the operators ...
 # create and push the release branch
@@ -20,6 +21,11 @@ This is the recommended release flow in a nutshell for the release 24.7:
 ./release/create-release-tag.sh -t 24.7.0 -w operators # Only add the -p flag after testing locally first
 
 # monitor the GH actions that build the operator images for success
+# build failures are not yet sent to the #notifications-container-images channel yet.
+
+# continue with the demos ...
+# create and push the release branch
+./release/create-release-branch.sh -b 24.7 -w demos # Only add the -p flag after testing locally first
 
 # finally patch the changelog file in the main branch
 # create PRs for all operators
@@ -84,13 +90,13 @@ You have to be logged in when running the `post-release.sh` script. The easiest 
 To create release branches use the `create-release-branch.sh` script, called from the repository root folder. The syntax is given below:
 
 ```
-./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|all]
+./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|demos|all]
 ```
 
 - `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
 - `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the branch. It can be "products", "operators", "all".
+- `-w`: where to create the branch. It can be "products", "operators", "demos", "all".
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
