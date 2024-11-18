@@ -1,4 +1,5 @@
 ---
+demos-repo: demos
 images-repo: docker-images
 operators:
   - airflow-operator

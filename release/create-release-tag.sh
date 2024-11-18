@@ -59,10 +59,10 @@ tag_operators() {
 }
 
 tag_repos() {
-	if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
 		tag_products
 	fi
-	if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
 		tag_operators
 	fi
 }
@@ -116,10 +116,10 @@ check_operators() {
 }
 
 checks() {
-	if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
 		check_products
 	fi
-	if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
 		check_operators
 	fi
 }
@@ -235,7 +235,7 @@ main() {
 	# check if tag argument provided
 	#-----------------------------------------------------------
 	if [ -z "${RELEASE_TAG}" ]; then
-		echo "Usage: create-release-tag.sh -t <tag> [-p] [-c] [-w both|products|operators]"
+		echo "Usage: create-release-tag.sh -t <tag> [-p] [-c] [-w products|operators|all]"
 		exit 1
 	fi
 	#-----------------------------------------------------------

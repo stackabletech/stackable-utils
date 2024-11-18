@@ -44,17 +44,17 @@ tag_operators() {
     #-----------------------------------------------------------
     "$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
 
-    git commit -sam "release $RELEASE_TAG"    
+    git commit -sam "release $RELEASE_TAG"
     git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
     push_branch
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 tag_repos() {
-  if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     tag_products
   fi
-  if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     tag_operators
   fi
 }
@@ -116,10 +116,10 @@ check_operators() {
 }
 
 checks() {
-  if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     check_products
   fi
-  if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     check_operators
   fi
 }

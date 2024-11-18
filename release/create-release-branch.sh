@@ -42,14 +42,34 @@ update_operators() {
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
+update_demos() {
+  if [ -d "$BASE_DIR/$DEMOS_REPO" ]; then
+    cd "$BASE_DIR/$DEMOS_REPO"
+    git pull && git switch "${RELEASE_BRANCH}"
+  else
+    git clone --branch main --depth 1 "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
+    cd "$BASE_DIR/$DEMOS_REPO"
+    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REPOSITORY}/${BASE_BRANCH}"
+  fi
+
+  # Search and replace known references to stackableRelease, container images, branch references.
+  # https://github.com/stackabletech/demos/blob/main/.scripts/update_refs.sh
+  .scripts/update_refs.sh commit
+
+  push_branch "$DEMOS_REPO"
+}
+
 update_repos() {
   local BASE_DIR="$1";
 
-  if [ "products" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     update_products
   fi
-  if [ "operators" == "$WHAT" ] || [ "both" == "$WHAT" ]; then
+  if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     update_operators
+  fi
+  if [ "demos" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
+    update_demos
   fi
 }
 
@@ -98,6 +118,7 @@ parse_inputs() {
 
   INITIAL_DIR="$PWD"
   DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
+  DEMOS_REPO=$(yq '... comments="" | .demos-repo ' "$INITIAL_DIR"/release/config.yaml)
   TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 
   echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
@@ -109,7 +130,7 @@ main() {
   # check if tag argument provided
   #-----------------------------------------------------------
   if [ -z "${RELEASE}" ]; then
-    echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w both|products|operators]"
+    echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w products|operators|demos|all]"
     exit 1
   fi
   #-----------------------------------------------------------

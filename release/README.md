@@ -10,7 +10,8 @@ This is the recommended release flow in a nutshell for the release 24.7:
 # create and push the release tag
 ./release/create-release-tag.sh -t 24.7.0 -w products # Only add the -p flag after testing locally first
 
-# monitor the GH action that builds ~80 images for success
+# monitor the GH action that builds ~80 images for success.
+# build failures alerts will appear in the #notifications-container-images channel.
 
 # continue with the operators ...
 # create and push the release branch
@@ -20,6 +21,11 @@ This is the recommended release flow in a nutshell for the release 24.7:
 ./release/create-release-tag.sh -t 24.7.0 -w operators # Only add the -p flag after testing locally first
 
 # monitor the GH actions that build the operator images for success
+# build failures are not yet sent to the #notifications-container-images channel yet.
+
+# continue with the demos ...
+# create and push the release branch
+./release/create-release-branch.sh -b 24.7 -w demos # Only add the -p flag after testing locally first
 
 # finally patch the changelog file in the main branch
 # create PRs for all operators
@@ -54,7 +60,7 @@ A set of scripts that automates some release steps. The release process has mult
 ### Install requirements
 
 > [!NOTE]
-> Nix users will not need to install anything, just enter the `nix-shell` in this repository (if not done automatically via `direnv`). 
+> Nix users will not need to install anything, just enter the `nix-shell` in this repository (if not done automatically via `direnv`).
 > The dependencies will install automatically.
 > A nix-shell will be entered for each operator during certain commands, so operator dependencies will be covered too.
 
@@ -84,20 +90,20 @@ You have to be logged in when running the `post-release.sh` script. The easiest 
 To create release branches use the `create-release-branch.sh` script, called from the repository root folder. The syntax is given below:
 
 ```
-./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|both]
+./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|demos|all]
 ```
 
 - `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
 - `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the branch. It can be "products", "operators", "both".
+- `-w`: where to create the branch. It can be "products", "operators", "demos", "all".
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
 e.g.
 
 ```shell
-./release/create-release-branch.sh -b 23.1 -p -c -w both
+./release/create-release-branch.sh -b 23.1 -p -c -w all
 ```
 
 ##### What this script does
@@ -121,20 +127,20 @@ e.g.
 To create release tags use the `create-release-tag.sh` script, called from the repository root folder. The syntax is given below:
 
 ```
-./release/create-release-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|both]
+./release/create-release-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|all]
 ```
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "both".
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "all".
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
 e.g.
 
 ```shell
-./release/create-release-tag.sh -t 23.1.0 -p -c -w both
+./release/create-release-tag.sh -t 23.1.0 -p -c -w all
 ```
 
 ##### What this script does
@@ -226,13 +232,13 @@ Once the release is complete and all steps above have been verified, the documen
 To create release tags for bugfix/patch releases use the `create-bugfix-tag.sh` script, called from the repository root folder. The syntax is given below:
 
 ```
-./release/create-bugfix-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|both] [-i]
+./release/create-bugfix-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|all] [-i]
 ```
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "both".
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "all".
 - `-i`: product image versioning flag (optional, default is "false"). If provided, updates test definitions with product image versions from this release version (i.e. assumes products have been released/tagged, too).
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
@@ -240,7 +246,7 @@ N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 e.g.
 
 ```shell
-./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w both -i
+./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w all -i
 ```
 
 ##### What this script does
