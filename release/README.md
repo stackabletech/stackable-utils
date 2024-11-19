@@ -166,15 +166,17 @@ e.g.
 Some post release steps are performed with `release/post-release.sh` script, called from the repository root folder. The syntax is given below:
 
 ```
-./release/post-release.sh -t <release-tag> [-p]
+./release/post-release.sh -t <release-tag> [-p] [-w products|operators|all]
 ```
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
+- `-w`: which repositories to update the changelogs for. It can be "products", "operators", "all" (defaults to "all").
 
 ##### What this script does
 
-- checks that the release tag exists and that the all operator repositories have a clean working copy
+- checks that the release tag exists and that all operator repositories have a clean working copy
+- checks that the release tag exists and that the docker-images repository has a clean working copy
 - merges the CHANGELOG.md from the release tag into main
 - creates PRs for all operators
 
