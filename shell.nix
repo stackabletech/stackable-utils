@@ -4,6 +4,7 @@ pkgs.mkShell {
     cargo-edit
     gettext # envsubst
     gh
+    jinja2-cli
     yq-go
   ];
 }
