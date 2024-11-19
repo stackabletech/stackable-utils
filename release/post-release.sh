@@ -96,7 +96,7 @@ update_operators() {
     fi
     # Commit the updated CHANGELOG.
     git add CHANGELOG.md
-    git commit -m "Update CHANGELOG.md from release $RELEASE_TAG"
+    git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
     # Maybe push and create pull request
     if "$PUSH"; then
       git push -u "$REMOTE" "$CHANGELOG_BRANCH"
@@ -153,7 +153,7 @@ update_docker_images() {
   fi
   # Commit the updated CHANGELOG.
   git add CHANGELOG.md
-  git commit -m "Update CHANGELOG.md from release $RELEASE_TAG"
+  git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
   # Maybe push and create pull request
   if "$PUSH"; then
     git push -u "$REMOTE" "$CHANGELOG_BRANCH"
