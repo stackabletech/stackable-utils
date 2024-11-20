@@ -43,7 +43,7 @@ parse_inputs() {
   echo "Settings: $RELEASE_BRANCH: Push: $PUSH"
 }
 
-# Check that the operator repos have been cloned localled, and that the release
+# Check that the operator repos have been cloned locally, and that the release
 # branch and tag exists.
 check_operators() {
   while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
@@ -105,7 +105,7 @@ update_operators() {
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
-# Check that the docker-images repo has been cloned localled, and that the release
+# Check that the docker-images repo has been cloned locally, and that the release
 # branch and tag exists.
 check_docker_images() {
   echo "docker-images"
