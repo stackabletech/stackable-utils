@@ -3,17 +3,23 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
     name: placeholder
+    labels:
+        operatorframework.io/arch.amd64: supported
+        operatorframework.io/arch.arm64: supported
+        operatorframework.io/os.linux: supported
     annotations:
         operatorframework.io/suggested-namespace: stackable-operators
+        features.operators.openshift.io/cnf: "false"
+        features.operators.openshift.io/cni: "false"
+        features.operators.openshift.io/csi: "false"
         features.operators.openshift.io/disconnected: "false"
         features.operators.openshift.io/fips-compliant: "false"
-        features.operators.openshift.io/proxy-aware: "true"
+        features.operators.openshift.io/proxy-aware: "false"
         features.operators.openshift.io/tls-profiles: "false"
         features.operators.openshift.io/token-auth-aws: "false"
         features.operators.openshift.io/token-auth-azure: "false"
         features.operators.openshift.io/token-auth-gcp: "false"
-        support: stackable.tech
-        olm.properties: '[]'
+        support: Stackable GmbH
         categories: Storage
         capabilities: Full Lifecycle
         description: Stackable Operator for placeholder

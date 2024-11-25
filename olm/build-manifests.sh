@@ -11,7 +11,7 @@
 #
 # Example:
 #
-#   ./olm/build-manifests.sh -r 23.11.0 -c $HOME/repo/stackable/openshift-certified-operators -o $HOME/repo/stackable/zookeeper-operator
+#   ./olm/build-manifests.sh -r 24.11.0 -c $HOME/repo/stackable/openshift-certified-operators -o $HOME/repo/stackable/secret-operator
 #
 # Before running the script:
 # * Ensure the certified-operators and operator repos are located on the correct branches (the branches are not supplied as arguments).
@@ -22,7 +22,6 @@
 # * Replace the contents of the deployment, and cluster role with the `template.spec` and `rules` from the newly generated files.
 # * Remove the unused generated files : service account, operator cluster role (not the product cluster role), role binding, deployment.
 # * Remove all Helm labels in all remaining files (including all labels from the cluster role).
-# * Check or update the metadata/dependencies.yaml
 # * Update image tags and hashes
 
 set -euo pipefail
@@ -57,21 +56,8 @@ annotations:
   operators.operatorframework.io.bundle.metadata.v1: metadata/
   operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-  com.redhat.openshift.versions: v4.12-v4.15
+  com.redhat.openshift.versions: v4.11-v4.17
 ANNOS
-
-  cat >dependencies.yaml <<-DEPS
----
-dependencies:
-  - type: olm.package
-    value:
-      packageName: stackable-commons-operator
-      version: "$RELEASE_VERSION"
-  - type: olm.package
-    value:
-      packageName: stackable-secret-operator
-      version: "$RELEASE_VERSION"
-DEPS
 
   popd
 }
