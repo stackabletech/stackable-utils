@@ -4,19 +4,19 @@
 #
 set -euo pipefail
 set -x
-#-----------------------------------------------------------
+
 # tags should be semver-compatible e.g. 23.1.1 not 23.01.1
 # this is needed for cargo commands to work properly
-#-----------------------------------------------------------
-TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
+# optional release-candidate suffixes are in the form:
+#	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
+TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
 REPOSITORY="origin"
 
 tag_products() {
 	# assume that the branch exists and has either been pushed or has been created locally
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-	#-----------------------------------------------------------
+
 	# the release branch should already exist
-	#-----------------------------------------------------------
 	git switch "$RELEASE_BRANCH"
 	update_product_images_changelogs
 
@@ -35,6 +35,7 @@ tag_operators() {
 			git submodule update --recursive --init
 		fi
 
+		# set tag version where relevant
 		cargo set-version --offline --workspace "$RELEASE_TAG"
 		cargo update --workspace
 		# Run via nix-shell for the correct dependencies. Makefile already calls
@@ -43,13 +44,11 @@ tag_operators() {
 		nix-shell --run 'make regenerate-nix'
 
 		update_code "$TEMP_RELEASE_FOLDER/${operator}"
-		#-----------------------------------------------------------
+
 		# ensure .j2 changes are resolved
-		#-----------------------------------------------------------
 		"$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
-		#-----------------------------------------------------------
+
 		# inserts a single line with tag and date
-		#-----------------------------------------------------------
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
 		git commit -sam "release $RELEASE_TAG"
@@ -69,14 +68,14 @@ tag_repos() {
 
 check_products() {
 	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
-		echo "Expected folder is missing: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-		exit 1
+		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  		# $TEMP_RELEASE_FOLDER has already been created in main()
+  		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 	fi
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-	#-----------------------------------------------------------
-	# the up-to-date release branch has already been pulled
-	# N.B. look for exact match (no -rcXXX)
-	#-----------------------------------------------------------
+
+	# switch to the release branch, which should exist as tagging
+	# is subsequent to creating the branch.
 	BRANCH_EXISTS=$(git branch -a | grep -E "$RELEASE_BRANCH$")
 
 	if [ -z "${BRANCH_EXISTS}" ]; then
@@ -84,8 +83,10 @@ check_products() {
 		exit 1
 	fi
 
+	git switch "${RELEASE_BRANCH}"
 	git fetch --tags
 
+  	# check tags: N.B. look for exact match
 	TAG_EXISTS=$(git tag -l | grep -E "$RELEASE_TAG$")
 	if [ -n "$TAG_EXISTS" ]; then
 		echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
@@ -97,8 +98,10 @@ check_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
 		if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
-			echo "Expected folder is missing: $TEMP_RELEASE_FOLDER/${operator}"
-			exit 1
+			echo "Cloning folder: $TEMP_RELEASE_FOLDER/${operator}"
+			# $TEMP_RELEASE_FOLDER has already been created in main()
+			git clone "git@github.com:stackabletech/${operator}.git" "$TEMP_RELEASE_FOLDER/${operator}"
+
 		fi
 		cd "$TEMP_RELEASE_FOLDER/${operator}"
 		BRANCH_EXISTS=$(git branch -a | grep -E "$RELEASE_BRANCH$")
@@ -106,6 +109,8 @@ check_operators() {
 			echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
 			exit 1
 		fi
+		git switch "${RELEASE_BRANCH}"
+
 		git fetch --tags
 		TAG_EXISTS=$(git tag -l | grep -E "$RELEASE_TAG$")
 		if [ -n "${TAG_EXISTS}" ]; then
@@ -127,6 +132,7 @@ checks() {
 update_code() {
 	if [ -d "$1/docs" ]; then
 		echo "Updating antora docs for $1"
+
 		# antora version should be major.minor, not patch level
 		yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
 		yq -i '.prerelease = false' "$1/docs/antora.yml"
@@ -134,14 +140,21 @@ update_code() {
 		# Not all operators have a getting started guide
 		# that's why we verify if templating_vars.yaml exists.
 		if [ -f "$1/docs/templating_vars.yaml" ]; then
+
+			# for an initial tag for a given release...
 			yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+
+			# ...consider for patch releases/release candidates too
+			# We assume that the tag (e.g. 23.7.1) is applied to an earlier tag in the same
+			# release (e.g. 23.7.0) so search+replace on the major.minor tag will suffice.
+			# TODO: this may pick up versions of external components as well.
+			yq -i "(.versions.[] | select(. == \"${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+
 			yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
 			yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
 		fi
 
-		#--------------------------------------------------------------------------
 		# Replace "nightly" link so the documentation refers to the current version
-		#--------------------------------------------------------------------------
 		for file in $(find "$1/docs" -name "*.adoc"); do
 			sed -i "s/nightly@home/home/g" "$file"
 		done
@@ -150,10 +163,14 @@ update_code() {
 	fi
 
 	# Update operator version for the integration tests
-	# this is used when installing the operators.
+	# (used when installing the operators).
 	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" "$1/tests/release.yaml"
 
-	# Some tests perform label inspection and for these cases only specific labels should be updated.
+	# do this for patch releases/release candidates too.
+	# i.e. replace 24.11.0-rc1 with 24.11.0, 24.7.0 with 24.7.1 etc.
+	yq -i "(.releases.tests.products[].operatorVersion | select(. == \"${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$1/tests/release.yaml"
+
+	# Some tests perform **label** inspection and for (only) these cases specific labels should be updated.
 	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
 	find "$1/tests/templates/kuttl" -type f -print0 | xargs -0 sed -i "/app.kubernetes.io\/version/{ s/stackable0.0.0-dev/stackable$RELEASE_TAG/ }"
 }
@@ -166,6 +183,8 @@ push_branch() {
 		git switch main
 	else
 		echo "(Dry-run: not pushing...)"
+		git push --dry-run "${REPOSITORY}" "${RELEASE_BRANCH}"
+    	git push --dry-run "${REPOSITORY}" "${RELEASE_TAG}"
 	fi
 }
 
@@ -211,15 +230,13 @@ parse_inputs() {
 		esac
 		shift
 	done
-	#-----------------------------------------------------------
+
 	# remove leading and trailing quotes
-	#-----------------------------------------------------------
 	RELEASE_TAG="${RELEASE_TAG%\"}"
 	RELEASE_TAG="${RELEASE_TAG#\"}"
-	#----------------------------------------------------------------------------------------------------
+
 	# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-	#----------------------------------------------------------------------------------------------------
-	RELEASE="$(cut -d'.' -f1,2 <<<"$RELEASE_TAG")"
+	RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
 	RELEASE_BRANCH="release-$RELEASE"
 
 	INITIAL_DIR="$PWD"
@@ -231,19 +248,22 @@ parse_inputs() {
 
 main() {
 	parse_inputs "$@"
-	#-----------------------------------------------------------
+
 	# check if tag argument provided
-	#-----------------------------------------------------------
 	if [ -z "${RELEASE_TAG}" ]; then
 		echo "Usage: create-release-tag.sh -t <tag> [-p] [-c] [-w products|operators|all]"
 		exit 1
 	fi
-	#-----------------------------------------------------------
+
 	# check if argument matches our tag regex
-	#-----------------------------------------------------------
 	if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
 		echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
 		exit 1
+	fi
+
+	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
+	  	echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
+  		mkdir -p "$TEMP_RELEASE_FOLDER"
 	fi
 
 	# sanity checks before we start: folder, branches etc.
