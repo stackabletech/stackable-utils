@@ -83,6 +83,15 @@ This script requires <https://github.com/mikefarah/yq> (not to be confused with 
 This script requires <https://github.com/cli> to be installed.
 You have to be logged in when running the `post-release.sh` script. The easiest way is to have a local env variable `GH_TOKEN` set to a classic token created via <https://github.com/settings/tokens> with all `repo` and all `admin:org` scopes or follow the login instructions here <https://cli.github.com/manual/gh_auth_login>.
 
+#### jinja2 (templating tool)
+
+This script requires jinja2 as a templating tool. It can be installed like this:
+
+```shell
+pipx install jinja2-cli
+pipx inject jinja2-cli pyyaml
+```
+
 ### Usage
 
 #### Release branches
