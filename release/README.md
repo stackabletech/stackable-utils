@@ -238,49 +238,6 @@ images-repo: docker-images
 
 Once the release is complete and all steps above have been verified, the documentation needs to be updated and built. This is done in a separate suite of scripts found https://github.com/stackabletech/documentation/tree/main/scripts[here]. Follow the steps given in the two scripts (there are prompts provided which allow for early-exit if things are not as they should be!).
 
-#### Bugfix/patch tags
-
-To create release tags for bugfix/patch releases use the `create-bugfix-tag.sh` script, called from the repository root folder. The syntax is given below:
-
-```
-./release/create-bugfix-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|all] [-i]
-```
-
-- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
-- `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
-- `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "all".
-- `-i`: product image versioning flag (optional, default is "false"). If provided, updates test definitions with product image versions from this release version (i.e. assumes products have been released/tagged, too).
-
-N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
-
-e.g.
-
-```shell
-./release/create-bugfix-tag.sh -t 23.1.0 -p -c -w all -i
-```
-
-##### What this script does
-
-- checks that the release argument is valid (e.g. semver-compatible, major/minor/patch levels)
-- strips this argument of any leading or trailing quote marks
-- for docker images
-  - creates a temporary folder with clones of the images repository (given in `config.yaml`)
-  - clones the docker images repository
-  - checks that the release branch exists and the tag doesn't
-  - switches to the release branch
-  - tags the branch and pushes it if the push argument is provided
-  - deletes the temporary folder (if requested with "-c")
-- for operators:
-  - iterates over a list of operator repository names (listed in `config.yaml`), and for each one:
-  - clones the operator repositories
-  - checks that the release branch exists and the tag doesn't
-  - switches to the release branch
-  - updates crate versions and the workspace
-  - updates test definitions to use product image versions that match the release tag (if requested with "-i")
-  - tags the branch and pushes it if the push argument is provided
-  - deletes the temporary folder (if requested with "-c")
-
 ## Troubleshooting
 
 This section collects problems and errors that happened on different platforms.

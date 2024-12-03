@@ -172,7 +172,7 @@ update_code() {
 
 	# Some tests perform **label** inspection and for (only) these cases specific labels should be updated.
 	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
-	find "$1/tests/templates/kuttl" -type f -print0 | xargs -0 sed -i "/app.kubernetes.io\/version/{ s/stackable0.0.0-dev/stackable$RELEASE_TAG/ }"
+	find "$1/tests/templates/kuttl" -type f -print0 | xargs -0 sed -E -i "s#(app\.kubernetes\.io/version: \".*-stackable)[^\"]*#\1$RELEASE_TAG#"
 }
 
 push_branch() {
