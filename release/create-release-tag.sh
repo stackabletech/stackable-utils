@@ -66,6 +66,27 @@ tag_repos() {
 	fi
 }
 
+check_tag_is_valid() {
+	git fetch --tags
+
+	# check tags: N.B. look for exact match
+	TAG_EXISTS=$(git tag --list | grep -E "$RELEASE_TAG$")
+	if [ -n "$TAG_EXISTS" ]; then
+		echo "Tag $RELEASE_TAG already exists!"
+		exit 1
+	fi
+
+	# Do we want proper semver version checking?
+	# We should switch this script to python if so.
+	#EXISTING_TAGS=$(git tag --list | grep -E "$RELEASE" | sort -V)
+	#for EXISTING_TAG in $EXISTING_TAGS; do
+	#	if [[ "$RELEASE_TAG" < "$EXISTING_TAG" ]]; then
+	#		echo "Error: Proposed tag $RELEASE_TAG is earlier than existing tag $EXISTING_TAG."
+	#		exit 1
+	#	fi
+	#done
+}
+
 check_products() {
 	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
 		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
@@ -84,14 +105,7 @@ check_products() {
 	fi
 
 	git switch "${RELEASE_BRANCH}"
-	git fetch --tags
-
-  	# check tags: N.B. look for exact match
-	TAG_EXISTS=$(git tag -l | grep -E "$RELEASE_TAG$")
-	if [ -n "$TAG_EXISTS" ]; then
-		echo "Tag $RELEASE_TAG already exists in $DOCKER_IMAGES_REPO"
-		exit 1
-	fi
+	check_tag_is_valid
 }
 
 check_operators() {
@@ -110,13 +124,7 @@ check_operators() {
 			exit 1
 		fi
 		git switch "${RELEASE_BRANCH}"
-
-		git fetch --tags
-		TAG_EXISTS=$(git tag -l | grep -E "$RELEASE_TAG$")
-		if [ -n "${TAG_EXISTS}" ]; then
-			echo "Tag $RELEASE_TAG already exists in ${operator}"
-			exit 1
-		fi
+		check_tag_is_valid
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
