@@ -133,7 +133,7 @@ e.g.
 
 #### Release tags
 
-To create release tags use the `create-release-tag.sh` script, called from the repository root folder. The syntax is given below:
+To create release tags use the `create-release-pre-tag.sh` script, called from the repository root folder. The syntax is given below:
 
 ```
 ./release/create-release-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|all]
@@ -149,7 +149,7 @@ N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 e.g.
 
 ```shell
-./release/create-release-tag.sh -t 23.1.0 -p -c -w all
+./release/create-release-pre-tag.sh -t 23.1.0 -p -c -w all
 ```
 
 ##### What this script does
