@@ -16,19 +16,18 @@ tag_products() {
 	# assume that the branch exists and has either been pushed or has been created locally
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
-	# the release branch should already exist
-	git switch "$RELEASE_BRANCH"
+	# the PR branch should already exist
+	git switch "$PR_BRANCH"
 	update_product_images_changelogs
 
 	git commit -sam "release $RELEASE_TAG"
-	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	push_branch
 }
 
 tag_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		cd "${TEMP_RELEASE_FOLDER}/${operator}"
-		git switch "$RELEASE_BRANCH"
+		git switch "$PR_BRANCH"
 
 		# Update git submodules if needed
 		if [ -f .gitmodules ]; then
@@ -52,7 +51,6 @@ tag_operators() {
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
 		git commit -sam "release $RELEASE_TAG"
-		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -104,7 +102,17 @@ check_products() {
 		exit 1
 	fi
 
-	git switch "${RELEASE_BRANCH}"
+	# the new PR should not exist, otherwise a duplicate commit
+	# will be prepared
+	BRANCH_EXISTS=$(git branch -a | grep -E "$PR_BRANCH$")
+	if [ -n "${BRANCH_EXISTS}" ]; then
+		echo "PR branch already exists: ${REPOSITORY}/$PR_BRANCH"
+		exit 1
+	fi
+
+	# create a new branch for the PR off of this
+	git switch -c "${PR_BRANCH}" "${REPOSITORY}/${RELEASE_BRANCH}"
+
 	check_tag_is_valid
 }
 
@@ -123,7 +131,18 @@ check_operators() {
 			echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
 			exit 1
 		fi
-		git switch "${RELEASE_BRANCH}"
+
+		# the new PR should not exist, otherwise a duplicate commit
+		# will be prepared
+		BRANCH_EXISTS=$(git branch -a | grep -E "$PR_BRANCH$")
+		if [ -n "${BRANCH_EXISTS}" ]; then
+			echo "PR branch already exists: ${operator}/$PR_BRANCH"
+			exit 1
+		fi
+
+		# create a new branch for the PR off of this
+		git switch -c "${PR_BRANCH}" "${REPOSITORY}/${RELEASE_BRANCH}"
+
 		check_tag_is_valid
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -186,13 +205,13 @@ update_code() {
 push_branch() {
 	if $PUSH; then
 		echo "Pushing changes..."
-		git push "${REPOSITORY}" "${RELEASE_BRANCH}"
-		git push "${REPOSITORY}" "${RELEASE_TAG}"
-		git switch main
+		# the branch must be updated before the PR can be created
+		git push "${REPOSITORY}" "${PR_BRANCH}"
+		gh pr create --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "${RELEASE_BRANCH}/$RELEASE_TAG" --body "Test: DO NOT MERGE!"
 	else
 		echo "(Dry-run: not pushing...)"
-		git push --dry-run "${REPOSITORY}" "${RELEASE_BRANCH}"
-    	git push --dry-run "${REPOSITORY}" "${RELEASE_TAG}"
+		git push --dry-run "${REPOSITORY}" "${PR_BRANCH}"
+		gh pr create --dry-run --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "${RELEASE_BRANCH}/$RELEASE_TAG" --body "Test: DO NOT MERGE!"
 	fi
 }
 
@@ -246,6 +265,7 @@ parse_inputs() {
 	# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
 	RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
 	RELEASE_BRANCH="release-$RELEASE"
+	PR_BRANCH="pr-$RELEASE_TAG"
 
 	INITIAL_DIR="$PWD"
 	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
@@ -273,6 +293,16 @@ main() {
 	  	echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
   		mkdir -p "$TEMP_RELEASE_FOLDER"
 	fi
+
+	# test required dependencies:
+	git config --get user.name
+	# check gh authentication: if this fails you will need to e.g.
+	# gh auth login
+	gh auth status
+	yq --version
+	python --version
+	cargo --version
+	cargo set-version --version
 
 	# sanity checks before we start: folder, branches etc.
 	# deactivate -e so that piped commands can be used
