@@ -11,8 +11,9 @@ set -x
 #	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
 REPOSITORY="origin"
+PR_MSG="N.B. DO NOT MERGE MANUALLY! This branch will be merged (and the commit tagged) by stackable-utils once any necessary commits have been cherry-picked to here from the main branch."
 
-tag_products() {
+rc_branch_products() {
 	# assume that the branch exists and has either been pushed or has been created locally
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
@@ -24,7 +25,7 @@ tag_products() {
 	push_branch
 }
 
-tag_operators() {
+rc_branch_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		cd "${TEMP_RELEASE_FOLDER}/${operator}"
 		git switch "$PR_BRANCH"
@@ -55,12 +56,12 @@ tag_operators() {
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
-tag_repos() {
+rc_branch_repos() {
 	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		tag_products
+		rc_branch_products
 	fi
 	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		tag_operators
+		rc_branch_operators
 	fi
 }
 
@@ -207,11 +208,11 @@ push_branch() {
 		echo "Pushing changes..."
 		# the branch must be updated before the PR can be created
 		git push "${REPOSITORY}" "${PR_BRANCH}"
-		gh pr create --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "${RELEASE_BRANCH}/$RELEASE_TAG" --body "Test: DO NOT MERGE!"
+		gh pr create --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "${RELEASE_BRANCH}/$RELEASE_TAG" --body "${PR_MSG}"
 	else
 		echo "(Dry-run: not pushing...)"
 		git push --dry-run "${REPOSITORY}" "${PR_BRANCH}"
-		gh pr create --dry-run --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "${RELEASE_BRANCH}/$RELEASE_TAG" --body "Test: DO NOT MERGE!"
+		gh pr create --dry-run --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "${RELEASE_BRANCH}/$RELEASE_TAG" --body "${PR_MSG}"
 	fi
 }
 
@@ -274,12 +275,24 @@ parse_inputs() {
 	echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }
 
+check_dependencies() {
+	# test required dependencies:
+	git config --get user.name
+	# check gh authentication: if this fails you will need to e.g. gh auth login
+	gh auth status
+	yq --version
+	python --version
+	cargo --version
+	cargo set-version --version
+	# TODO: jinj2-cli including pyyaml package?
+}
+
 main() {
 	parse_inputs "$@"
 
 	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
-		echo "Usage: create-release-tag.sh -t <tag> [-p] [-c] [-w products|operators|all]"
+		echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
 		exit 1
 	fi
 
@@ -294,15 +307,7 @@ main() {
   		mkdir -p "$TEMP_RELEASE_FOLDER"
 	fi
 
-	# test required dependencies:
-	git config --get user.name
-	# check gh authentication: if this fails you will need to e.g.
-	# gh auth login
-	gh auth status
-	yq --version
-	python --version
-	cargo --version
-	cargo set-version --version
+	check_dependencies
 
 	# sanity checks before we start: folder, branches etc.
 	# deactivate -e so that piped commands can be used
@@ -311,7 +316,7 @@ main() {
 	set -e
 
 	echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
-	tag_repos
+	rc_branch_repos
 	cleanup
 }
 
