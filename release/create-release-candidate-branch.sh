@@ -11,7 +11,9 @@ set -x
 #	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
 REPOSITORY="origin"
-PR_MSG="N.B. DO NOT MERGE MANUALLY! This branch will be merged (and the commit tagged) by stackable-utils once any necessary commits have been cherry-picked to here from the main branch."
+PR_MSG="> [!CAUTION]
+> ## DO NOT MERGE MANUALLY!
+> This branch will be merged (and the commit tagged) by stackable-utils once any necessary commits have been cherry-picked to here from the main branch."
 
 rc_branch_products() {
 	# assume that the branch exists and has either been pushed or has been created locally

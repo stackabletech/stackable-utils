@@ -28,29 +28,25 @@ parse_inputs() {
 		shift
 	done
 
-# remove leading and trailing quotes
+	# remove leading and trailing quotes
 	RELEASE_TAG="${RELEASE_TAG%\"}"
 	RELEASE_TAG="${RELEASE_TAG#\"}"
-
-	# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-	RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
-	RELEASE_BRANCH="release-$RELEASE"
 	PR_BRANCH="pr-$RELEASE_TAG"
 
 	INITIAL_DIR="$PWD"
 	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
 
-	echo "Settings: ${PR_BRANCH_NAME}"
+	echo "Settings: ${PR_BRANCH}"
 }
 
 merge_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
-		STATE=$(gh pr view ${PR_BRANCH} -R stackabletech/${operator}-operator --jq '.state' --json state)
+		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
 		if [[ "$STATE" == "OPEN" ]]; then
-			echo "Approving ${operator}"
-			gh pr review ${PR_BRANCH} --approve -R stackabletech/${operator}-operator
-			gh pr merge ${PR_BRANCH} -R stackabletech/${operator}-operator
+			echo "Approving ${operator} in branch ${PR_BRANCH} with state ${STATE}"
+			#gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+			#gh pr merge "${PR_BRANCH}" -R stackabletech/"${operator}"
 		else
 			echo "Skipping ${operator}, PR already closed"
 		fi
@@ -58,12 +54,12 @@ merge_operators() {
 }
 
 merge_products() {
-	echo "Operator: $operator"
-	STATE=$(gh pr view ${PR_BRANCH} -R stackabletech/${operator}-operator --jq '.state' --json state)
+	echo "Products: $DOCKER_IMAGES_REPO"
+	STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
 	if [[ "$STATE" == "OPEN" ]]; then
-		echo "Approving ${operator}"
-		gh pr review ${PR_BRANCH} --approve -R stackabletech/${operator}-operator
-		gh pr merge ${PR_BRANCH} -R stackabletech/${operator}-operator
+		echo "Approving ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
+		#gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
+		#gh pr merge "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}"
 	else
 		echo "Skipping ${operator}, PR already closed"
 	fi
@@ -75,15 +71,6 @@ merge() {
 	fi
 	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
 		merge_operators
-	fi
-}
-
-tag() {
-	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		git push "${REPOSITORY}" "${RELEASE_TAG}"
-	fi
-	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		git push "${REPOSITORY}" "${RELEASE_TAG}"
 	fi
 }
 
@@ -99,13 +86,12 @@ main() {
 
 	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
-		echo "Usage: create-release-approve-and-tag.sh -t <tag> [-w products|operators|all]"
+		echo "Usage: create-release-merge-and-tag.sh -t <tag> [-w products|operators|all]"
 		exit 1
 	fi
 
 	check_dependencies
 	merge
-	tag
 }
 
 main "$@"
