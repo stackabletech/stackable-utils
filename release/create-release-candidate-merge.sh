@@ -31,6 +31,7 @@ parse_inputs() {
 	# remove leading and trailing quotes
 	RELEASE_TAG="${RELEASE_TAG%\"}"
 	RELEASE_TAG="${RELEASE_TAG#\"}"
+	# N.B. this has to match what is used in other scripts
 	PR_BRANCH="pr-$RELEASE_TAG"
 
 	INITIAL_DIR="$PWD"

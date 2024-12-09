@@ -268,6 +268,7 @@ parse_inputs() {
 	# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
 	RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
 	RELEASE_BRANCH="release-$RELEASE"
+	# N.B. this has to match what is used in other scripts
 	PR_BRANCH="pr-$RELEASE_TAG"
 
 	INITIAL_DIR="$PWD"
