@@ -50,9 +50,12 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 # (now the tedious post release steps start ...)
 ```
 
-## Release scripts
+## Flow Overview
 
-### Summary
+![](./images/rc-flow.png)
+
+
+## Release scripts: Summary
 
 A set of scripts that automates some release steps. The release process has multiple steps:
 
@@ -71,23 +74,20 @@ A set of scripts that automates some release steps. The release process has mult
   - update the operator CHANGELOG.md in `main` with changes from the release tag
   - create PRs for all operators
 
-#### N.B. 
+### N.B. 
 
 - Steps 2-4 will check out the release branch (or clone it if does exist locally) and so can be run independently of each other.
 - Any changes should be done manually between steps 2 and 3 i.e. by making changes in the PR branch and/or cherry-picking commits from main.
 
-### Flow Overview
 
-![](./images/rc-flow.png)
-
-### Install requirements
+## Install requirements
 
 > [!NOTE]
 > Nix users will not need to install anything, just enter the `nix-shell` in this repository (if not done automatically via `direnv`).
 > The dependencies will install automatically.
 > A nix-shell will be entered for each operator during certain commands, so operator dependencies will be covered too.
 
-#### cargo-edit plugin
+### cargo-edit plugin
 
 The `cargo-edit` plugin is used to update operator versions in `cargo` workspaces.
 
@@ -97,16 +97,16 @@ Install it like this:
 cargo install cargo-edit --version 0.12.3
 ```
 
-#### yq (yaml parser)
+### yq (yaml parser)
 
 This script requires <https://github.com/mikefarah/yq> (not to be confused with <https://github.com/kislyuk/yq>).
 
-#### gh (github client)
+### gh (github client)
 
 This script requires <https://github.com/cli> to be installed.
 You have to be logged in when running the `post-release.sh` script. The easiest way is to have a local env variable `GH_TOKEN` set to a classic token created via <https://github.com/settings/tokens> with all `repo` and all `admin:org` scopes or follow the login instructions here <https://cli.github.com/manual/gh_auth_login>.
 
-#### jinja2 (templating tool)
+### jinja2 (templating tool)
 
 This script requires jinja2 as a templating tool. It can be installed like this:
 
@@ -115,9 +115,9 @@ pipx install jinja2-cli
 pipx inject jinja2-cli pyyaml
 ```
 
-### Usage
+## Usage
 
-#### Release branches
+### 1.) Create release branches
 
 To create release branches use the `create-release-branch.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -138,7 +138,7 @@ e.g.
 ./release/create-release-branch.sh -b 23.1 -p -c -w all
 ```
 
-##### What this script does
+#### What this script does
 
 - checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
 - creates or updates a temporary folder with clones of the images repository
@@ -146,7 +146,7 @@ e.g.
 - optional: pushes the new branch (if requested with "-p")
 - optional: deletes the temporary folder (if requested with "-c")
 
-#### Release candidates: create PR branches
+### 2.) Create PR branches for release candidates
 
 To create release tags use the `create-release-candidate-branch.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -167,7 +167,7 @@ e.g.
 ./release/create-release-candidate-branch.sh -t 23.1.0-rc1 -p -c -w all
 ```
 
-##### What this script does
+#### What this script does
 
 - checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
 - creates a temporary folder with clones of the images repository
@@ -187,7 +187,7 @@ These PRs should eventually contain *all* changes relevant to the release (for a
 These changes can be pushed manually in the PR itself or cherry-picked from the `main` branch.
 Product and operator images will be built when these PRs are created or updated, which means that integration tests can be run against these PRs (the image will be tagged e.g. airflow-operator:24.11.1-rc1).
 
-#### Release candidates: approve and merge PR branches
+### 3.) Approve/Merge PR branches for release candidates
 
 To merge PRs use the `create-release-candidate-merge.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -204,14 +204,14 @@ e.g.
 ./release/create-release-candidate-merge.sh -t 23.1.0-rc1 -w all
 ```
 
-##### What this script does
+#### What this script does
 
 - checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
 - checks that the PR status is `OPEN`
 - if so, it approves and merges the PR
   - N.B. this approval step cannot be carried out by the same user that created the PR in the previous section
 
-#### Release candidates: tag
+### 4.) Tag release/release candidate
 
 The final step is to tag the merge commit from above: this is done using the `create-release-candidate-tag.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -224,7 +224,7 @@ The final step is to tag the merge commit from above: this is done using the `cr
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 - `-w`: where to create the tag and update versions in code. It can be "products", "operators" or "all".
 
-##### What this script does
+#### What this script does
 
 - checks that the release argument is valid (e.g. semver-compatible, just major/minor levels)
 - creates a temporary folder with clones of the images repository
@@ -233,7 +233,7 @@ The final step is to tag the merge commit from above: this is done using the `cr
 - optional: pushes the new tag (if requested with "-p")
 - optional: deletes the temporary folder (if requested with "-c")
 
-#### Post-release steps
+### 5.) Post-release steps
 
 Some post release steps are performed with `release/post-release.sh` script, called from the repository root folder. The syntax is given below:
 
@@ -245,18 +245,18 @@ Some post release steps are performed with `release/post-release.sh` script, cal
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-w`: which repositories to update the changelogs for. It can be "products", "operators", "all" (defaults to "all").
 
-##### What this script does
+#### What this script does
 
 - checks that the release tag exists and that all operator repositories have a clean working copy
 - checks that the release tag exists and that the docker-images repository has a clean working copy
 - merges the CHANGELOG.md from the release tag into main
 - creates PRs for all operators
 
-##### Build actions
+## Build actions
 
 When a tag is pushed, the images for products and operators are built via github actions. The following points should be noted:
 
-###### Product images
+### Product images
 
 Product images are built when any tag is pushed. There exists a specific workflow for each product e.g. build_airflow.yaml, build_java-base.yaml etc.
 
@@ -268,7 +268,7 @@ on:
 ...
 ```
 
-###### Operator images
+### Operator images
 
 Operator images are built when a tag matching the tag pattern is pushed:
 
@@ -282,7 +282,7 @@ on:
 ...
 ```
 
-#### Post-release steps
+## Post-release steps
 
 Once the release is complete and all steps above have been verified, the documentation needs to be updated and built. This is done in a separate suite of scripts found https://github.com/stackabletech/documentation/tree/main/scripts[here]. Follow the steps given in the two scripts (there are prompts provided which allow for early-exit if things are not as they should be!).
 
