@@ -286,7 +286,7 @@ check_dependencies() {
 	python --version
 	cargo --version
 	cargo set-version --version
-	# TODO: jinj2-cli including pyyaml package?
+	# TODO: jinja2-cli including pyyaml package?
 }
 
 main() {

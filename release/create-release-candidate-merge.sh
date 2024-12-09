@@ -45,8 +45,8 @@ merge_operators() {
 		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
 		if [[ "$STATE" == "OPEN" ]]; then
 			echo "Approving ${operator} in branch ${PR_BRANCH} with state ${STATE}"
-			#gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
-			#gh pr merge "${PR_BRANCH}" -R stackabletech/"${operator}"
+			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+			gh pr merge "${PR_BRANCH}" -R stackabletech/"${operator}"
 		else
 			echo "Skipping ${operator}, PR already closed"
 		fi
@@ -58,8 +58,8 @@ merge_products() {
 	STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
 	if [[ "$STATE" == "OPEN" ]]; then
 		echo "Approving ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
-		#gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
-		#gh pr merge "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}"
+		gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
+		gh pr merge "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}"
 	else
 		echo "Skipping ${operator}, PR already closed"
 	fi
