@@ -54,6 +54,37 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 
 ![](./images/rc-flow.png)
 
+### Flow for a patch release to an existing release-branch
+
+```mermaid
+gitGraph:
+    commit
+    branch release-24.11
+    branch pr-24.11.1-rc1
+    commit id:"Update Cargo.toml to 24.11.1-rc1"
+    checkout main
+    commit id:"change rust"
+    checkout pr-24.11.1-rc1
+    cherry-pick id:"change rust"
+    checkout release-24.11
+    merge pr-24.11.1-rc1 tag:"24.11.1-rc1"
+    branch docs/fix-typo-for-rc1
+
+    checkout main
+    commit id:"docs fix"
+    checkout docs/fix-typo-for-rc1
+    cherry-pick id:"docs fix"
+    
+    checkout release-24.11
+    merge docs/fix-typo-for-rc1
+    branch pr-24.11.1
+    commit id:"Update Cargo.toml to 24.11.1"
+    checkout release-24.11
+    merge pr-24.11.1 tag:"24.11.1"
+
+    checkout main
+    commit
+```
 
 ## Release scripts: Summary
 
