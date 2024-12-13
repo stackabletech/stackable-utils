@@ -47,7 +47,7 @@ merge_operators() {
 		if [[ "$STATE" == "OPEN" ]]; then
 			echo "Approving ${operator} in branch ${PR_BRANCH} with state ${STATE}"
 			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
-			gh pr merge "${PR_BRANCH}" -R stackabletech/"${operator}"
+			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
 		else
 			echo "Skipping ${operator}, PR already closed"
 		fi
