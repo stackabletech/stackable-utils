@@ -62,7 +62,7 @@ merge_products() {
 		gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
 		gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
 	else
-		echo "Skipping ${operator}, PR already closed"
+		echo "Skipping ${DOCKER_IMAGES_REPO}, PR already closed"
 	fi
 }
 
