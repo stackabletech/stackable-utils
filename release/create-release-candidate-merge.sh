@@ -60,7 +60,7 @@ merge_products() {
 	if [[ "$STATE" == "OPEN" ]]; then
 		echo "Approving ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
 		gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
-		gh pr merge "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}"
+		gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
 	else
 		echo "Skipping ${operator}, PR already closed"
 	fi
