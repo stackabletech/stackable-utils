@@ -7,6 +7,7 @@ set -x
 
 parse_inputs() {
 	RELEASE_TAG=""
+	PUSH=false
 	PR_BRANCH=""
 	WHAT=""
 
@@ -20,6 +21,7 @@ parse_inputs() {
 			WHAT="$2"
 			shift
 			;;
+		-p | --push) PUSH=true ;;
 		*)
 			echo "Unknown parameter passed: $1"
 			exit 1
@@ -37,7 +39,7 @@ parse_inputs() {
 	INITIAL_DIR="$PWD"
 	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
 
-	echo "Settings: ${PR_BRANCH}"
+	echo "Settings: ${PR_BRANCH}: Push: $PUSH:"
 }
 
 merge_operators() {
@@ -45,9 +47,14 @@ merge_operators() {
 		echo "Operator: $operator"
 		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
 		if [[ "$STATE" == "OPEN" ]]; then
-			echo "Approving ${operator} in branch ${PR_BRANCH} with state ${STATE}"
-			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
-			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
+			echo "Processing ${operator} in branch ${PR_BRANCH} with state ${STATE}"
+			if $PUSH; then
+				echo "Reviewing and merging..."
+				gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
+			else
+				echo "(Dry-run: not reviewing/merging...)"
+			fi
 		else
 			echo "Skipping ${operator}, PR already closed"
 		fi
@@ -58,9 +65,14 @@ merge_products() {
 	echo "Products: $DOCKER_IMAGES_REPO"
 	STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
 	if [[ "$STATE" == "OPEN" ]]; then
-		echo "Approving ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
-		gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
-		gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
+		echo "Processing ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
+		if $PUSH; then
+			echo "Reviewing and merging..."
+			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
+			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
+		else
+			echo "(Dry-run: not reviewing/merging...)"
+		fi
 	else
 		echo "Skipping ${DOCKER_IMAGES_REPO}, PR already closed"
 	fi

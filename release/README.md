@@ -12,10 +12,10 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 ./release/create-release-candidate-branch.sh -t 25.3.0-rc1 -w products # Only add the -p flag after testing locally first
 
 # merge the PR branches, once the necessary changes have been made (e.g. cherry-picked from main)
-./release/create-release-candidate-merge.sh -t 25.3.0-rc1 -w products # N.B. there exists *no* dry-run option for the merge step
+./release/merge-release-candidate.sh -t 25.3.0-rc1 -w products # N.B. there exists *no* dry-run option for the merge step
 
 # tag the merge commit
-./release/create-release-candidate-tag.sh -t  25.3.0-rc1 -w products # Only add the -p flag after testing locally first
+./release/tag-release-candidate.sh -t  25.3.0-rc1 -w products # Only add the -p flag after testing locally first
 
 # monitor the GH action that builds ~80 images for success.
 # build failures alerts will appear in the #notifications-container-images channel.
@@ -29,10 +29,10 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 ./release/create-release-candidate-branch.sh -t 25.3.0-rc1 -w operators # Only add the -p flag after testing locally first
 
 # merge the PR branches, once the necessary changes have been made (e.g. cherry-picked from main)
-./release/create-release-candidate-merge.sh -t 25.3.0-rc1 -w operators # N.B. there exists *no* dry-run option for the merge step
+./release/merge-release-candidate.sh -t 25.3.0-rc1 -w operators # Only add the -p flag after testing locally first
 
 # tag the merge commit
-./release/create-release-candidate-tag.sh -t  25.3.0-rc1 -w operators # Only add the -p flag after testing locally first
+./release/tag-release-candidate.sh -t  25.3.0-rc1 -w operators # Only add the -p flag after testing locally first
 
 # monitor the GH actions that build the operator images for success
 # build failures are not yet sent to the #notifications-container-images channel yet.
@@ -97,9 +97,9 @@ A set of scripts that automates some release steps. The release process has mult
 2. Call `create-release-candidate-branch.sh` - This will:
   - conduct code refactoring
   - create a tag-specific branch and PR based on the release branch
-3. Call `create-release-candidate-merge.sh` - This will:
+3. Call `merge-release-candidate.sh` - This will:
   - approve and merge the PR into the release branch
-4. Call `create-release-candidate-tag.sh` - This will:
+4. Call `tag-release-candidate.sh` - This will:
   - tag merge commit from above, triggering github actions to build the product images and operators
 5. Call `post-release.sh`- This will:
   - update the operator CHANGELOG.md in `main` with changes from the release tag
@@ -156,7 +156,7 @@ To create release branches use the `create-release-branch.sh` script, called fro
 ./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|demos|all]
 ```
 
-- `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`
+- `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`.
 - `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 - `-w`: where to create the branch. It can be "products", "operators", "demos" or "all".
@@ -185,8 +185,8 @@ To create release tags use the `create-release-candidate-branch.sh` script, call
 ./release/create-release-candidate-branch.sh -t <release-tag> [-p] [-c] [-w products|operators|all]
 ```
 
-- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to create a tag with the name
-- `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
+- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to create a tag with the name.
+- `-p`: push flag (optional, default is "false"). If provided, the changes and PRs made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 - `-w`: where to create the tag and update versions in code. It can be "products", "operators" or "all".
 
@@ -220,19 +220,20 @@ Product and operator images will be built when these PRs are created or updated,
 
 ### 3.) Approve/Merge PR branches for release candidates
 
-To merge PRs use the `create-release-candidate-merge.sh` script, called from the repository root folder. The syntax is given below:
+To merge PRs use the `merge-release-candidate.sh` script, called from the repository root folder. The syntax is given below:
 
 ```shell
-./release/create-release-candidate-merge.sh -t <release-tag> [-w products|operators|all]
+./release/merge-release-candidate.sh -t <release-tag> [-p] [-w products|operators|all]
 ```
 
-- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to identify the PR (which was created using this tag)
+- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to identify the PR (which was created using this tag).
+- `-p`: push flag (optional, default is "false"). If provided, the PRs will be approved and merged.
 - `-w`: where to create the tag and update versions in code. It can be "products", "operators" or "all".
 
 e.g.
 
 ```shell
-./release/create-release-candidate-merge.sh -t 23.1.0-rc1 -w all
+./release/merge-release-candidate.sh -t 23.1.0-rc1 -p -w all
 ```
 
 #### What this script does
@@ -241,16 +242,17 @@ e.g.
 - checks that the PR status is `OPEN`
 - if so, it approves and merges the PR
   - N.B. this approval step cannot be carried out by the same user that created the PR in the previous section
+- optional: approves and merges the PRs (if requested with "-p")
 
 ### 4.) Tag release/release candidate
 
-The final step is to tag the merge commit from above: this is done using the `create-release-candidate-tag.sh` script, called from the repository root folder. The syntax is given below:
+The final step is to tag the merge commit from above: this is done using the `tag-release-candidate.sh` script, called from the repository root folder. The syntax is given below:
 
 ```shell
-./release/create-release-candidate-tag.sh -t <release-tag> [-p] [-c] [-w products|operators|all]
+./release/tag-release-candidate.sh -t <release-tag> [-p] [-c] [-w products|operators|all]
 ```
 
-- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to create a tag with the name
+- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to create a tag with the name.
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
 - `-w`: where to create the tag and update versions in code. It can be "products", "operators" or "all".
@@ -272,7 +274,7 @@ Some post release steps are performed with `release/post-release.sh` script, cal
 ./release/post-release.sh -t <release-tag> [-p] [-w products|operators|all]
 ```
 
-- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name
+- `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name.
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-w`: which repositories to update the changelogs for. It can be "products", "operators", "all" (defaults to "all").
 
