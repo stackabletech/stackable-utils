@@ -12,7 +12,7 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 ./release/create-release-candidate-branch.sh -t 25.3.0-rc1 -w products # Only add the -p flag after testing locally first
 
 # merge the PR branches, once the necessary changes have been made (e.g. cherry-picked from main)
-./release/merge-release-candidate.sh -t 25.3.0-rc1 -w products # N.B. there exists *no* dry-run option for the merge step
+./release/merge-release-candidate.sh -t 25.3.0-rc1 -w products # Only add the -p flag after testing locally first
 
 # tag the merge commit
 ./release/tag-release-candidate.sh -t  25.3.0-rc1 -w products # Only add the -p flag after testing locally first
