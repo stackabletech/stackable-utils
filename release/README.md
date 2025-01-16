@@ -90,7 +90,7 @@ gitGraph:
 > Once a release candidate has been merged, the subsequent Antora build will reference the most recent commit. This means that some references may be to an `-rc` release e.g. `25.3.0-rc1`. This can be avoided by 
 > - conducting all testing on the PR-specific images that are created as part of the release candidate branches, instead of waiting until they have been merged and the commits tagged
 > - once tests are successful, create a *non* `-rc` branch (e.g. `25.3.0`, `25.3.1` etc), cherry-picking over any changes that were made in the course of testing in the previous step, test, merge and tag
-> This will require the `release.yaml` file for each operator to be changed to specify PR-specific versions of the operators, and for `test-definition.yaml`to be edited to use custom images (as product iamge selection will not identify PR-specific images automatically).
+> - this will require the `release.yaml` file for each operator to be changed to specify PR-specific versions of the operators, and for `test-definition.yaml`to be edited to use custom images (as product iamge selection will not identify PR-specific images automatically).
 
 ## Release scripts: Summary
 
