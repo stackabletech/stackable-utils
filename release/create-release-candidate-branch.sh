@@ -139,7 +139,7 @@ check_operators() {
 		# will be prepared
 		BRANCH_EXISTS=$(git branch -a | grep -E "$PR_BRANCH$")
 		if [ -n "${BRANCH_EXISTS}" ]; then
-			echo "PR branch already exists: ${operator}/$PR_BRANCH"
+			>&2 echo "PR branch already exists: ${operator}/$PR_BRANCH"
 			exit 1
 		fi
 
