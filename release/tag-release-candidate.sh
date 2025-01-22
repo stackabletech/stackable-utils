@@ -157,17 +157,19 @@ parse_inputs() {
 }
 
 check_dependencies() {
-	# check for a globally configured git user name
+	# check for a globally configured git user
 	git_user=$(git config --global --get user.name)
+	git_email=$(git config --global --get user.email)
+	echo "global git user: '$git_user/$git_email'."
 
-	if [ -z "$git_user" ]; then
-		echo "Error: No global Git user name is set."
+	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
+		echo "Error: global git user name/email is not set."
 		exit 1
 	else
-		echo "Detected user '$git_user'. Is this correct? (y/n)"
+		echo "Is this correct? (y/n)"
 		read -r response
 		if [[ "$response" == "y" || "$response" == "Y" ]]; then
-			echo "Proceeding with $git_user."
+			echo "Proceeding with '$git_user/$git_email'."
 		else
 			echo "User not accepted. Exiting."
 			exit 1
