@@ -73,7 +73,7 @@ check_tag_is_valid() {
 	# check tags: N.B. look for exact match
 	TAG_EXISTS=$(git tag --list | grep -E "$RELEASE_TAG$")
 	if [ -n "$TAG_EXISTS" ]; then
-		echo "Tag $RELEASE_TAG already exists!"
+		>&2 echo "Tag $RELEASE_TAG already exists!"
 		exit 1
 	fi
 
