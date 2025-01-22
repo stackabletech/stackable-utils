@@ -295,7 +295,7 @@ main() {
 
 	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
-		echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
+		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
 		exit 1
 	fi
 
