@@ -210,7 +210,7 @@ push_branch() {
 		echo "Pushing changes..."
 		# the branch must be updated before the PR can be created
 		git push "${REPOSITORY}" "${PR_BRANCH}"
-		gh pr create --reviewer stackabletech/developers --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "release: ${RELEASE_TAG}" --body "${PR_MSG}"
+		gh pr create --reviewer stackabletech/developers --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	else
 		echo "(Dry-run: not pushing...)"
 		git push --dry-run "${REPOSITORY}" "${PR_BRANCH}"
