@@ -82,7 +82,7 @@ check_tag_is_valid() {
 	#EXISTING_TAGS=$(git tag --list | grep -E "$RELEASE" | sort -V)
 	#for EXISTING_TAG in $EXISTING_TAGS; do
 	#	if [[ "$RELEASE_TAG" < "$EXISTING_TAG" ]]; then
-	#		echo "Error: Proposed tag $RELEASE_TAG is earlier than existing tag $EXISTING_TAG."
+	#		>&2 echo "Error: Proposed tag $RELEASE_TAG is earlier than existing tag $EXISTING_TAG."
 	#		exit 1
 	#	fi
 	#done
