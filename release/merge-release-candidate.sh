@@ -88,8 +88,22 @@ merge() {
 }
 
 check_dependencies() {
-	# test required dependencies:
-	git config --get user.name
+	# check for a globally configured git user name
+	git_user=$(git config --global --get user.name)
+
+	if [ -z "$git_user" ]; then
+		echo "Error: No global Git user name is set."
+		exit 1
+	else
+		echo "Detected user '$git_user'. Is this correct? (y/n)"
+		read -r response
+		if [[ "$response" == "y" || "$response" == "Y" ]]; then
+			echo "Proceeding with $git_user."
+		else
+			echo "User not accepted. Exiting."
+			exit 1
+		fi
+	fi
 	# check gh authentication: if this fails you will need to e.g. gh auth login
 	gh auth status
 }
