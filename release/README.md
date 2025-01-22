@@ -42,7 +42,7 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 # create and push the release branch
 ./release/create-release-branch.sh -b 25.3 -w demos # Only add the -p flag after testing locally first
 
-# finally - i.e. when a release candidate ahs been accepted and the actual release has been tagged - patch the changelog file in the main branch
+# finally - i.e. when a release candidate has been accepted and the actual release has been tagged - patch the changelog file in the main branch
 # create PRs for all operators
 ./release/post-release.sh -t 25.3.0 # Only add the -p flag after testing locally first
 
