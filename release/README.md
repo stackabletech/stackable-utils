@@ -111,7 +111,7 @@ A set of scripts that automates some release steps. The release process has mult
   - update the operator CHANGELOG.md in `main` with changes from the release tag
   - create PRs for all operators
 
-### N.B. 
+> [!NOTE]
 
 > - Steps 2-4 will check out the release branch (or clone it if does exist locally) and so can be run independently of each other.
 > - Any changes should be done manually between steps 2 and 3 i.e. by making changes in the PR branch and/or cherry-picking commits from main.
