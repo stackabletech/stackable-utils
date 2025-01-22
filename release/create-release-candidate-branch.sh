@@ -23,7 +23,7 @@ rc_branch_products() {
 	git switch "$PR_BRANCH"
 	update_product_images_changelogs
 
-	git commit -sam "release $RELEASE_TAG"
+	git commit -sam "chore: Release $RELEASE_TAG"
 	push_branch
 }
 
@@ -53,7 +53,7 @@ rc_branch_operators() {
 		# inserts a single line with tag and date
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
-		git commit -sam "release $RELEASE_TAG"
+		git commit -sam "chore: Release $RELEASE_TAG"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -101,7 +101,7 @@ check_products() {
 	BRANCH_EXISTS=$(git branch -a | grep -E "$RELEASE_BRANCH$")
 
 	if [ -z "${BRANCH_EXISTS}" ]; then
-		echo "Expected release branch is missing: $RELEASE_BRANCH"
+		>&2 echo "Expected release branch is missing: $RELEASE_BRANCH"
 		exit 1
 	fi
 
@@ -131,7 +131,7 @@ check_operators() {
 		cd "$TEMP_RELEASE_FOLDER/${operator}"
 		BRANCH_EXISTS=$(git branch -a | grep -E "$RELEASE_BRANCH$")
 		if [ -z "${BRANCH_EXISTS}" ]; then
-			echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
+			>&2 echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
 			exit 1
 		fi
 
