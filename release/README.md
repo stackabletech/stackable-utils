@@ -32,7 +32,7 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 ./release/merge-release-candidate.sh -t 25.3.0-rc1 -w operators # Only add the -p flag after testing locally first
 
 # tag the merge commit
-./release/tag-release-candidate.sh -t  25.3.0-rc1 -w operators # Only add the -p flag after testing locally first
+./release/tag-release-candidate.sh -t 25.3.0-rc1 -w operators # Only add the -p flag after testing locally first
 
 # monitor the GH actions that build the operator images for success
 # build failures are not yet sent to the #notifications-container-images channel yet.
