@@ -15,7 +15,7 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 ./release/merge-release-candidate.sh -t 25.3.0-rc1 -w products # Only add the -p flag after testing locally first
 
 # tag the merge commit
-./release/tag-release-candidate.sh -t  25.3.0-rc1 -w products # Only add the -p flag after testing locally first
+./release/tag-release-candidate.sh -t 25.3.0-rc1 -w products # Only add the -p flag after testing locally first
 
 # monitor the GH action that builds ~80 images for success.
 # build failures alerts will appear in the #notifications-container-images channel.
