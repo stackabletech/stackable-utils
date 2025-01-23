@@ -100,7 +100,7 @@ update_operators() {
     # Maybe push and create pull request
     if "$PUSH"; then
       git push -u "$REMOTE" "$CHANGELOG_BRANCH"
-      gh pr create --fill --reviewer stackable/developers --head "$CHANGELOG_BRANCH" --base main
+      gh pr create --fill --reviewer stackabletech/developers --head "$CHANGELOG_BRANCH" --base main
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
@@ -157,7 +157,7 @@ update_docker_images() {
   # Maybe push and create pull request
   if "$PUSH"; then
     git push -u "$REMOTE" "$CHANGELOG_BRANCH"
-    gh pr create --fill --reviewer stackable/developers --head "$CHANGELOG_BRANCH" --base main
+    gh pr create --fill --reviewer stackabletech/developers --head "$CHANGELOG_BRANCH" --base main
   fi
 }
 
