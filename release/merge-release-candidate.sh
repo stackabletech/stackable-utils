@@ -91,7 +91,7 @@ check_dependencies() {
 	# check for a globally configured git user
 	git_user=$(git config --global --get user.name)
 	git_email=$(git config --global --get user.email)
-	echo "global git user: '$git_user/$git_email'."
+	echo "global git user: $git_user <$git_email>"
 
 	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
 		>&2 echo "Error: global git user name/email is not set."
@@ -100,7 +100,7 @@ check_dependencies() {
 		echo "Is this correct? (y/n)"
 		read -r response
 		if [[ "$response" == "y" || "$response" == "Y" ]]; then
-			echo "Proceeding with '$git_user/$git_email'."
+			echo "Proceeding with $git_user <$git_email>"
 		else
 			>&2 echo "User not accepted. Exiting."
 			exit 1
