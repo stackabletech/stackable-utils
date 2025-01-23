@@ -254,7 +254,7 @@ parse_inputs() {
 		-p | --push) PUSH=true ;;
 		-c | --cleanup) CLEANUP=true ;;
 		*)
-			echo "Unknown parameter passed: $1"
+			>&2 echo "Unknown parameter passed: $1"
 			exit 1
 			;;
 		esac
@@ -285,7 +285,7 @@ check_dependencies() {
 	echo "global git user: '$git_user/$git_email'."
 
 	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
-		echo "Error: global git user name/email is not set."
+		>&2 echo "Error: global git user name/email is not set."
 		exit 1
 	else
 		echo "Is this correct? (y/n)"
@@ -293,7 +293,7 @@ check_dependencies() {
 		if [[ "$response" == "y" || "$response" == "Y" ]]; then
 			echo "Proceeding with '$git_user/$git_email'."
 		else
-			echo "User not accepted. Exiting."
+			>&2 echo "User not accepted. Exiting."
 			exit 1
 		fi
 	fi
@@ -320,7 +320,7 @@ main() {
 
 	# check if argument matches our tag regex
 	if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
-		echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
+		>&2 echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
 		exit 1
 	fi
 

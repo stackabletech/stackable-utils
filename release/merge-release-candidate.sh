@@ -23,7 +23,7 @@ parse_inputs() {
 			;;
 		-p | --push) PUSH=true ;;
 		*)
-			echo "Unknown parameter passed: $1"
+			>&2 echo "Unknown parameter passed: $1"
 			exit 1
 			;;
 		esac
@@ -94,7 +94,7 @@ check_dependencies() {
 	echo "global git user: '$git_user/$git_email'."
 
 	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
-		echo "Error: global git user name/email is not set."
+		>&2 echo "Error: global git user name/email is not set."
 		exit 1
 	else
 		echo "Is this correct? (y/n)"
@@ -102,7 +102,7 @@ check_dependencies() {
 		if [[ "$response" == "y" || "$response" == "Y" ]]; then
 			echo "Proceeding with '$git_user/$git_email'."
 		else
-			echo "User not accepted. Exiting."
+			>&2 echo "User not accepted. Exiting."
 			exit 1
 		fi
 	fi
@@ -115,7 +115,7 @@ main() {
 
 	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
-		echo "Usage: create-release-merge-and-tag.sh -t <tag> [-w products|operators|all]"
+		>&2 echo "Usage: create-release-merge-and-tag.sh -t <tag> [-w products|operators|all]"
 		exit 1
 	fi
 
