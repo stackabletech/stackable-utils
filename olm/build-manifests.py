@@ -565,11 +565,17 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
                 )
 
             manifest_digest = [
-                t["manifest_digest"] for t in data["tags"] if t["name"] == release
-            ][0]
+                t["manifest_digest"] for t in data["tags"] if t["name"] == release and t["is_manifest_list"] == True
+            ]
+
+            if len(manifest_digest) == 0:
+                raise ManifestException(f"No manifest list for {image}:{release} found")
+
+            if len(manifest_digest) > 1:
+                raise ManifestException(f"Multiple manifest lists for {image}:{release} found but only one expected")
 
             result.append(
-                {"name": image, "image": f"quay.io/stackable/{image}@{manifest_digest}"}
+                {"name": image, "image": f"quay.io/stackable/{image}@{manifest_digest[0]}"}
             )
     logging.debug("finish op_image")
     return result
