@@ -115,11 +115,11 @@ update_operators() {
 # branch and tag exists.
 check_products() {
   if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
-		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-  		# $TEMP_RELEASE_FOLDER has already been created in main()
-  		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-	fi
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+    echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+      # $TEMP_RELEASE_FOLDER has already been created in main()
+      git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  fi
+  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
   if ! git diff-index --quiet HEAD --; then
     >&2 echo "Dirty git index for $DOCKER_IMAGES_REPO. Check working tree or staged changes. Exiting."
