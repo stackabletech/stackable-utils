@@ -192,9 +192,9 @@ main() {
   fi
 
   if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-	  	echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
-  		mkdir -p "$TEMP_RELEASE_FOLDER"
-	fi
+    echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
+    mkdir -p "$TEMP_RELEASE_FOLDER"
+  fi
 
   if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     # sanity checks before we start: folder, branches etc.
