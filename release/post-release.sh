@@ -58,11 +58,11 @@ check_operators() {
     fi
     cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
 
-    DIRTY_WORKING_COPY=$(git status --short)
-    if [ -n "$DIRTY_WORKING_COPY" ]; then
-      >&2 echo "Dirty working copy found for operator $OPERATOR"
-      exit 1
+    if ! git diff-index --quiet HEAD --; then
+      >&2 echo "Dirty git index for $OPERATOR. Check working tree or staged changes. Exiting."
+      exit 2
     fi
+
     BRANCH_EXISTS=$(git branch -a | grep "$RELEASE_BRANCH")
     if [ -z "$BRANCH_EXISTS" ]; then
       >&2 echo "Expected release branch is missing: $OPERATOR/$RELEASE_BRANCH"
@@ -121,10 +121,9 @@ check_products() {
 	fi
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
-  DIRTY_WORKING_COPY=$(git status --short)
-  if [ -n "${DIRTY_WORKING_COPY}" ]; then
-    >&2 echo "Dirty working copy found for $DOCKER_IMAGES_REPO"
-    exit 1
+  if ! git diff-index --quiet HEAD --; then
+    >&2 echo "Dirty git index for $DOCKER_IMAGES_REPO. Check working tree or staged changes. Exiting."
+    exit 2
   fi
 
   BRANCH_EXISTS=$(git branch -a | grep "$RELEASE_BRANCH")
