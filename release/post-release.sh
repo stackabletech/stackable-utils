@@ -10,7 +10,9 @@ set -x
 #-----------------------------------------------------------
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
 REMOTE="origin"
-
+PR_MSG="> [!CAUTION]
+> ## DO NOT MERGE WITHOUT MANUAL CHECKING!
+> This PR contains information about commits have been cherry-picked to the release branch from the main branch, and may not reflect the correct chronology. Please check!"
 parse_inputs() {
   RELEASE_TAG=""
   PUSH=false
@@ -50,26 +52,26 @@ check_operators() {
   do
     echo "Operator: $OPERATOR"
     if [ ! -d "$TEMP_RELEASE_FOLDER/$OPERATOR" ]; then
-      echo "Expected folder is missing: $TEMP_RELEASE_FOLDER/$OPERATOR"
-      exit 1
+      echo "Cloning folder: $TEMP_RELEASE_FOLDER/$OPERATOR"
+      # $TEMP_RELEASE_FOLDER has already been created in main()
+      git clone "git@github.com:stackabletech/${OPERATOR}.git" "$TEMP_RELEASE_FOLDER/$OPERATOR"
     fi
-
     cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
 
     DIRTY_WORKING_COPY=$(git status --short)
     if [ -n "$DIRTY_WORKING_COPY" ]; then
-      echo "Dirty working copy found for operator $OPERATOR"
+      >&2 echo "Dirty working copy found for operator $OPERATOR"
       exit 1
     fi
-    BRANCH_EXISTS=$(git branch | grep "$RELEASE_BRANCH")
+    BRANCH_EXISTS=$(git branch -a | grep "$RELEASE_BRANCH")
     if [ -z "$BRANCH_EXISTS" ]; then
-      echo "Expected release branch is missing: $OPERATOR/$RELEASE_BRANCH"
+      >&2 echo "Expected release branch is missing: $OPERATOR/$RELEASE_BRANCH"
       exit 1
     fi
     git fetch --tags
     TAG_EXISTS=$(git tag | grep "$RELEASE_TAG")
     if [ -z "$TAG_EXISTS" ]; then
-      echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
+      >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
       exit 1
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
@@ -82,7 +84,7 @@ update_operators() {
   do
     cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
     # New branch that updates the CHANGELOG
-    CHANGELOG_BRANCH="update-changelog-from-release-$RELEASE_TAG"
+    CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
     # Branch out from main
     git switch -c "$CHANGELOG_BRANCH" main
     # Checkout CHANGELOG changes from the release tag
@@ -99,47 +101,52 @@ update_operators() {
     git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
     # Maybe push and create pull request
     if "$PUSH"; then
-      git push -u "$REMOTE" "$CHANGELOG_BRANCH"
-      gh pr create --fill --reviewer stackabletech/developers --head "$CHANGELOG_BRANCH" --base main
+      git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
+      gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+    else
+      echo "(Dry-run: not pushing...)"
+      git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
+      gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
     fi
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 # Check that the docker-images repo has been cloned locally, and that the release
 # branch and tag exists.
-check_docker_images() {
-  echo "docker-images"
+check_products() {
   if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
-    echo "Expected folder is missing: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-    exit 1
-  fi
-
-  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  		# $TEMP_RELEASE_FOLDER has already been created in main()
+  		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	fi
+	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
   DIRTY_WORKING_COPY=$(git status --short)
   if [ -n "${DIRTY_WORKING_COPY}" ]; then
-    echo "Dirty working copy found for $DOCKER_IMAGES_REPO"
+    >&2 echo "Dirty working copy found for $DOCKER_IMAGES_REPO"
     exit 1
   fi
-  BRANCH_EXISTS=$(git branch | grep "$RELEASE_BRANCH")
+
+  BRANCH_EXISTS=$(git branch -a | grep "$RELEASE_BRANCH")
   if [ -z "${BRANCH_EXISTS}" ]; then
-    echo "Expected release branch is missing: $DOCKER_IMAGES_REPO/$RELEASE_BRANCH"
+    >&2 echo "Expected release branch is missing: $DOCKER_IMAGES_REPO/$RELEASE_BRANCH"
     exit 1
   fi
+
   git fetch --tags
   TAG_EXISTS=$(git tag | grep "$RELEASE_TAG")
   if [ -z "${TAG_EXISTS}" ]; then
-    echo "Expected tag $RELEASE_TAG missing for $DOCKER_IMAGES_REPO"
+    >&2 echo "Expected tag $RELEASE_TAG missing for $DOCKER_IMAGES_REPO"
     exit 1
   fi
 }
 
 # Update the docker-images changelogs on main, and check they do not differ from
 # the changelog in the release branch.
-update_docker_images() {
+update_products() {
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   # New branch that updates the CHANGELOG
-  CHANGELOG_BRANCH="update-changelog-from-release-$RELEASE_TAG"
+  CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
   # Branch out from main
   git switch -c "$CHANGELOG_BRANCH" main
   # Checkout CHANGELOG changes from the release tag
@@ -156,8 +163,12 @@ update_docker_images() {
   git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
   # Maybe push and create pull request
   if "$PUSH"; then
-    git push -u "$REMOTE" "$CHANGELOG_BRANCH"
-    gh pr create --fill --reviewer stackabletech/developers --head "$CHANGELOG_BRANCH" --base main
+    git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
+    gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+  else
+		echo "(Dry-run: not pushing...)"
+		git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
+		gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
   fi
 }
 
@@ -181,15 +192,20 @@ main() {
     exit 1
   fi
 
+  if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
+	  	echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
+  		mkdir -p "$TEMP_RELEASE_FOLDER"
+	fi
+
   if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     # sanity checks before we start: folder, branches etc.
     # deactivate -e so that piped commands can be used
     set +e
-    check_docker_images
+    check_products
     set -e
 
     echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
-    update_docker_images
+    update_products
   fi
   if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     # sanity checks before we start: folder, branches etc.
