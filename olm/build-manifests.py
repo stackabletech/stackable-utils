@@ -335,12 +335,9 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
             # The other objects are embedded in the CSV. These are:
             # - the operator cluster role (N.B. some products have more than one cluster role e.g. HDFS)
             # - the operator deployment
-            elif (
-                m["kind"] == "ClusterRole"
-                and (
-                    m["metadata"]["name"] == f"{args.product}-clusterrole"
-                    or m["metadata"]["name"] == f"{args.product}-clusterrole-nodes"
-                )
+            elif m["kind"] == "ClusterRole" and (
+                m["metadata"]["name"] == f"{args.product}-clusterrole"
+                or m["metadata"]["name"] == f"{args.product}-clusterrole-nodes"
             ):
                 dest_file = (
                     args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
@@ -428,7 +425,9 @@ def generate_csv(
     result["metadata"]["annotations"]["repository"] = (
         f"https://github.com/stackabletech/{args.op_name}"
     )
-    result["metadata"]["annotations"]["olm.skipRange"] = f'< {args.release}'
+
+    # Commented out as it caused problems with the certification pipeline.
+    # result["metadata"]["annotations"]["olm.skipRange"] = f'< {args.release}'
 
     ### 1. Add list of owned crds
     result["spec"]["customresourcedefinitions"]["owned"] = owned_crds
@@ -542,7 +541,7 @@ def generate_crds(repo_operator: pathlib.Path) -> list[dict]:
             del crd["metadata"]["annotations"]["helm.sh/resource-policy"]
         else:
             raise ManifestException(
-                f'Expected "CustomResourceDefinition" but found kind "{crd['kind']}" in CRD file "{crd_path}"'
+                f'Expected "CustomResourceDefinition" but found kind "{crd["kind"]}" in CRD file "{crd_path}"'
             )
     logging.debug("finish generate_crds")
     return crds
@@ -565,17 +564,24 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
                 )
 
             manifest_digest = [
-                t["manifest_digest"] for t in data["tags"] if t["name"] == release and t["is_manifest_list"] == True
+                t["manifest_digest"]
+                for t in data["tags"]
+                if t["name"] == release and t["is_manifest_list"] == True
             ]
 
             if len(manifest_digest) == 0:
                 raise ManifestException(f"No manifest list for {image}:{release} found")
 
             if len(manifest_digest) > 1:
-                raise ManifestException(f"Multiple manifest lists for {image}:{release} found but only one expected")
+                raise ManifestException(
+                    f"Multiple manifest lists for {image}:{release} found but only one expected"
+                )
 
             result.append(
-                {"name": image, "image": f"quay.io/stackable/{image}@{manifest_digest[0]}"}
+                {
+                    "name": image,
+                    "image": f"quay.io/stackable/{image}@{manifest_digest[0]}",
+                }
             )
     logging.debug("finish op_image")
     return result
@@ -603,7 +609,9 @@ def write_metadata(args: argparse.Namespace) -> None:
         annos["annotations"][
             "operators.operatorframework.io.bundle.channel.default.v1"
         ] = args.channel
-        annos["annotations"]["operators.operatorframework.io.bundle.channels.v1"] = f"stable,{args.channel}"
+        annos["annotations"]["operators.operatorframework.io.bundle.channels.v1"] = (
+            f"stable,{args.channel}"
+        )
 
         anno_file = metadata_dir / "annotations.yaml"
         logging.info(f"Writing {anno_file}")
