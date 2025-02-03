@@ -5,7 +5,7 @@
 # This scripts generates the OLM manifests required to install an operator from a custom catalog.
 # These are not required to install an operator from the OperatorHub.
 #
-# The images are published under docker.stackable.tech/sandbox since they are only needed during development.
+# The images are published under oci.stackable.tech/sandbox since they are only needed during development.
 #
 # This script makes the following *assumptions*:
 #
@@ -80,9 +80,9 @@ bundle-clean() {
 build-bundle() {
   opm alpha bundle generate --directory manifests --package "${OPERATOR}-package" --output-dir bundle --channels "stable,$CHANNEL" --default "$CHANNEL"
   cp metadata/*.yaml bundle/metadata/
-  docker build -t "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" -f bundle.Dockerfile .
-  docker push "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}"
-  opm alpha bundle validate --tag "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" --image-builder docker
+  docker build -t "oci.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" -f bundle.Dockerfile .
+  docker push "oci.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}"
+  opm alpha bundle validate --tag "oci.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" --image-builder docker
 
   echo "Bundle built successfully!"
 }
@@ -126,14 +126,14 @@ catalog() {
 
   } >>"catalog/stackable-${OPERATOR}-operator.yaml"
   echo "Render operator: ${OPERATOR}"
-  opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" --output=yaml >>"catalog/stackable-${OPERATOR}-operator.yaml"
+  opm render "oci.stackable.tech/sandbox/${OPERATOR}-bundle:${VERSION}" --output=yaml >>"catalog/stackable-${OPERATOR}-operator.yaml"
 
   echo "Validating catalog..."
   opm validate catalog
 
   echo "Build and push catalog for all ${OPERATOR} operator..."
-  docker build . -f catalog.Dockerfile -t "docker.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}"
-  docker push "docker.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}"
+  docker build . -f catalog.Dockerfile -t "oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}"
+  docker push "oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}"
 
   echo "Generating catalog source..."
   cat >catalog-source.yaml <<CATALOGSOURCE
@@ -144,7 +144,7 @@ metadata:
   name: stackable-${OPERATOR}-catalog
 spec:
   sourceType: grpc
-  image: docker.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}
+  image: oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}
   displayName: Stackable Catalog
   publisher: Stackable GmbH
   updateStrategy:

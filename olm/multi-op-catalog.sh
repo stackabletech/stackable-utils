@@ -72,16 +72,16 @@ echo "Add operator to package: ${OPERATOR}"
 } >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-operator.yaml"
 
 echo "Render operator: ${OPERATOR}"
-opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:23.11.0" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}.v23.11.0-bundle.yaml"
-opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:24.3.0" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-v24.3.0-bundle.yaml"
-opm render "docker.stackable.tech/sandbox/${OPERATOR}-bundle:24.4.0-1" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-v24.4.0-1-bundle.yaml"
+opm render "oci.stackable.tech/sandbox/${OPERATOR}-bundle:23.11.0" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}.v23.11.0-bundle.yaml"
+opm render "oci.stackable.tech/sandbox/${OPERATOR}-bundle:24.3.0" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-v24.3.0-bundle.yaml"
+opm render "oci.stackable.tech/sandbox/${OPERATOR}-bundle:24.4.0-1" --output=yaml >>"olm/catalog/${OPERATOR}/stackable-${OPERATOR}-v24.4.0-1-bundle.yaml"
 
 echo "Validating catalog..."
 opm validate olm/catalog
 
 echo "Build catalog..."
-docker build olm -f olm/catalog.Dockerfile -t "docker.stackable.tech/sandbox/stackable-catalog:multi"
-docker push "docker.stackable.tech/sandbox/stackable-catalog:multi"
+docker build olm -f olm/catalog.Dockerfile -t "oci.stackable.tech/sandbox/stackable-catalog:multi"
+docker push "oci.stackable.tech/sandbox/stackable-catalog:multi"
 
 export VERSION="multi"
 
@@ -94,7 +94,7 @@ echo "Generating catalog source..."
 	echo "  name: stackable-catalog"
 	echo "spec:"
 	echo "  sourceType: grpc"
-	echo "  image: docker.stackable.tech/sandbox/stackable-catalog:${VERSION}"
+	echo "  image: oci.stackable.tech/sandbox/stackable-catalog:${VERSION}"
 	echo "  displayName: Stackable Catalog"
 	echo "  publisher: Stackable GmbH"
 	echo "  updateStrategy:"
