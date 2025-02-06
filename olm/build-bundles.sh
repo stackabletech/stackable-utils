@@ -132,8 +132,8 @@ catalog() {
   opm validate catalog
 
   echo "Build and push catalog for all ${OPERATOR} operator..."
-  docker build . -f catalog.Dockerfile -t "oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}"
-  docker push "oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}"
+  docker build . -f catalog.Dockerfile -t "oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:latest"
+  docker push "oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:latest"
 
   echo "Generating catalog source..."
   cat >catalog-source.yaml <<CATALOGSOURCE
@@ -144,7 +144,7 @@ metadata:
   name: stackable-${OPERATOR}-catalog
 spec:
   sourceType: grpc
-  image: oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:${VERSION}
+  image: oci.stackable.tech/sandbox/stackable-${OPERATOR}-catalog:latest
   displayName: Stackable Catalog
   publisher: Stackable GmbH
   updateStrategy:
@@ -190,8 +190,8 @@ kind: OperatorGroup
 metadata:
   name: stackable-operator-group
 spec:
-  targetNamespaces:
-  - stackable-operators
+  upgradeStrategy: Default
+
 OPERATORGROUP
 
   echo "Catalog, operator group and subscription built (but not deployed) successfully!"
