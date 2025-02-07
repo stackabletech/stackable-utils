@@ -1,22 +1,6 @@
 #!/usr/bin/env bash
 #
-# Description
-#
-# This scripts generates the OLM manifests required to install an operator from a custom catalog.
-# These are not required to install an operator from the OperatorHub.
-#
-# The images are published under oci.stackable.tech/sandbox since they are only needed during development.
-#
-# This script makes the following *assumptions*:
-#
-# - There is a clone of the openshift-certified-operators repository in the folder passed as -c argument.
-#   This is the same as the build-manifests.sh script.
-#   Ensure the openshift-certified-operators repo is located on the correct branch (this is not supplied as an arguments).
-#
-# - The operator manifests for the given version have been generated with the build-manifests.sh script
-#   and are available in that repository under operators/<operator>/version/manifests.
-#
-# - If a deployment is also done (with -d) then the namespace called "stackable-operators" is available.
+# This scripts generates the OLM bundles from existing manifests.
 #
 # Usage
 #
@@ -36,7 +20,6 @@
 #       -o secret \
 #       -c $HOME/repo/stackable/openshift-certified-operators \
 #       -d
-#
 
 set -euo pipefail
 set -x
