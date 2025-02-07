@@ -74,7 +74,7 @@ bundle-build() {
     --output-dir "$OUTPUT_DIR" \
     --package "$BUNDLE_NAME"
 
-  # For whatever reason,tThe generated CSV drops the spec.relatedImages and spec.install properties
+  # For whatever reason the generated CSV drops the spec.relatedImages and spec.install properties
   cp "${INPUT_DIR}"/manifests/*.clusterserviceversion.yaml "$OUTPUT_DIR/manifests"
 
   # Generate metadata
@@ -151,7 +151,6 @@ main() {
   INPUT_DIR="${OPENSHIFT_ROOT}/operators/stackable-${OPERATOR}-operator/${VERSION}"
   OUTPUT_DIR="bundle/stackable-${OPERATOR}-operator/${VERSION}"
 
-  # clean up any residual files from previous actions
   bundle-clean "$OUTPUT_DIR"
   bundle-build "$BUNDLE_NAME" "$INPUT_DIR" "$OUTPUT_DIR"
   bundle-deploy "$BUNDLE_IMAGE"
