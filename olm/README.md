@@ -81,7 +81,7 @@ Where:
 - `-c <manifest folder>`: the folder with the input OLM manifests for the bundle
 - `-o <operator-name>`: the operator name (mandatory) e.g. "airflow"
 - `-d`: Optional. Deploy the bundle. Default: false.
-
+N.B. This action will push the bundles to `oci.stackable.tech` and requires that the user be logged in first. This can be done by copying the CLI token from the Harbor UI once you are logged in there (see under "Profile"), and then using is as the password when prompted on entering `docker login oci.stackabe.tech`.
 ## Operator upgrades
 
 To test operator upgrades run `operator-sdk run bundle-upgrade` like this:
