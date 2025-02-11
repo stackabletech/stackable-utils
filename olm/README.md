@@ -1,90 +1,113 @@
 # Overview
 
-These notes are a summary of the more in-depth, internal documentation [here](https://app.nuclino.com/Stackable/Engineering/Certification-Process-a8cf57d0-bd41-4d56-b505-f59af4159a56).
+This is a short guide on how to build and test OLM manifests for the Stackable operators.
+
+The workflow contains these steps:
+
+1. Generate OLM Manifests
+2. Build and Install Bundles
+3. Test Operators
 
 # Prerequisites
 
-- an [OpenShift](https://developers.redhat.com/products/openshift-local/overview) cluster with the `stackable-operators` namespace
-- [opm](https://github.com/operator-framework/operator-registry/)
-- docker and kubectl
-- `kubeadmin` access: once logged in to an openshift cluster a secret is needed
-```
-export KUBECONFIG=~/.kube/config
-oc create secret generic kubeconfig --from-file=kubeconfig=$KUBECONFIG --namespace stackable-operators
-```
-- [tkn](https://github.com/tektoncd/cli)
-- a secret for `pyxis_api_key`: a token giving access to Redhat Connect 
-- a secret for `github-api-token`: a token giving access to the RH repo
+- An [OpenShift](https://developers.redhat.com/products/openshift-local/overview) or an [OKD](https://okd.io/) cluster
+- [operator-sdk](https://github.com/operator-framework/operator-sdk/)
+- [docker](https://docs.docker.com/engine/install/)
+- [kubectl](https://github.com/kubernetes/kubectl)
 
-# Deployment
+# Generate OLM Manifests
 
-Stackable operators can be deployed to Openshift in one of three ways:
+Before generating OLM manifests for an operator ensure that you have checked out the correct branch or tag
+in the corresponding operator repository.
 
-- Helm: either natively, or by using stackablectl
-- Operator Catalog
-- Certified Operators
+The OLM manifests are usually generated into the [OpenShift Certified Operators Repository](https://github.com/stackabletech/openshift-certified-operators)
+which is the source of the certification process.
 
-The latter two require an operator to be deployed to an Openshift cluster, from where the operator (and its dependencies, if these have been defined) can be installed from the console UI. Both pathways use version-specific manifest files which are created in the [Stackable repository](https://github.com/stackabletech/openshift-certified-operators) that is forked from [here](https://github.com/redhat-openshift-ecosystem/certified-operators). These manifests are largely based on the templates used by helm, with the addition of Openshift-specific items (such as a ClusterServiceVersion manifest).
+## Secret and Listener Operators
 
-## Build the bundle
+The manifest generation for these two operators is only partially automated.
+You start with the script below and then manually update the cluster service version.
+To generate the manifests for the secret operator version 24.11.1, run:
 
-An operator bundle and catalog can be built and deployed using the `build-bundle.sh` script e.g.
-
-```
-./olm/build-bundles.sh -r 23.4.1 -b secret-23.4.1 -o secret-operator -d
+```bash
+./olm/build-manifests.sh -r 24.11.1 \
+  -c $HOME/repo/stackable/openshift-certified-operators \
+  -o $HOME/repo/stackable/secret-operator
 ```
 
 Where:
 - `-r <release>`: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
-- `-b <branch>`: the branch name (mandatory) in the (stackable forked) openshift-certified-operators repository.
-- `-o <operator-name>`: the operator name (mandatory) e.g. airflow-operator.
-- `-d <deploy>`: optional flag for catalog deployment.
+- `-c <manifest folder>`: the output folder for the manifest files
+- `-o <operator-dir>`: directory of the operator repository
 
-The script creates a catalog specific to an operator. A catalog can contain bundles for multiple operators, but a 1:1 deployment makes it easier to deploy and test operators independently. Testing with a deployed catalog is essential as the certification pipeline should only be used for stable operators, and a certified operator can only be changed if a new version is specified.
+Similarly for the listener operator run:
 
-## Use the CI pipeline
-
-### Testing
-
-This should either be called from the stackable-utils root folder, or the `volumeClaimTemplateFile` path should be changed accordingly.
-
-```
-export GIT_REPO_URL=https://github.com/stackabletech/openshift-certified-operators
-export BUNDLE_PATH=operators/stackable-commons-operator/23.4.1
-export LOCAL_BRANCH=commons-23.4.1
-
-tkn pipeline start operator-ci-pipeline \
-  --namespace stackable-operators \
-  --param git_repo_url=$GIT_REPO_URL \
-  --param git_branch=$LOCAL_BRANCH \
-  --param bundle_path=$BUNDLE_PATH \
-  --param env=prod \
-  --param kubeconfig_secret_name=kubeconfig \
-  --workspace name=pipeline,volumeClaimTemplateFile=olm/templates/workspace-template.yml \
-  --showlog
+```bash
+./olm/build-manifests.sh -r 24.11.1 \
+  -c $HOME/repo/stackable/openshift-certified-operators \
+  -o $HOME/repo/stackable/listener-operator
 ```
 
-### Certifying
+## All Other Operators
 
-This callout is identical to the previous one, with the addition of the last two parameters `upstream_repo_name` and `submit=true`:
-
-```
-export GIT_REPO_URL=https://github.com/stackabletech/openshift-certified-operators
-export BUNDLE_PATH=operators/stackable-commons-operator/23.4.1
-export LOCAL_BRANCH=commons-23.4.1
-
-tkn pipeline start operator-ci-pipeline \
-  --namespace stackable-operators \
-  --param git_repo_url=$GIT_REPO_URL \
-  --param git_branch=$LOCAL_BRANCH \
-  --param bundle_path=$BUNDLE_PATH \
-  --param env=prod \
-  --param kubeconfig_secret_name=kubeconfig \
-  --workspace name=pipeline,volumeClaimTemplateFile=olm/templates/workspace-template.yml \
-  --showlog \
-  --param upstream_repo_name=redhat-openshift-ecosystem/certified-operators \
-  --param submit=true
+```bash
+./olm/build-manifests.py \
+  --openshift-versions 'v4.14-v4.16' \
+  --release 24.11.1 \
+  --skips 24.7.0 \
+  --repo-operator ~/repo/stackable/hbase-operator
 ```
 
-A successful callout will result in a PR being opened in the Redhat repository, from where progress can be tracked.
+See `./olm/build-manifests.py --help` for the description of command line arguments.
 
+# Build and Install Bundles
+
+Operator bundles are needed to test the OLM manifests but *not needed* for the operator certification.
+
+## Build bundles
+
+To build operator bundles run:
+
+```bash
+./olm/build-bundles.sh \
+  -c $HOME/repo/stackable/openshift-certified-operators \
+  -r 24.11.1 \
+  -o listener \
+  -d
+```
+
+Where:
+- `-r <release>`: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
+- `-c <manifest folder>`: the folder with the input OLM manifests for the bundle
+- `-o <operator-name>`: the operator name (mandatory) e.g. "airflow"
+- `-d`: Optional. Deploy the bundle. Default: false.
+
+N.B. This action will push the bundles to `oci.stackable.tech` and requires that the user be logged in first. This can be done by copying the CLI token from the Harbor UI once you are logged in there (see under "Profile"), and then using this as the password when prompted on entering `docker login oci.stackabe.tech`.
+## Operator upgrades
+
+To test operator upgrades run `operator-sdk run bundle-upgrade` like this:
+
+```bash
+operator-sdk run bundle-upgrade \
+  oci.stackable.tech/sandbox/listener-bundle:24.11.2 \
+  --namespace stackable-operators
+```
+
+# Test Operators
+
+To run the integration tests against an operator installation (ex. listener):
+
+```bash
+./scripts/run-tests --skip-operator listener --test-suite openshift
+```
+
+Here we skip the installation of the listener operator by the test suite because this is already installed
+as an operator bundle.
+
+## Bundle cleanup
+
+To remove an operator bundle and all associated objects, run:
+
+```bash
+operator-sdk cleanup listener-operator --namespace stackable-operators
+```
