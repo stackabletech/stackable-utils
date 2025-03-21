@@ -10,7 +10,7 @@ set -euo pipefail
 # optional release-candidate suffixes are in the form:
 #	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
-REPOSITORY="origin"
+REMOTE="origin"
 PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE MANUALLY!
 > This branch will be merged (and the commit tagged) by stackable-utils once any necessary commits have been cherry-picked to here from the main branch."
@@ -111,12 +111,16 @@ check_products() {
 	# will be prepared
 	BRANCH_EXISTS=$(git branch -a | grep -E "$PR_BRANCH$")
 	if [ -n "${BRANCH_EXISTS}" ]; then
-		>&2 echo "PR branch already exists: ${REPOSITORY}/$PR_BRANCH"
+		>&2 echo "PR branch already exists: ${REMOTE}/$PR_BRANCH"
 		exit 1
 	fi
 
 	# create a new branch for the PR off of this
-	git switch -c "${PR_BRANCH}" "${REPOSITORY}/${RELEASE_BRANCH}"
+	local BASE_BRANCH="$RELEASE_BRANCH"
+	if $PUSH; then
+		BASE_BRANCH="${REMOTE}/${RELEASE_BRANCH}"
+	fi
+	git switch -c "$PR_BRANCH" "$BASE_BRANCH"
 
 	check_tag_is_valid
 }
@@ -148,7 +152,11 @@ check_operators() {
 		fi
 
 		# create a new branch for the PR off of this
-		git switch -c "${PR_BRANCH}" "${REPOSITORY}/${RELEASE_BRANCH}"
+		local BASE_BRANCH="$RELEASE_BRANCH"
+		if $PUSH; then
+			BASE_BRANCH="${REMOTE}/${RELEASE_BRANCH}"
+		fi
+		git switch -c "$PR_BRANCH" "$BASE_BRANCH"
 
 		check_tag_is_valid
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
@@ -213,11 +221,11 @@ push_branch() {
 	if $PUSH; then
 		echo "Pushing changes..."
 		# the branch must be updated before the PR can be created
-		git push "${REPOSITORY}" "${PR_BRANCH}"
+		git push "$REMOTE" "$PR_BRANCH"
 		gh pr create --reviewer stackabletech/developers --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	else
 		echo "Dry-run: not pushing changes..."
-		git push --dry-run "${REPOSITORY}" "${PR_BRANCH}"
+		git push --dry-run "$REMOTE" "$PR_BRANCH"
 		gh pr create --reviewer stackabletech/developers --dry-run --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	fi
 }
