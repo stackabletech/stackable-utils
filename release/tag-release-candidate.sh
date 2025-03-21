@@ -158,8 +158,8 @@ parse_inputs() {
 
 check_dependencies() {
 	# check for a globally configured git user
-	git_user=$(git config --global --get user.name)
-	git_email=$(git config --global --get user.email)
+	git_user=$(git config --global --includes --get user.name)
+	git_email=$(git config --global --includes --get user.email)
 	echo "global git user: $git_user <$git_email>"
 
 	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
