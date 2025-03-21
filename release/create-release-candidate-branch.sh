@@ -221,11 +221,11 @@ push_branch() {
 	if $PUSH; then
 		echo "Pushing changes..."
 		# the branch must be updated before the PR can be created
-		git push "$REMOTE" "$PR_BRANCH"
+		git push -u "$REMOTE" "$PR_BRANCH"
 		gh pr create --reviewer stackabletech/developers --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	else
 		echo "Dry-run: not pushing changes..."
-		git push --dry-run "$REMOTE" "$PR_BRANCH"
+		git push --dry-run -u "$REMOTE" "$PR_BRANCH"
 		gh pr create --reviewer stackabletech/developers --dry-run --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	fi
 }
