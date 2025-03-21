@@ -3,7 +3,7 @@
 # See README.adoc
 #
 set -euo pipefail
-set -x
+# set -x
 
 BASE_BRANCH="main"
 REPOSITORY="origin"

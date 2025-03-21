@@ -3,7 +3,7 @@
 # See README.md
 #
 set -euo pipefail
-set -x
+# set -x
 
 parse_inputs() {
 	RELEASE_TAG=""

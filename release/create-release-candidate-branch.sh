@@ -3,7 +3,7 @@
 # See README.adoc
 #
 set -euo pipefail
-set -x
+# set -x
 
 # tags should be semver-compatible e.g. 23.1.1 not 23.01.1
 # this is needed for cargo commands to work properly
