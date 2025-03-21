@@ -3,10 +3,10 @@
 # See README.adoc
 #
 set -euo pipefail
-set -x
+# set -x
 
 BASE_BRANCH="main"
-REPOSITORY="origin"
+REMOTE="origin"
 #----------------------------------------------------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1 and not 23.01
 # this is needed for cargo commands to work properly: although it is not strictly needed
@@ -21,10 +21,13 @@ update_products() {
   else
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REPOSITORY}/${BASE_BRANCH}"
+    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
   fi
 
   push_branch "$DOCKER_IMAGES_REPO"
+
+  echo
+  echo "Check $BASE_DIR/$DOCKER_IMAGES_REPO"
 }
 
 update_operators() {
@@ -36,7 +39,7 @@ update_operators() {
     else
       git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
       cd "$BASE_DIR/${operator}"
-      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REPOSITORY}/${BASE_BRANCH}"
+      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
     fi
     push_branch "$operator"
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
@@ -49,7 +52,7 @@ update_demos() {
   else
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
     cd "$BASE_DIR/$DEMOS_REPO"
-    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REPOSITORY}/${BASE_BRANCH}"
+    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
   fi
 
   # Search and replace known references to stackableRelease, container images, branch references.
@@ -74,13 +77,13 @@ update_repos() {
 }
 
 push_branch() {
-  local REMOTE="$1";
+  local REPOSITORY="$1";
   if $PUSH; then
-    echo "Pushing to $REMOTE"
-    git push -u "${REPOSITORY}" "${RELEASE_BRANCH}"
+    echo "Pushing changes to $REPOSITORY"
+    git push -u "$REMOTE" "$RELEASE_BRANCH"
   else
-    echo "Dry run pushing to $REMOTE"
-    git push --dry-run -u "${REPOSITORY}" "${RELEASE_BRANCH}"
+    echo "Dry-run: not pushing changes to $REPOSITORY"
+    git push --dry-run -u "$REMOTE" "$RELEASE_BRANCH"
   fi
 }
 

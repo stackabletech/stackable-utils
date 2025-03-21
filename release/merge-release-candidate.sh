@@ -3,7 +3,7 @@
 # See README.md
 #
 set -euo pipefail
-set -x
+# set -x
 
 parse_inputs() {
 	RELEASE_TAG=""
@@ -53,7 +53,7 @@ merge_operators() {
 				gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
 				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
 			else
-				echo "(Dry-run: not reviewing/merging...)"
+				echo "Dry-run: not reviewing/merging..."
 			fi
 		else
 			echo "Skipping ${operator}, PR already closed"
@@ -71,7 +71,7 @@ merge_products() {
 			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
 			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
 		else
-			echo "(Dry-run: not reviewing/merging...)"
+			echo "Dry-run: not reviewing/merging..."
 		fi
 	else
 		echo "Skipping ${DOCKER_IMAGES_REPO}, PR already closed"
@@ -89,8 +89,8 @@ merge() {
 
 check_dependencies() {
 	# check for a globally configured git user
-	git_user=$(git config --global --get user.name)
-	git_email=$(git config --global --get user.email)
+	git_user=$(git config --global --includes --get user.name)
+	git_email=$(git config --global --includes --get user.email)
 	echo "global git user: $git_user <$git_email>"
 
 	if [ -z "$git_user" ] || [ -z "$git_email" ]; then

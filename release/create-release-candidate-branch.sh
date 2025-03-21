@@ -3,14 +3,14 @@
 # See README.adoc
 #
 set -euo pipefail
-set -x
+# set -x
 
 # tags should be semver-compatible e.g. 23.1.1 not 23.01.1
 # this is needed for cargo commands to work properly
 # optional release-candidate suffixes are in the form:
 #	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
 TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
-REPOSITORY="origin"
+REMOTE="origin"
 PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE MANUALLY!
 > This branch will be merged (and the commit tagged) by stackable-utils once any necessary commits have been cherry-picked to here from the main branch."
@@ -89,6 +89,8 @@ check_tag_is_valid() {
 }
 
 check_products() {
+	echo "Checking products"
+
 	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
 		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   		# $TEMP_RELEASE_FOLDER has already been created in main()
@@ -109,17 +111,23 @@ check_products() {
 	# will be prepared
 	BRANCH_EXISTS=$(git branch -a | grep -E "$PR_BRANCH$")
 	if [ -n "${BRANCH_EXISTS}" ]; then
-		>&2 echo "PR branch already exists: ${REPOSITORY}/$PR_BRANCH"
+		>&2 echo "PR branch already exists: ${REMOTE}/$PR_BRANCH"
 		exit 1
 	fi
 
 	# create a new branch for the PR off of this
-	git switch -c "${PR_BRANCH}" "${REPOSITORY}/${RELEASE_BRANCH}"
+	local BASE_BRANCH="$RELEASE_BRANCH"
+	if $PUSH; then
+		BASE_BRANCH="${REMOTE}/${RELEASE_BRANCH}"
+	fi
+	git switch -c "$PR_BRANCH" "$BASE_BRANCH"
 
 	check_tag_is_valid
 }
 
 check_operators() {
+	echo "Checking operators"
+
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
 		if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
@@ -144,7 +152,11 @@ check_operators() {
 		fi
 
 		# create a new branch for the PR off of this
-		git switch -c "${PR_BRANCH}" "${REPOSITORY}/${RELEASE_BRANCH}"
+		local BASE_BRANCH="$RELEASE_BRANCH"
+		if $PUSH; then
+			BASE_BRANCH="${REMOTE}/${RELEASE_BRANCH}"
+		fi
+		git switch -c "$PR_BRANCH" "$BASE_BRANCH"
 
 		check_tag_is_valid
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
@@ -209,11 +221,11 @@ push_branch() {
 	if $PUSH; then
 		echo "Pushing changes..."
 		# the branch must be updated before the PR can be created
-		git push "${REPOSITORY}" "${PR_BRANCH}"
+		git push -u "$REMOTE" "$PR_BRANCH"
 		gh pr create --reviewer stackabletech/developers --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	else
-		echo "(Dry-run: not pushing...)"
-		git push --dry-run "${REPOSITORY}" "${PR_BRANCH}"
+		echo "Dry-run: not pushing changes..."
+		git push --dry-run -u "$REMOTE" "$PR_BRANCH"
 		gh pr create --reviewer stackabletech/developers --dry-run --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	fi
 }
@@ -280,8 +292,8 @@ parse_inputs() {
 
 check_dependencies() {
 	# check for a globally configured git user
-	git_user=$(git config --global --get user.name)
-	git_email=$(git config --global --get user.email)
+	git_user=$(git config --global --includes --get user.name)
+	git_email=$(git config --global --includes --get user.email)
 	echo "global git user: $git_user <$git_email>"
 
 	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
@@ -325,7 +337,7 @@ main() {
 	fi
 
 	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-	  	echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
+	  	echo "Creating folder for cloning docker images and/or operators: [$TEMP_RELEASE_FOLDER]"
   		mkdir -p "$TEMP_RELEASE_FOLDER"
 	fi
 
@@ -337,7 +349,7 @@ main() {
 	checks
 	set -e
 
-	echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
+	echo "Cloning docker-images and/or operators to [$TEMP_RELEASE_FOLDER]"
 	rc_branch_repos
 	cleanup
 }

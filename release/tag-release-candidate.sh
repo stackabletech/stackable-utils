@@ -3,7 +3,7 @@
 # See README.adoc
 #
 set -euo pipefail
-set -x
+# set -x
 
 # tags should be semver-compatible e.g. 23.1.1 not 23.01.1
 # this is needed for cargo commands to work properly
@@ -104,7 +104,7 @@ push_branch() {
 		echo "Pushing changes..."
 		git push "${REPOSITORY}" "${RELEASE_TAG}"
 	else
-		echo "(Dry-run: not pushing...)"
+		echo "Dry-run: not pushing..."
 		git push --dry-run "${REPOSITORY}" "${RELEASE_TAG}"
 	fi
 }
@@ -158,8 +158,8 @@ parse_inputs() {
 
 check_dependencies() {
 	# check for a globally configured git user
-	git_user=$(git config --global --get user.name)
-	git_email=$(git config --global --get user.email)
+	git_user=$(git config --global --includes --get user.name)
+	git_email=$(git config --global --includes --get user.email)
 	echo "global git user: $git_user <$git_email>"
 
 	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
