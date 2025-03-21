@@ -6,5 +6,6 @@ pkgs.mkShell {
     gh
     jinja2-cli
     yq-go
+    python311Packages.pip
   ];
 }
