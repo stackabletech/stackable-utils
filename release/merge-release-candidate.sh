@@ -49,8 +49,11 @@ merge_operators() {
 		if [[ "$STATE" == "OPEN" ]]; then
 			echo "Processing ${operator} in branch ${PR_BRANCH} with state ${STATE}"
 			if $PUSH; then
-				echo "Reviewing and merging..."
-				gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+				echo "Reviewing..."
+				# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+				read -p "Ask someone to approve the PR, then press Enter"
+				# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+				echo "Merging..."
 				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
 			else
 				echo "Dry-run: not reviewing/merging..."
@@ -67,8 +70,11 @@ merge_products() {
 	if [[ "$STATE" == "OPEN" ]]; then
 		echo "Processing ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
 		if $PUSH; then
-			echo "Reviewing and merging..."
-			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
+			echo "Reviewing..."
+			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+			read -p "Ask someone to approve the PR, then press Enter"
+			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
+			echo "Merging..."
 			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
 		else
 			echo "Dry-run: not reviewing/merging..."
