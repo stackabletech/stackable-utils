@@ -25,6 +25,9 @@ update_products() {
   fi
 
   push_branch "$DOCKER_IMAGES_REPO"
+
+  echo
+  echo "Check $BASE_DIR/$DOCKER_IMAGES_REPO"
 }
 
 update_operators() {
@@ -76,10 +79,10 @@ update_repos() {
 push_branch() {
   local REMOTE="$1";
   if $PUSH; then
-    echo "Pushing to $REMOTE"
+    echo "Pushing changes to $REMOTE"
     git push -u "${REPOSITORY}" "${RELEASE_BRANCH}"
   else
-    echo "Dry run pushing to $REMOTE"
+    echo "Dry-run: not pushing changes to $REMOTE"
     git push --dry-run -u "${REPOSITORY}" "${RELEASE_BRANCH}"
   fi
 }

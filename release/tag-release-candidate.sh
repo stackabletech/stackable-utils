@@ -104,7 +104,7 @@ push_branch() {
 		echo "Pushing changes..."
 		git push "${REPOSITORY}" "${RELEASE_TAG}"
 	else
-		echo "(Dry-run: not pushing...)"
+		echo "Dry-run: not pushing..."
 		git push --dry-run "${REPOSITORY}" "${RELEASE_TAG}"
 	fi
 }

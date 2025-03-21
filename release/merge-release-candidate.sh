@@ -53,7 +53,7 @@ merge_operators() {
 				gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
 				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
 			else
-				echo "(Dry-run: not reviewing/merging...)"
+				echo "Dry-run: not reviewing/merging..."
 			fi
 		else
 			echo "Skipping ${operator}, PR already closed"
@@ -71,7 +71,7 @@ merge_products() {
 			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
 			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
 		else
-			echo "(Dry-run: not reviewing/merging...)"
+			echo "Dry-run: not reviewing/merging..."
 		fi
 	else
 		echo "Skipping ${DOCKER_IMAGES_REPO}, PR already closed"

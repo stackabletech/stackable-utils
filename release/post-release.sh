@@ -105,7 +105,7 @@ update_operators() {
       git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
       gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
     else
-      echo "(Dry-run: not pushing...)"
+      echo "Dry-run: not pushing..."
       git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
       gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
     fi
@@ -166,7 +166,7 @@ update_products() {
     git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
     gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
   else
-    echo "(Dry-run: not pushing...)"
+    echo "Dry-run: not pushing..."
     git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
     gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
   fi

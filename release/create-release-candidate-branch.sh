@@ -89,6 +89,8 @@ check_tag_is_valid() {
 }
 
 check_products() {
+	echo "Checking products"
+
 	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
 		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   		# $TEMP_RELEASE_FOLDER has already been created in main()
@@ -120,6 +122,8 @@ check_products() {
 }
 
 check_operators() {
+	echo "Checking operators"
+
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
 		if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
@@ -212,7 +216,7 @@ push_branch() {
 		git push "${REPOSITORY}" "${PR_BRANCH}"
 		gh pr create --reviewer stackabletech/developers --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	else
-		echo "(Dry-run: not pushing...)"
+		echo "Dry-run: not pushing changes..."
 		git push --dry-run "${REPOSITORY}" "${PR_BRANCH}"
 		gh pr create --reviewer stackabletech/developers --dry-run --base "${RELEASE_BRANCH}" --head "${PR_BRANCH}" --title "chore: Release ${RELEASE_TAG}" --body "${PR_MSG}"
 	fi
@@ -325,7 +329,7 @@ main() {
 	fi
 
 	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-	  	echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
+	  	echo "Creating folder for cloning docker images and/or operators: [$TEMP_RELEASE_FOLDER]"
   		mkdir -p "$TEMP_RELEASE_FOLDER"
 	fi
 
@@ -337,7 +341,7 @@ main() {
 	checks
 	set -e
 
-	echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
+	echo "Cloning docker-images and/or operators to [$TEMP_RELEASE_FOLDER]"
 	rc_branch_repos
 	cleanup
 }
