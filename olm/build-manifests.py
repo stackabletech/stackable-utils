@@ -323,7 +323,7 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
                 dest_file = (
                     args.dest_dir
                     / "manifests"
-                    / f"{args.op_name}.clusterserviceversion.yaml"
+                    / f"stackable-{args.op_name}.v{args.release}.clusterserviceversion.yaml"
                 )
             elif m["kind"] == "CustomResourceDefinition":
                 dest_file = (
