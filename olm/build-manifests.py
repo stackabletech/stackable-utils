@@ -560,7 +560,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
             data = json.load(response)
             if not data["tags"]:
                 raise ManifestException(
-                    f"Could not find manifest digest for release '{release}' on quay.io. Pass '--use-helm-images' to use docker.stackable.tech instead."
+                    f"Could not find manifest digest for release '{release}' on quay.io. Pass '--use-helm-images' to use oci.stackable.tech instead."
                 )
 
             manifest_digest = [
