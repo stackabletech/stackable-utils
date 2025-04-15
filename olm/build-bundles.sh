@@ -85,9 +85,6 @@ LABEL operators.operatorframework.io.bundle.metadata.v1=metadata/
 LABEL operators.operatorframework.io.bundle.package.v1=stackable-${OPERATOR}-operator
 LABEL operators.operatorframework.io.bundle.channels.v1=stable,${CHANNEL}
 LABEL operators.operatorframework.io.bundle.channel.default.v1=${CHANNEL}
-LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.39.1
-LABEL operators.operatorframework.io.metrics.mediatype.v1=metrics+v1
-LABEL operators.operatorframework.io.metrics.project_layout=unknown
 
 # Copy files to locations specified by labels.
 COPY manifests /manifests/
