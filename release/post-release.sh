@@ -199,20 +199,14 @@ main() {
 
   if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     # sanity checks before we start: folder, branches etc.
-    # deactivate -e so that piped commands can be used
-    set +e
     check_products
-    set -e
 
     echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
     update_products
   fi
   if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     # sanity checks before we start: folder, branches etc.
-    # deactivate -e so that piped commands can be used
-    set +e
     check_operators
-    set -e
 
     echo "Update the operator main changelog for release $RELEASE_TAG"
     update_operators

@@ -344,10 +344,7 @@ main() {
 	check_dependencies
 
 	# sanity checks before we start: folder, branches etc.
-	# deactivate -e so that piped commands can be used
-	set +e
 	checks
-	set -e
 
 	echo "Cloning docker-images and/or operators to [$TEMP_RELEASE_FOLDER]"
 	rc_branch_repos

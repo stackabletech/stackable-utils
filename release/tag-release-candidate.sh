@@ -210,10 +210,7 @@ main() {
 	check_dependencies
 
 	# sanity checks before we start: folder, branches etc.
-	# deactivate -e so that piped commands can be used
-	set +e
 	checks
-	set -e
 
 	tag_repos
 	cleanup
