@@ -64,14 +64,14 @@ check_operators() {
       exit 2
     fi
 
-    BRANCH_EXISTS=$(git branch -a | grep "$RELEASE_BRANCH")
-    if [ -z "$BRANCH_EXISTS" ]; then
+    # Note, if this needs to check the branch exists locally, then use:
+    # "^[ *]*$RELEASE_BRANCH\$"
+    if ! git branch -a | grep "$RELEASE_BRANCH\$"; then
       >&2 echo "Expected release branch is missing: $OPERATOR/$RELEASE_BRANCH"
       exit 1
     fi
     git fetch --tags
-    TAG_EXISTS=$(git tag | grep "$RELEASE_TAG")
-    if [ -z "$TAG_EXISTS" ]; then
+    if ! git tag | grep "^$RELEASE_TAG\$"; then
       >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
       exit 1
     fi
@@ -127,15 +127,16 @@ check_products() {
     exit 2
   fi
 
-  BRANCH_EXISTS=$(git branch -a | grep "$RELEASE_BRANCH")
-  if [ -z "${BRANCH_EXISTS}" ]; then
+  # Note, if this needs to check the branch exists locally, then use:
+  # "^[ *]*$RELEASE_BRANCH\$"
+  if ! git branch -a | grep "$RELEASE_BRANCH\$"; then
     >&2 echo "Expected release branch is missing: $DOCKER_IMAGES_REPO/$RELEASE_BRANCH"
     exit 1
   fi
 
   git fetch --tags
-  TAG_EXISTS=$(git tag | grep "$RELEASE_TAG")
-  if [ -z "${TAG_EXISTS}" ]; then
+  # check tags: N.B. look for exact match
+  if ! git tag | grep "^$RELEASE_TAG\$"; then
     >&2 echo "Expected tag $RELEASE_TAG missing for $DOCKER_IMAGES_REPO"
     exit 1
   fi
@@ -199,20 +200,14 @@ main() {
 
   if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     # sanity checks before we start: folder, branches etc.
-    # deactivate -e so that piped commands can be used
-    set +e
     check_products
-    set -e
 
     echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
     update_products
   fi
   if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     # sanity checks before we start: folder, branches etc.
-    # deactivate -e so that piped commands can be used
-    set +e
     check_operators
-    set -e
 
     echo "Update the operator main changelog for release $RELEASE_TAG"
     update_operators

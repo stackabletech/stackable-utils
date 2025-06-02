@@ -89,14 +89,12 @@ merge() {
 
 check_dependencies() {
 	# check for a globally configured git user
-	git_user=$(git config --global --includes --get user.name)
-	git_email=$(git config --global --includes --get user.email)
-	echo "global git user: $git_user <$git_email>"
-
-	if [ -z "$git_user" ] || [ -z "$git_email" ]; then
+	if ! git_user=$(git config --global --includes --get user.name) \
+	|| ! git_email=$(git config --global --includes --get user.email); then
 		>&2 echo "Error: global git user name/email is not set."
 		exit 1
 	else
+		echo "global git user: $git_user <$git_email>"
 		echo "Is this correct? (y/n)"
 		read -r response
 		if [[ "$response" == "y" || "$response" == "Y" ]]; then

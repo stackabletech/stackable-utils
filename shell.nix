@@ -1,4 +1,6 @@
-{ pkgs ? import <nixpkgs> { } }:
+{
+  pkgs ? import <nixpkgs> { },
+}:
 pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
     cargo-edit
@@ -7,5 +9,6 @@ pkgs.mkShell {
     jinja2-cli
     yq-go
     python311Packages.pip
+    python311Packages.pyyaml
   ];
 }
