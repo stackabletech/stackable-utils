@@ -45,7 +45,13 @@ parse_inputs() {
 merge_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
-		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
+		if $PUSH; then
+			STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
+		else
+			# It is possible to dry-run with the PR existing, but we will simply use OPEN
+			echo "Dry-run: pretending the PR exists and is open"
+			STATE="OPEN"
+		fi
 		if [[ "$STATE" == "OPEN" ]]; then
 			echo "Processing ${operator} in branch ${PR_BRANCH} with state ${STATE}"
 			if $PUSH; then
@@ -66,7 +72,13 @@ merge_operators() {
 
 merge_products() {
 	echo "Products: $DOCKER_IMAGES_REPO"
-	STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
+	if $PUSH; then
+		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
+	else
+		# It is possible to dry-run with the PR existing, but we will simply use OPEN
+		echo "Dry-run: pretending the PR exists and is open"
+		STATE="OPEN"
+	fi
 	if [[ "$STATE" == "OPEN" ]]; then
 		echo "Processing ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
 		if $PUSH; then
