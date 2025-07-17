@@ -7,12 +7,12 @@ operators:
   - druid-operator
   - hbase-operator
   - hdfs-operator
-  - hello-world-operator
   - hive-operator
   - kafka-operator
   - listener-operator
   - nifi-operator
   - opa-operator
+  # - opensearch-operator
   - secret-operator
   - spark-k8s-operator
   - superset-operator
