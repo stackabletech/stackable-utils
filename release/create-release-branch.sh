@@ -5,7 +5,6 @@
 set -euo pipefail
 # set -x
 
-BASE_BRANCH="main"
 REMOTE="origin"
 #----------------------------------------------------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1 and not 23.01
@@ -21,7 +20,8 @@ update_products() {
   else
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
+    # try to switch to the release branch (if continuing from someone else), or create it
+    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
   fi
 
   push_branch "$DOCKER_IMAGES_REPO"
@@ -39,7 +39,8 @@ update_operators() {
     else
       git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
       cd "$BASE_DIR/${operator}"
-      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
+      # try to switch to the release branch (if continuing from someone else), or create it
+      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
     fi
     push_branch "$operator"
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
@@ -52,7 +53,7 @@ update_demos() {
   else
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
     cd "$BASE_DIR/$DEMOS_REPO"
-    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
+    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
   fi
 
   # Search and replace known references to stackableRelease, container images, branch references.
