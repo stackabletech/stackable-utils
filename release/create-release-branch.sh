@@ -15,9 +15,11 @@ RELEASE_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
 
 update_products() {
   if [ -d "$BASE_DIR/$DOCKER_IMAGES_REPO" ]; then
+    echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git pull && git switch "${RELEASE_BRANCH}"
+    git fetch && git switch "${RELEASE_BRANCH}" && git pull
   else
+    echo "Repo directory ($BASE_DIR/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
     # try to switch to the release branch (if continuing from someone else), or create it
@@ -34,9 +36,11 @@ update_operators() {
   while IFS="" read -r operator || [ -n "$operator" ]
   do
     if [ -d "$BASE_DIR/${operator}" ]; then
+      echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
       cd "$BASE_DIR/${operator}"
-      git pull && git switch "${RELEASE_BRANCH}"
+      git fetch && git switch "${RELEASE_BRANCH}" && git pull
     else
+      echo "Repo directory ($BASE_DIR/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
       git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
       cd "$BASE_DIR/${operator}"
       # try to switch to the release branch (if continuing from someone else), or create it
