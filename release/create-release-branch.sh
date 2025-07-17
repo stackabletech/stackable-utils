@@ -149,7 +149,7 @@ main() {
     exit 1
   fi
 
-  echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
+  echo "Creating temporary working directory if it doesn't exist [$TEMP_RELEASE_FOLDER]"
   mkdir -p "$TEMP_RELEASE_FOLDER"
   update_repos "$TEMP_RELEASE_FOLDER"
   cleanup "$TEMP_RELEASE_FOLDER"
