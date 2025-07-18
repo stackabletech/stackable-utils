@@ -43,7 +43,6 @@ parse_inputs() {
 }
 
 merge_operators() {
-	# Move approval check to here
 	read -p "Ask someone to approve all of the operator PRs, then press Enter"
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
