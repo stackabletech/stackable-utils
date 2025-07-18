@@ -43,6 +43,7 @@ parse_inputs() {
 }
 
 merge_operators() {
+	read -p "Ask someone to approve all of the operator PRs, then press Enter"
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
 		if $PUSH; then
@@ -58,7 +59,6 @@ merge_operators() {
 				echo "Reviewing..."
 				# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
 				# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
-				read -p "Ask someone to approve the PR, then press Enter"
 				# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
 				echo "Merging..."
 				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"

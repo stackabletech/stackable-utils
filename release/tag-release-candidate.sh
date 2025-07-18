@@ -17,7 +17,7 @@ tag_products() {
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
 	# the PR branch should already exist
-	git switch "$RELEASE_BRANCH"
+	git switch "$RELEASE_BRANCH" && git pull
 	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	push_branch
 }
@@ -25,7 +25,7 @@ tag_products() {
 tag_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		cd "${TEMP_RELEASE_FOLDER}/${operator}"
-		git switch "$RELEASE_BRANCH"
+		git switch "$RELEASE_BRANCH" && git pull
 		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
