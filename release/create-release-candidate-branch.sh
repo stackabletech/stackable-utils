@@ -116,11 +116,7 @@ check_products() {
 	fi
 
 	# create a new branch for the PR off of this
-	local BASE_BRANCH="$RELEASE_BRANCH"
-	if $PUSH; then
-		BASE_BRANCH="${REMOTE}/${RELEASE_BRANCH}"
-	fi
-	git switch -c "$PR_BRANCH" "$BASE_BRANCH"
+	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 
 	check_tag_is_valid
 }
@@ -154,11 +150,7 @@ check_operators() {
 		fi
 
 		# create a new branch for the PR off of this
-		local BASE_BRANCH="$RELEASE_BRANCH"
-		if $PUSH; then
-			BASE_BRANCH="${REMOTE}/${RELEASE_BRANCH}"
-		fi
-		git switch -c "$PR_BRANCH" "$BASE_BRANCH"
+		git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 
 		check_tag_is_valid
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)

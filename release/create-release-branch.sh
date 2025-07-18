@@ -5,7 +5,6 @@
 set -euo pipefail
 # set -x
 
-BASE_BRANCH="main"
 REMOTE="origin"
 #----------------------------------------------------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1 and not 23.01
@@ -16,12 +15,15 @@ RELEASE_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
 
 update_products() {
   if [ -d "$BASE_DIR/$DOCKER_IMAGES_REPO" ]; then
+    echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git pull && git switch "${RELEASE_BRANCH}"
+    git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
   else
+    echo "Repo directory ($BASE_DIR/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
+    # try to switch to the release branch (if continuing from someone else), or create it
+    git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
   fi
 
   push_branch "$DOCKER_IMAGES_REPO"
@@ -34,12 +36,15 @@ update_operators() {
   while IFS="" read -r operator || [ -n "$operator" ]
   do
     if [ -d "$BASE_DIR/${operator}" ]; then
+      echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
       cd "$BASE_DIR/${operator}"
-      git pull && git switch "${RELEASE_BRANCH}"
+      git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
     else
+      echo "Repo directory ($BASE_DIR/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
       git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
       cd "$BASE_DIR/${operator}"
-      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
+      # try to switch to the release branch (if continuing from someone else), or create it
+      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
     fi
     push_branch "$operator"
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
@@ -52,7 +57,7 @@ update_demos() {
   else
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
     cd "$BASE_DIR/$DEMOS_REPO"
-    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}" "${REMOTE}/${BASE_BRANCH}"
+    git switch "${RELEASE_BRANCH}" 2> /dev/null  || git switch -c "${RELEASE_BRANCH}"
   fi
 
   # Search and replace known references to stackableRelease, container images, branch references.
@@ -144,7 +149,7 @@ main() {
     exit 1
   fi
 
-  echo "Cloning docker images and operators to [$TEMP_RELEASE_FOLDER]"
+  echo "Creating temporary working directory if it doesn't exist [$TEMP_RELEASE_FOLDER]"
   mkdir -p "$TEMP_RELEASE_FOLDER"
   update_repos "$TEMP_RELEASE_FOLDER"
   cleanup "$TEMP_RELEASE_FOLDER"

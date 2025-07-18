@@ -45,15 +45,27 @@ parse_inputs() {
 merge_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
-		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
+		if $PUSH; then
+			STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
+		else
+			# It is possible to dry-run with the PR existing, but we will simply use OPEN
+			echo "Dry-run: pretending the PR exists and is open"
+			STATE="OPEN"
+		fi
 		if [[ "$STATE" == "OPEN" ]]; then
 			echo "Processing ${operator} in branch ${PR_BRANCH} with state ${STATE}"
 			if $PUSH; then
-				echo "Reviewing and merging..."
-				gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+				echo "Reviewing..."
+				# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+				# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
+				read -p "Ask someone to approve the PR, then press Enter"
+				# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+				echo "Merging..."
 				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
 			else
 				echo "Dry-run: not reviewing/merging..."
+				echo
+				echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
 			fi
 		else
 			echo "Skipping ${operator}, PR already closed"
@@ -63,15 +75,27 @@ merge_operators() {
 
 merge_products() {
 	echo "Products: $DOCKER_IMAGES_REPO"
-	STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
+	if $PUSH; then
+		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
+	else
+		# It is possible to dry-run with the PR existing, but we will simply use OPEN
+		echo "Dry-run: pretending the PR exists and is open"
+		STATE="OPEN"
+	fi
 	if [[ "$STATE" == "OPEN" ]]; then
 		echo "Processing ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
 		if $PUSH; then
-			echo "Reviewing and merging..."
-			gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
+			echo "Reviewing..."
+			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+			# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
+			read -p "Ask someone to approve the PR, then press Enter"
+			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
+			echo "Merging..."
 			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
 		else
 			echo "Dry-run: not reviewing/merging..."
+			echo
+			echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
 		fi
 	else
 		echo "Skipping ${DOCKER_IMAGES_REPO}, PR already closed"
