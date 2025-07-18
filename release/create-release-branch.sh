@@ -17,7 +17,7 @@ update_products() {
   if [ -d "$BASE_DIR/$DOCKER_IMAGES_REPO" ]; then
     echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git fetch && git switch "${RELEASE_BRANCH}" && git pull
+    git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
   else
     echo "Repo directory ($BASE_DIR/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
     git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
@@ -38,7 +38,7 @@ update_operators() {
     if [ -d "$BASE_DIR/${operator}" ]; then
       echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
       cd "$BASE_DIR/${operator}"
-      git fetch && git switch "${RELEASE_BRANCH}" && git pull
+      git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
     else
       echo "Repo directory ($BASE_DIR/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
       git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"

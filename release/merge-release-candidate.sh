@@ -57,12 +57,15 @@ merge_operators() {
 			if $PUSH; then
 				echo "Reviewing..."
 				# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+				# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
 				read -p "Ask someone to approve the PR, then press Enter"
 				# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
 				echo "Merging..."
 				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
 			else
 				echo "Dry-run: not reviewing/merging..."
+				echo
+				echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
 			fi
 		else
 			echo "Skipping ${operator}, PR already closed"
@@ -84,12 +87,15 @@ merge_products() {
 		if $PUSH; then
 			echo "Reviewing..."
 			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+			# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
 			read -p "Ask someone to approve the PR, then press Enter"
 			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
 			echo "Merging..."
 			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
 		else
 			echo "Dry-run: not reviewing/merging..."
+			echo
+			echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
 		fi
 	else
 		echo "Skipping ${DOCKER_IMAGES_REPO}, PR already closed"
