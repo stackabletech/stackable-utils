@@ -17,7 +17,13 @@ tag_products() {
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
 	# the PR branch should already exist
-	git switch "$RELEASE_BRANCH" && git pull
+	git switch "$RELEASE_BRANCH"
+	if $PUSH; then
+		git pull
+	else
+		git pull || echo "Dry-run: remote branch doesn't exist yet..."
+		# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
+	fi
 	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	push_branch
 }
@@ -25,7 +31,13 @@ tag_products() {
 tag_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		cd "${TEMP_RELEASE_FOLDER}/${operator}"
-		git switch "$RELEASE_BRANCH" && git pull
+		git switch "$RELEASE_BRANCH"
+		if $PUSH; then
+			git pull
+		else
+			git pull || echo "Dry-run: remote branch doesn't exist yet..."
+			# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
+		fi
 		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)

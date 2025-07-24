@@ -84,10 +84,14 @@ update_operators() {
   while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
   do
     cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
+
+    git checkout main
+    git pull
+
     # New branch that updates the CHANGELOG
     CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
     # Branch out from main
-    git switch -c "$CHANGELOG_BRANCH" main
+    git switch -c "$CHANGELOG_BRANCH"
     # Checkout CHANGELOG changes from the release tag
     git checkout "$RELEASE_TAG" -- CHANGELOG.md
     # Ensure only the CHANGELOG has been modified and there
@@ -146,10 +150,14 @@ check_products() {
 # the changelog in the release branch.
 update_products() {
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+
+  git checkout main
+  git pull
+
   # New branch that updates the CHANGELOG
   CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
   # Branch out from main
-  git switch -c "$CHANGELOG_BRANCH" main
+  git switch -c "$CHANGELOG_BRANCH"
   # Checkout CHANGELOG changes from the release tag
   git checkout "$RELEASE_TAG" -- CHANGELOG.md
   # Ensure only the CHANGELOG has been modified and there
