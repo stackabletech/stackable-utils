@@ -1,6 +1,9 @@
 # Release workflow
 
-This is the recommended release flow in a nutshell for the release 25.3.
+> [!TIP]
+> If you are performing a release, you might want to skip over to [EXAMPLE_PROCESS](./EXAMPLE_PROCESS.md) which illustrates the process start to finish.
+
+This is the recommended release flow in a nutshell for the release 25.7.
 These steps are repeated for each release tag i.e. for both release-candidates and non-release-candidates:
 
 ```shell
