@@ -97,6 +97,10 @@ check_products() {
 	fi
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
+	# Need to update here because if we deleted the local state, or someone else continues
+    # we might be back on main, or on the release branch without having pulled updates from fixes.
+	git fetch && git switch "$RELEASE_BRANCH" && git pull
+
 	# switch to the release branch, which should exist as tagging
 	# is subsequent to creating the branch.
 	# Note, if this needs to check the branch exists locally, then use:
@@ -133,6 +137,10 @@ check_operators() {
 
 		fi
 		cd "$TEMP_RELEASE_FOLDER/${operator}"
+
+		# Need to update here because if we deleted the local state, or someone else continues
+		# we might be back on main, or on the release branch without having pulled updates from fixes.
+		git fetch && git switch "$RELEASE_BRANCH" && git pull
 		# Note, if this needs to check the branch exists locally, then use:
 		# "^[ *]*$RELEASE_BRANCH\$"
 		if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
