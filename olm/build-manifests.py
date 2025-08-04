@@ -338,6 +338,9 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
             elif m["kind"] == "ClusterRole" and (
                 m["metadata"]["name"] == f"{args.product}-clusterrole"
                 or m["metadata"]["name"] == f"{args.product}-clusterrole-nodes"
+                # TODO spark auxiliary clusterrole names need to be considered
+                or m["metadata"]["name"] == f"spark-history-clusterrole"
+                or m["metadata"]["name"] == f"spark-connect-clusterrole"
             ):
                 dest_file = (
                     args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
@@ -487,7 +490,11 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
             ### Patch the product cluster role with the SCC rule
             if (
                 man["kind"] == "ClusterRole"
-                and man["metadata"]["name"] == f"{args.product}-clusterrole"
+                and (
+                    man["metadata"]["name"] == f"{args.product}-clusterrole"
+                    or man["metadata"]["name"] == f"spark-history-clusterrole"
+                    or man["metadata"]["name"] == f"spark-connect-clusterrole"
+                )
             ):
                 man["rules"].append(
                     {
@@ -512,7 +519,6 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
                 pass
 
         logging.debug("finish generate_helm_templates")
-
         return manifests
 
     except subprocess.CalledProcessError as e:

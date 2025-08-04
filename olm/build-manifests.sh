@@ -56,7 +56,7 @@ annotations:
   operators.operatorframework.io.bundle.metadata.v1: metadata/
   operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-  com.redhat.openshift.versions: v4.11-v4.17
+  com.redhat.openshift.versions: v4.16-v4.19
 ANNOS
 
   popd
