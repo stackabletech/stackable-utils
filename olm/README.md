@@ -36,6 +36,7 @@ To generate the manifests for the secret operator version 24.11.1, run:
 ```
 
 Where:
+
 - `-r <release>`: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
 - `-c <manifest folder>`: the output folder for the manifest files
 - `-o <operator-dir>`: directory of the operator repository
@@ -54,7 +55,6 @@ Similarly for the listener operator run:
 ./olm/build-manifests.py \
   --openshift-versions 'v4.14-v4.16' \
   --release 24.11.1 \
-  --skips 24.7.0 \
   --repo-operator ~/repo/stackable/hbase-operator
 ```
 
@@ -62,7 +62,7 @@ See `./olm/build-manifests.py --help` for the description of command line argume
 
 # Build and Install Bundles
 
-Operator bundles are needed to test the OLM manifests but *not needed* for the operator certification.
+Operator bundles are needed to test the OLM manifests but _not needed_ for the operator certification.
 
 ## Build bundles
 
@@ -77,12 +77,14 @@ To build operator bundles run:
 ```
 
 Where:
+
 - `-r <release>`: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
 - `-c <manifest folder>`: the folder with the input OLM manifests for the bundle
 - `-o <operator-name>`: the operator name (mandatory) e.g. "airflow"
 - `-d`: Optional. Deploy the bundle. Default: false.
 
 N.B. This action will push the bundles to `oci.stackable.tech` and requires that the user be logged in first. This can be done by copying the CLI token from the Harbor UI once you are logged in there (see under "Profile"), and then using this as the password when prompted on entering `docker login oci.stackabe.tech`.
+
 ## Operator upgrades
 
 To test operator upgrades run `operator-sdk run bundle-upgrade` like this:

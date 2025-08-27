@@ -62,20 +62,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--replaces",
-        help="CSV version that is replaced by this release. Example: 23.11.0",
-        type=cli_parse_release,
-    )
-
-    parser.add_argument(
-        "--skips",
-        nargs="*",
-        help="CSV versions that are skipped by this release. Example: 24.3.0",
-        default=list(),
-        type=cli_parse_release,
-    )
-
-    parser.add_argument(
         "-o",
         "--repo-operator",
         help="Path to the root of the operator repository.",
@@ -413,10 +399,6 @@ def generate_csv(
     )
 
     result["spec"]["version"] = args.release
-    result["spec"]["replaces"] = (
-        f"{csv_name}.v{args.replaces}" if args.replaces else None
-    )
-    result["spec"]["skips"] = [f"{csv_name}.v{v}" for v in args.skips]
     result["spec"]["keywords"] = [args.product]
     result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
     result["metadata"]["name"] = f"{csv_name}.v{args.release}"
