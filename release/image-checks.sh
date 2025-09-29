@@ -111,7 +111,7 @@ check_tags_for_product nifi 2.4.0 "$SDP_RELEASE"
 check_tags_for_product omid 1.1.2 "$SDP_RELEASE"
 check_tags_for_product omid 1.1.3 "$SDP_RELEASE"
 check_tags_for_product opa 1.4.2 "$SDP_RELEASE"
-check_tags_for_product opa 1.0.1 "$SDP_RELEASE"
+check_tags_for_product opa 1.8.0 "$SDP_RELEASE"
 check_tags_for_product spark-connect-client 3.5.6 "$SDP_RELEASE" stackable
 check_tags_for_product spark-k8s 3.5.5 "$SDP_RELEASE"
 check_tags_for_product spark-k8s 3.5.6 "$SDP_RELEASE"
