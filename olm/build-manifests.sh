@@ -56,7 +56,7 @@ annotations:
   operators.operatorframework.io.bundle.metadata.v1: metadata/
   operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-  com.redhat.openshift.versions: v4.11-v4.17
+  com.redhat.openshift.versions: v4.11-v4.19
 ANNOS
 
   popd
@@ -69,14 +69,16 @@ generate_manifests() {
 
   pushd "$MANIFESTS_DIR"
 
-  # split crd
-  cat "$OP_ROOT/deploy/helm/$OPERATOR/crds/crds.yaml" | yq -s '.spec.names.kind'
+  # If available, split the CRD into individual manifests
+  # The secret op installs the CRDs by its self upon startup if not already there.
+  if [ -f "$OP_ROOT/deploy/helm/$OPERATOR/crds/crds.yaml" ]; then
+    cat "$OP_ROOT/deploy/helm/$OPERATOR/crds/crds.yaml" | yq -s '.spec.names.kind'
+  fi
 
   # expand config map, roles, service account, etc.
   helm template "$OPERATOR" "$OP_ROOT/deploy/helm/$OPERATOR" | yq -s '.metadata.name'
-
   popd
-}
+  }
 
 parse_inputs() {
   while [[ "$#" -gt 0 ]]; do
