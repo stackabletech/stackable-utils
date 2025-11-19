@@ -442,7 +442,14 @@ def generate_csv(
 def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
     logging.debug(f"start generate_helm_templates for {args.repo_operator}")
     template_path = args.repo_operator / "deploy" / "helm" / args.repo_operator.name
-    helm_template_cmd = ["helm", "template", args.op_name, template_path]
+    # Path to the default values.yaml used in the operator Helm charts.
+    helm_values_path = template_path / "values.yaml"
+    # Path to the custom values for OLM.
+    olm_values_path = pathlib.Path(__file__).parent / "resources" / "values" / args.repo_operator.name / "values.yaml"
+    helm_template_cmd = ["helm", "template", args.op_name,
+                         "--values", helm_values_path,
+                         "--values", olm_values_path,
+                         template_path]
     try:
         logging.debug("start generate_helm_templates")
         logging.info(f"Running {helm_template_cmd}")

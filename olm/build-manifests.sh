@@ -38,6 +38,10 @@ OPERATOR=""
 MANIFESTS_DIR=""
 METADATA_DIR=""
 
+# Location of the stackable-utils repo.
+# Needed to build path to custom OLM values.yaml files.
+UTILS_REPO_DIR=$(pwd)
+
 generate_metadata() {
 
   # generate metadata
@@ -56,7 +60,7 @@ annotations:
   operators.operatorframework.io.bundle.metadata.v1: metadata/
   operators.operatorframework.io.bundle.package.v1: stackable-${OPERATOR}
 
-  com.redhat.openshift.versions: v4.11-v4.19
+  com.redhat.openshift.versions: v4.18-v4.20
 ANNOS
 
   popd
@@ -76,7 +80,7 @@ generate_manifests() {
   fi
 
   # expand config map, roles, service account, etc.
-  helm template "$OPERATOR" "$OP_ROOT/deploy/helm/$OPERATOR" | yq -s '.metadata.name'
+  helm template "$OPERATOR" --values "$OP_ROOT/deploy/helm/$OPERATOR/values.yaml" --values "$UTILS_REPO_DIR/olm/resources/values/$OPERATOR/values.yaml" "$OP_ROOT/deploy/helm/$OPERATOR" | yq -s '.metadata.name'
   popd
   }
 
@@ -110,6 +114,12 @@ parse_inputs() {
   OPERATOR="$PRODUCT-operator"
   MANIFESTS_DIR="$OPENSHIFT_ROOT/operators/stackable-$OPERATOR/$RELEASE_VERSION/manifests"
   METADATA_DIR="$OPENSHIFT_ROOT/operators/stackable-$OPERATOR/$RELEASE_VERSION/metadata"
+
+  if [ "stackable-utils" != $(basename "$UTILS_REPO_DIR") ]; then
+    echo "ERROR: Looks like you are not calling this script from the base [stackable-utils] repository."
+    echo "ERROR: This is required to properly reference files under the [resources] folder."
+    exit 1
+  fi
 }
 
 maybe_print_help() {
