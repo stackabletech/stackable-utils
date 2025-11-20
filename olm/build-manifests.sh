@@ -79,8 +79,14 @@ generate_manifests() {
     cat "$OP_ROOT/deploy/helm/$OPERATOR/crds/crds.yaml" | yq -s '.spec.names.kind'
   fi
 
-  # expand config map, roles, service account, etc.
-  helm template "$OPERATOR" --values "$OP_ROOT/deploy/helm/$OPERATOR/values.yaml" --values "$UTILS_REPO_DIR/olm/resources/values/$OPERATOR/values.yaml" "$OP_ROOT/deploy/helm/$OPERATOR" | yq -s '.metadata.name'
+  # Expand the Helm chart to individual files by applying both the default values.yaml
+  # and the OLM specific values.yaml.
+  # Each document is saved in file named "{.kind}-{.metadata.name}.yaml" to reduce the number of
+  # name collisions when multiple objects share the same name.
+  helm template "$OPERATOR" \
+  --values "$OP_ROOT/deploy/helm/$OPERATOR/values.yaml" \
+  --values "$UTILS_REPO_DIR/olm/resources/values/$OPERATOR/values.yaml" \
+  "$OP_ROOT/deploy/helm/$OPERATOR" | yq -s '(.kind // "kind-unknown") + "-" + (.metadata.name // "name-unknown")'
   popd
   }
 
