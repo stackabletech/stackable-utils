@@ -545,6 +545,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
         tag_url = (
             f"https://quay.io/api/v1/repository/stackable/{image}/tag?{release_tag}"
         )
+        logging.debug(f"Fetching image manifest from {tag_url}")
         with urllib.request.urlopen(tag_url) as response:
             data = json.load(response)
             if not data["tags"]:
@@ -612,25 +613,18 @@ def write_metadata(args: argparse.Namespace) -> None:
 
 
 def main(argv) -> int:
-    ret = 0
-    try:
-        opts = parse_args(argv[1:])
-        logging.basicConfig(encoding="utf-8", level=opts.log_level)
+    opts = parse_args(argv[1:])
+    logging.basicConfig(encoding="utf-8", level=opts.log_level)
 
-        # logging.debug(f"Options: {opts}")
+    manifests = generate_manifests(opts)
 
-        manifests = generate_manifests(opts)
+    logging.info(f"Removing directory {opts.dest_dir}")
+    if opts.dest_dir.exists():
+        shutil.rmtree(opts.dest_dir)
 
-        logging.info(f"Removing directory {opts.dest_dir}")
-        if opts.dest_dir.exists():
-            shutil.rmtree(opts.dest_dir)
-
-        write_manifests(opts, manifests)
-        write_metadata(opts)
-    except Exception as e:
-        logging.error(e)
-        ret = 1
-    return ret
+    write_manifests(opts, manifests)
+    write_metadata(opts)
+    return 0
 
 
 CSV_DISPLAY_NAME = {
@@ -644,6 +638,7 @@ CSV_DISPLAY_NAME = {
     "kafka": "Stackable Operator for Apache Kafka",
     "nifi": "Stackable Operator for Apache NiFi",
     "opa": "Stackable Operator for the Open Policy Agent",
+    "opensearch": "Stackable Operator for OpenSearch",
     "spark-k8s": "Stackable Operator for Apache Spark",
     "superset": "Stackable Operator for Apache Superset",
     "trino": "Stackable Operator for Trino",
