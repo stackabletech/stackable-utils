@@ -1,0 +1,5 @@
+resources:
+  limits:
+    memory: 256Mi
+  requests:
+    memory: 256Mi
