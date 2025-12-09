@@ -633,7 +633,6 @@ CSV_DISPLAY_NAME = {
     "druid": "Stackable Operator for Apache Druid",
     "hbase": "Stackable Operator for Apache HBase",
     "hdfs": "Stackable Operator for Apache Hadoop HDFS",
-    "hello-world": "Stackable Hello World Operator",
     "hive": "Stackable Operator for Apache Hive",
     "kafka": "Stackable Operator for Apache Kafka",
     "nifi": "Stackable Operator for Apache NiFi",
