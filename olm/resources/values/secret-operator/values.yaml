@@ -1,0 +1,30 @@
+controllerService:
+  resources:
+    limits:
+      memory: 256Mi
+    requests:
+      memory: 256Mi
+
+csiNodeDriver:
+  nodeService:
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        memory: 256Mi
+
+  externalProvisioner:
+    resources:
+      requests:
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+
+  nodeDriverRegistrar:
+    resources:
+      requests:
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+
+

@@ -442,7 +442,14 @@ def generate_csv(
 def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
     logging.debug(f"start generate_helm_templates for {args.repo_operator}")
     template_path = args.repo_operator / "deploy" / "helm" / args.repo_operator.name
-    helm_template_cmd = ["helm", "template", args.op_name, template_path]
+    # Path to the default values.yaml used in the operator Helm charts.
+    helm_values_path = template_path / "values.yaml"
+    # Path to the custom values for OLM.
+    olm_values_path = pathlib.Path(__file__).parent / "resources" / "values" / args.repo_operator.name / "values.yaml"
+    helm_template_cmd = ["helm", "template", args.op_name,
+                         "--values", helm_values_path,
+                         "--values", olm_values_path,
+                         template_path]
     try:
         logging.debug("start generate_helm_templates")
         logging.info(f"Running {helm_template_cmd}")
@@ -538,6 +545,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
         tag_url = (
             f"https://quay.io/api/v1/repository/stackable/{image}/tag?{release_tag}"
         )
+        logging.debug(f"Fetching image manifest from {tag_url}")
         with urllib.request.urlopen(tag_url) as response:
             data = json.load(response)
             if not data["tags"]:
@@ -605,25 +613,18 @@ def write_metadata(args: argparse.Namespace) -> None:
 
 
 def main(argv) -> int:
-    ret = 0
-    try:
-        opts = parse_args(argv[1:])
-        logging.basicConfig(encoding="utf-8", level=opts.log_level)
+    opts = parse_args(argv[1:])
+    logging.basicConfig(encoding="utf-8", level=opts.log_level)
 
-        # logging.debug(f"Options: {opts}")
+    manifests = generate_manifests(opts)
 
-        manifests = generate_manifests(opts)
+    logging.info(f"Removing directory {opts.dest_dir}")
+    if opts.dest_dir.exists():
+        shutil.rmtree(opts.dest_dir)
 
-        logging.info(f"Removing directory {opts.dest_dir}")
-        if opts.dest_dir.exists():
-            shutil.rmtree(opts.dest_dir)
-
-        write_manifests(opts, manifests)
-        write_metadata(opts)
-    except Exception as e:
-        logging.error(e)
-        ret = 1
-    return ret
+    write_manifests(opts, manifests)
+    write_metadata(opts)
+    return 0
 
 
 CSV_DISPLAY_NAME = {
@@ -632,11 +633,11 @@ CSV_DISPLAY_NAME = {
     "druid": "Stackable Operator for Apache Druid",
     "hbase": "Stackable Operator for Apache HBase",
     "hdfs": "Stackable Operator for Apache Hadoop HDFS",
-    "hello-world": "Stackable Hello World Operator",
     "hive": "Stackable Operator for Apache Hive",
     "kafka": "Stackable Operator for Apache Kafka",
     "nifi": "Stackable Operator for Apache NiFi",
     "opa": "Stackable Operator for the Open Policy Agent",
+    "opensearch": "Stackable Operator for OpenSearch",
     "spark-k8s": "Stackable Operator for Apache Spark",
     "superset": "Stackable Operator for Apache Superset",
     "trino": "Stackable Operator for Trino",
