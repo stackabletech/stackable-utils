@@ -303,6 +303,15 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
         logging.info(f"Creating directory {manifests_dir}")
         os.makedirs(manifests_dir)
 
+        # The following objects are written as separate files:
+        # - crds
+        # - cluster service version
+        # - cluster roles
+        # - services
+        # - config maps
+        # The other objects are embedded in the CSV. These are:
+        # - the operator cluster role (N.B. some products have more than one cluster role e.g. HDFS)
+        # - the operator deployment
         for m in manifests:
             dest_file = None
             if m["kind"] == "ClusterServiceVersion":
@@ -317,27 +326,24 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
                     / "manifests"
                     / f"{m['metadata']['name']}.customresourcedefinition.yaml"
                 )
-            # Only the product cluster role and the product configmap are dumped as individual files
-            # The other objects are embedded in the CSV. These are:
-            # - the operator cluster role (N.B. some products have more than one cluster role e.g. HDFS)
-            # - the operator deployment
-            elif m["kind"] == "ClusterRole" and (
-                m["metadata"]["name"] == f"{args.product}-clusterrole"
-                or m["metadata"]["name"] == f"{args.product}-clusterrole-nodes"
-            ):
+            elif m["kind"] in ["ClusterRole", "ConfigMap", "Service"]:
+                kind = m["kind"].lower()
+                name = m["metadata"]["name"]
+                # Some objects contain the kind in their name already while others (looking at you webhook service) do not.
+                # To avoid conflicting file names we append the kind if it's not already part of the object name.
+                if kind not in m['metadata']['name']:
+                    name = f"{name}-{kind}"
+
                 dest_file = (
-                    args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
-                )
-            elif (
-                m["kind"] == "ConfigMap"
-                and m["metadata"]["name"] == f"{args.op_name}-configmap"
-            ):
-                dest_file = (
-                    args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
+                    args.dest_dir / "manifests" / f"{name}.yaml"
                 )
 
             if dest_file:
                 logging.info(f"Writing {dest_file}")
+                if dest_file.exists():
+                    raise ManifestException(
+                        f"Manifest file '{dest_file}' already exists"
+                    )
                 dest_file.write_text(yaml.dump(m))
 
     except FileExistsError:
