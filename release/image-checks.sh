@@ -7,8 +7,8 @@
 #
 # It could be improved in future to assert things exist, and provide a clear error message when they don't.
 
-# This is a handy utility for checking the existance of images.
-# It does currently reqiure manually choosing product versions to check,
+# This is a handy utility for checking the existence of images.
+# It does currently require manually choosing product versions to check,
 # but this list could be automated through conf.py
 read -p "Be sure to update the versions in this script before running. Press Enter to continue"
 
@@ -92,8 +92,7 @@ check_tags_for_product airflow 3.1.6 "$SDP_RELEASE"
 check_tags_for_product druid 30.0.1 "$SDP_RELEASE"
 check_tags_for_product druid 34.0.0 "$SDP_RELEASE"
 check_tags_for_product druid 35.0.1 "$SDP_RELEASE"
-check_tags_for_product hadoop 3.3.6 "$SDP_RELEASE"
-check_tags_for_product hadoop 3.4.1 "$SDP_RELEASE"
+check_tags_for_product hadoop 3.4.2 "$SDP_RELEASE"
 check_tags_for_product hbase 2.6.3 "$SDP_RELEASE"
 check_tags_for_product hbase 2.6.4 "$SDP_RELEASE"
 check_tags_for_product hive 3.1.3 "$SDP_RELEASE"
