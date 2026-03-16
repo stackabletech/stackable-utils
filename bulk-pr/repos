@@ -3,15 +3,14 @@ products=(
     airflow
     commons
     druid
-    edc
     hbase
-    hello-world
     hdfs
     hive
     kafka
     listener
     nifi
     opa
+    opensearch
     secret
     spark-k8s
     superset

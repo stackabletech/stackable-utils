@@ -62,20 +62,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--replaces",
-        help="CSV version that is replaced by this release. Example: 23.11.0",
-        type=cli_parse_release,
-    )
-
-    parser.add_argument(
-        "--skips",
-        nargs="*",
-        help="CSV versions that are skipped by this release. Example: 24.3.0",
-        default=list(),
-        type=cli_parse_release,
-    )
-
-    parser.add_argument(
         "-o",
         "--repo-operator",
         help="Path to the root of the operator repository.",
@@ -317,6 +303,15 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
         logging.info(f"Creating directory {manifests_dir}")
         os.makedirs(manifests_dir)
 
+        # The following objects are written as separate files:
+        # - crds
+        # - cluster service version
+        # - cluster roles
+        # - services
+        # - config maps
+        # The other objects are embedded in the CSV. These are:
+        # - the operator cluster role (N.B. some products have more than one cluster role e.g. HDFS)
+        # - the operator deployment
         for m in manifests:
             dest_file = None
             if m["kind"] == "ClusterServiceVersion":
@@ -331,27 +326,24 @@ def write_manifests(args: argparse.Namespace, manifests: list[dict]) -> None:
                     / "manifests"
                     / f"{m['metadata']['name']}.customresourcedefinition.yaml"
                 )
-            # Only the product cluster role and the product configmap are dumped as individual files
-            # The other objects are embedded in the CSV. These are:
-            # - the operator cluster role (N.B. some products have more than one cluster role e.g. HDFS)
-            # - the operator deployment
-            elif m["kind"] == "ClusterRole" and (
-                m["metadata"]["name"] == f"{args.product}-clusterrole"
-                or m["metadata"]["name"] == f"{args.product}-clusterrole-nodes"
-            ):
+            elif m["kind"] in ["ClusterRole", "ConfigMap", "Service"]:
+                kind = m["kind"].lower()
+                name = m["metadata"]["name"]
+                # Some objects contain the kind in their name already while others (looking at you webhook service) do not.
+                # To avoid conflicting file names we append the kind if it's not already part of the object name.
+                if kind not in m['metadata']['name']:
+                    name = f"{name}-{kind}"
+
                 dest_file = (
-                    args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
-                )
-            elif (
-                m["kind"] == "ConfigMap"
-                and m["metadata"]["name"] == f"{args.op_name}-configmap"
-            ):
-                dest_file = (
-                    args.dest_dir / "manifests" / f"{m['metadata']['name']}.yaml"
+                    args.dest_dir / "manifests" / f"{name}.yaml"
                 )
 
             if dest_file:
                 logging.info(f"Writing {dest_file}")
+                if dest_file.exists():
+                    raise ManifestException(
+                        f"Manifest file '{dest_file}' already exists"
+                    )
                 dest_file.write_text(yaml.dump(m))
 
     except FileExistsError:
@@ -413,10 +405,6 @@ def generate_csv(
     )
 
     result["spec"]["version"] = args.release
-    result["spec"]["replaces"] = (
-        f"{csv_name}.v{args.replaces}" if args.replaces else None
-    )
-    result["spec"]["skips"] = [f"{csv_name}.v{v}" for v in args.skips]
     result["spec"]["keywords"] = [args.product]
     result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
     result["metadata"]["name"] = f"{csv_name}.v{args.release}"
@@ -460,7 +448,14 @@ def generate_csv(
 def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
     logging.debug(f"start generate_helm_templates for {args.repo_operator}")
     template_path = args.repo_operator / "deploy" / "helm" / args.repo_operator.name
-    helm_template_cmd = ["helm", "template", args.op_name, template_path]
+    # Path to the default values.yaml used in the operator Helm charts.
+    helm_values_path = template_path / "values.yaml"
+    # Path to the custom values for OLM.
+    olm_values_path = pathlib.Path(__file__).parent / "resources" / "values" / args.repo_operator.name / "values.yaml"
+    helm_template_cmd = ["helm", "template", args.op_name,
+                         "--values", helm_values_path,
+                         "--values", olm_values_path,
+                         template_path]
     try:
         logging.debug("start generate_helm_templates")
         logging.info(f"Running {helm_template_cmd}")
@@ -556,6 +551,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
         tag_url = (
             f"https://quay.io/api/v1/repository/stackable/{image}/tag?{release_tag}"
         )
+        logging.debug(f"Fetching image manifest from {tag_url}")
         with urllib.request.urlopen(tag_url) as response:
             data = json.load(response)
             if not data["tags"]:
@@ -623,25 +619,18 @@ def write_metadata(args: argparse.Namespace) -> None:
 
 
 def main(argv) -> int:
-    ret = 0
-    try:
-        opts = parse_args(argv[1:])
-        logging.basicConfig(encoding="utf-8", level=opts.log_level)
+    opts = parse_args(argv[1:])
+    logging.basicConfig(encoding="utf-8", level=opts.log_level)
 
-        # logging.debug(f"Options: {opts}")
+    manifests = generate_manifests(opts)
 
-        manifests = generate_manifests(opts)
+    logging.info(f"Removing directory {opts.dest_dir}")
+    if opts.dest_dir.exists():
+        shutil.rmtree(opts.dest_dir)
 
-        logging.info(f"Removing directory {opts.dest_dir}")
-        if opts.dest_dir.exists():
-            shutil.rmtree(opts.dest_dir)
-
-        write_manifests(opts, manifests)
-        write_metadata(opts)
-    except Exception as e:
-        logging.error(e)
-        ret = 1
-    return ret
+    write_manifests(opts, manifests)
+    write_metadata(opts)
+    return 0
 
 
 CSV_DISPLAY_NAME = {
@@ -650,11 +639,11 @@ CSV_DISPLAY_NAME = {
     "druid": "Stackable Operator for Apache Druid",
     "hbase": "Stackable Operator for Apache HBase",
     "hdfs": "Stackable Operator for Apache Hadoop HDFS",
-    "hello-world": "Stackable Hello World Operator",
     "hive": "Stackable Operator for Apache Hive",
     "kafka": "Stackable Operator for Apache Kafka",
     "nifi": "Stackable Operator for Apache NiFi",
     "opa": "Stackable Operator for the Open Policy Agent",
+    "opensearch": "Stackable Operator for OpenSearch",
     "spark-k8s": "Stackable Operator for Apache Spark",
     "superset": "Stackable Operator for Apache Superset",
     "trino": "Stackable Operator for Trino",

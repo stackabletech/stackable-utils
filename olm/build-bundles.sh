@@ -118,7 +118,7 @@ bundle-deploy() {
 }
 
 ensure_operator_sdk() {
-  local OPERATOR_SDK_VERSION=v1.39.1
+  local OPERATOR_SDK_VERSION=v1.42.0
   OPERATOR_SDK="$HOME/.local/bin/operator-sdk"
 
 	set +e
