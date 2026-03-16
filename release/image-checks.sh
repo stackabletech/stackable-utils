@@ -66,7 +66,7 @@ check_tags_for_product() {
 }
 
 # How it was run for the previous release:
-SDP_RELEASE=25.7.0
+SDP_RELEASE=26.3.0
 check_tags_for_operator airflow-operator "$SDP_RELEASE"
 check_tags_for_operator commons-operator "$SDP_RELEASE"
 check_tags_for_operator druid-operator "$SDP_RELEASE"
