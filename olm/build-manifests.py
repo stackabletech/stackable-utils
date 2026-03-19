@@ -524,19 +524,24 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
 
 def generate_crds(repo_operator: pathlib.Path) -> list[dict]:
     logging.debug(f"start generate_crds for {repo_operator}")
-    crd_path = (
-        repo_operator / "deploy" / "helm" / repo_operator.name / "crds" / "crds.yaml"
-    )
+    cmd = ["cargo", "run", "crd"]
+    logging.info(f"Running {cmd} in {repo_operator}")
+    try:
+        completed_proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            check=True,
+            cwd=repo_operator,
+        )
+    except subprocess.CalledProcessError as e:
+        logging.error(e.stderr.decode("utf-8"))
+        raise ManifestException(f'Failed to generate CRDs for "{repo_operator}"')
 
-    logging.info(f"Reading CRDs from {crd_path}")
-    crds = list(yaml.load_all(crd_path.read_text(), Loader=yaml.SafeLoader))
+    crds = list(yaml.load_all(completed_proc.stdout.decode("utf-8"), Loader=yaml.SafeLoader))
     for crd in crds:
-        if crd["kind"] == "CustomResourceDefinition":
-            # Remove the helm.sh/resource-policy annotation
-            del crd["metadata"]["annotations"]["helm.sh/resource-policy"]
-        else:
+        if crd["kind"] != "CustomResourceDefinition":
             raise ManifestException(
-                f'Expected "CustomResourceDefinition" but found kind "{crd["kind"]}" in CRD file "{crd_path}"'
+                f'Expected "CustomResourceDefinition" but found kind "{crd["kind"]}" in CRD output'
             )
     logging.debug("finish generate_crds")
     return crds
