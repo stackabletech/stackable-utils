@@ -56,9 +56,6 @@ spec:
     - supported: true
       type: AllNamespaces
 
-    customresourcedefinitions:
-        owned:
-        - placeholder
     relatedImages:
     - name: operator name placeholder
       image: quay.io image placeholder
