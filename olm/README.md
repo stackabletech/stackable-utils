@@ -25,35 +25,28 @@ which is the source of the certification process.
 
 ## Secret and Listener Operators
 
-The manifest generation for these two operators is only partially automated.
-You start with the script below and then manually update the cluster service version.
-To generate the manifests for the secret operator version 24.11.1, run:
+Use the `scripts/generate-olm.py` script in each operator repository (secret and listener) like this:
 
-```bash
-./olm/build-manifests.sh -r 24.11.1 \
-  -c $HOME/repo/stackable/openshift-certified-operators \
-  -o $HOME/repo/stackable/secret-operator
+```shell
+cd $HOME/repo/openshift/openshift-certified-operators/operators/stackable-secret-operator
+
+uv run --script scripts/generate-olm.py \
+--output-dir $HOME/repo/openshift/openshift-certified-operators/operators/stackable-secret-operator \
+--version <release> \
+--openshift-versions v4.18-v4.21
 ```
 
 Where:
 
-- `-r <release>`: the release number (mandatory). This must be a semver-compatible value to patch-level e.g. 23.1.0.
-- `-c <manifest folder>`: the output folder for the manifest files
-- `-o <operator-dir>`: directory of the operator repository
-
-Similarly for the listener operator run:
-
-```bash
-./olm/build-manifests.sh -r 24.11.1 \
-  -c $HOME/repo/stackable/openshift-certified-operators \
-  -o $HOME/repo/stackable/listener-operator
-```
+- `--version <release>`: the release number (mandatory). Example: `26.3.0`.
+- `--output-dir <manifest folder>`: location of the certified operators repository.
+- `--openshift-versions <ocp-version-range>`: catalogs where this bundle is published. Example: `v4.18-v4.21`.
 
 ## All Other Operators
 
 ```bash
 ./olm/build-manifests.py \
-  --openshift-versions 'v4.14-v4.16' \
+  --openshift-versions 'v4.18-v4.21' \
   --release 24.11.1 \
   --repo-operator ~/repo/stackable/hbase-operator
 ```
@@ -71,7 +64,7 @@ To build operator bundles run:
 ```bash
 ./olm/build-bundles.sh \
   -c $HOME/repo/stackable/openshift-certified-operators \
-  -r 24.11.1 \
+  -r 26.3.0 \
   -o listener \
   -d
 ```
