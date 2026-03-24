@@ -30,7 +30,7 @@ Use the `scripts/generate-olm.py` script in each operator repository (secret and
 ```shell
 cd $HOME/repo/openshift/openshift-certified-operators/operators/stackable-secret-operator
 
-uv run --script scripts/generate-olm.py \
+./scripts/generate-olm.py \
 --output-dir $HOME/repo/openshift/openshift-certified-operators/operators/stackable-secret-operator \
 --version <release> \
 --openshift-versions v4.18-v4.21
