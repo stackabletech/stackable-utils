@@ -28,6 +28,7 @@ which is the source of the certification process.
 Use the `scripts/generate-olm.py` script in each operator repository (secret and listener) like this:
 
 ```shell
+# Adapt path as necessary
 cd $HOME/repo/openshift/openshift-certified-operators/operators/stackable-secret-operator
 
 ./scripts/generate-olm.py \
