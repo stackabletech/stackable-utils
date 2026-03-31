@@ -23,6 +23,9 @@ in the corresponding operator repository.
 The OLM manifests are usually generated into the [OpenShift Certified Operators Repository](https://github.com/stackabletech/openshift-certified-operators)
 which is the source of the certification process.
 
+> [!NOTE]
+> Ensure you create a fresh branch called `stackable-<operator>-<release>` in the OpenShift Certified Operators Repository for every operator before generate the manifests as described below.
+
 ## Secret and Listener Operators
 
 Use the `scripts/generate-olm.py` script in each operator repository (secret and listener) like this:
