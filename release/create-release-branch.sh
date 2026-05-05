@@ -1,80 +1,107 @@
 #!/usr/bin/env bash
 #
-# See README.adoc
+# See README.md
 #
 set -euo pipefail
-# set -x
 
-REMOTE="origin"
-#----------------------------------------------------------------------------------------------------
-# tags should be semver-compatible e.g. 23.1 and not 23.01
-# this is needed for cargo commands to work properly: although it is not strictly needed
-# for the name of the release branch, the branch naming will be consistent with the cargo versioning.
-#----------------------------------------------------------------------------------------------------
-RELEASE_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
 
-update_products() {
-  if [ -d "$BASE_DIR/$DOCKER_IMAGES_REPO" ]; then
-    echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
-    cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
-  else
-    echo "Repo directory ($BASE_DIR/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-    git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    # try to switch to the release branch (if continuing from someone else), or create it
-    git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
-  fi
+warn_if_branch_exists() {
+  local repo="$1"
+  ( # subshell to isolate cd
+    ensure_clone "$repo"
+    cd "$TEMP_RELEASE_FOLDER/$repo"
 
-  push_branch "$DOCKER_IMAGES_REPO"
-
-  echo
-  echo "Check $BASE_DIR/$DOCKER_IMAGES_REPO"
+    if remote_branch_exists "$RELEASE_BRANCH"; then
+      >&2 echo "WARNING: Release branch ${RELEASE_BRANCH} already exists in ${repo}."
+      >&2 echo "For patch releases, use create-release-candidate-branch.sh instead."
+      >&2 echo "Continue anyway? (y/n)"
+      read -r response
+      if [[ "$response" != "y" && "$response" != "Y" ]]; then
+        >&2 echo "Aborting."
+        exit 1
+      fi
+    fi
+  )
 }
 
-update_operators() {
-  while IFS="" read -r operator || [ -n "$operator" ]
-  do
-    if [ -d "$BASE_DIR/${operator}" ]; then
+check_existing_branches() {
+  if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
+    warn_if_branch_exists "$DOCKER_IMAGES_REPO"
+  fi
+  if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
+    for_each_operator warn_if_branch_exists
+  fi
+  if [ "demos" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
+    warn_if_branch_exists "$DEMOS_REPO"
+  fi
+}
+
+update_products() {
+  ( # subshell to isolate cd
+    if [ -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
       echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
-      cd "$BASE_DIR/${operator}"
-      git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
+      cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+      require_clean_worktree "$DOCKER_IMAGES_REPO"
+      git pull && git switch "${RELEASE_BRANCH}"
     else
-      echo "Repo directory ($BASE_DIR/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-      git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
-      cd "$BASE_DIR/${operator}"
-      # try to switch to the release branch (if continuing from someone else), or create it
+      echo "Repo directory ($TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
+      git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+      cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+      git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
+    fi
+
+    push_branch "$DOCKER_IMAGES_REPO"
+
+    echo
+    echo "Check $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  )
+}
+
+update_single_operator() {
+  local operator="$1"
+  ( # subshell to isolate cd
+    if [ -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
+      echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
+      cd "$TEMP_RELEASE_FOLDER/${operator}"
+      require_clean_worktree "$operator"
+      git pull && git switch "${RELEASE_BRANCH}"
+    else
+      echo "Repo directory ($TEMP_RELEASE_FOLDER/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
+      git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$TEMP_RELEASE_FOLDER/${operator}"
+      cd "$TEMP_RELEASE_FOLDER/${operator}"
       git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
     fi
     push_branch "$operator"
-  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+  )
 }
 
 update_demos() {
-  if [ -d "$BASE_DIR/$DEMOS_REPO" ]; then
-    cd "$BASE_DIR/$DEMOS_REPO"
-    git pull && git switch "${RELEASE_BRANCH}"
-  else
-    git clone --branch main --depth 1 "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
-    cd "$BASE_DIR/$DEMOS_REPO"
-    git switch "${RELEASE_BRANCH}" 2> /dev/null  || git switch -c "${RELEASE_BRANCH}"
-  fi
+  ( # subshell to isolate cd
+    if [ -d "$TEMP_RELEASE_FOLDER/$DEMOS_REPO" ]; then
+      cd "$TEMP_RELEASE_FOLDER/$DEMOS_REPO"
+      require_clean_worktree "$DEMOS_REPO"
+      git pull && git switch "${RELEASE_BRANCH}"
+    else
+      git clone --branch main --depth 1 "git@github.com:stackabletech/${DEMOS_REPO}.git" "$TEMP_RELEASE_FOLDER/$DEMOS_REPO"
+      cd "$TEMP_RELEASE_FOLDER/$DEMOS_REPO"
+      git switch "${RELEASE_BRANCH}" 2> /dev/null  || git switch -c "${RELEASE_BRANCH}"
+    fi
 
-  # Search and replace known references to stackableRelease, container images, branch references.
-  # https://github.com/stackabletech/demos/blob/main/.scripts/update_refs.sh
-  .scripts/update_refs.sh commit
+    .scripts/update_refs.sh commit
 
-  push_branch "$DEMOS_REPO"
+    push_branch "$DEMOS_REPO"
+  )
 }
 
 update_repos() {
-  local BASE_DIR="$1";
-
   if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     update_products
   fi
   if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-    update_operators
+    for_each_operator update_single_operator
   fi
   if [ "demos" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
     update_demos
@@ -82,22 +109,13 @@ update_repos() {
 }
 
 push_branch() {
-  local REPOSITORY="$1";
+  local repository="$1"
   if $PUSH; then
-    echo "Pushing changes to $REPOSITORY"
+    echo "Pushing changes to $repository"
     git push -u "$REMOTE" "$RELEASE_BRANCH"
   else
-    echo "Dry-run: not pushing changes to $REPOSITORY"
+    echo "Dry-run: not pushing changes to $repository"
     git push --dry-run -u "$REMOTE" "$RELEASE_BRANCH"
-  fi
-}
-
-cleanup() {
-  local BASE_DIR="$1";
-
-  if $CLEANUP; then
-    echo "Cleaning up..."
-    rm -rf "$BASE_DIR"
   fi
 }
 
@@ -117,42 +135,31 @@ parse_inputs() {
       esac
       shift
   done
-  #-----------------------------------------------------------
-  # remove leading and trailing quotes
-  #-----------------------------------------------------------
-  RELEASE="${RELEASE%\"}"
-  RELEASE="${RELEASE#\"}"
-  RELEASE_BRANCH="release-$RELEASE"
+
+  RELEASE="$(strip_quotes "$RELEASE")"
 
   INITIAL_DIR="$PWD"
-  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-  DEMOS_REPO=$(yq '... comments="" | .demos-repo ' "$INITIAL_DIR"/release/config.yaml)
-  TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+  derive_branch_vars "$RELEASE"
 
   echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }
 
 main() {
   parse_inputs "$@"
-  #-----------------------------------------------------------
-  # check if tag argument provided
-  #-----------------------------------------------------------
+
   if [ -z "${RELEASE}" ]; then
     echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w products|operators|demos|all]"
     exit 1
   fi
-  #-----------------------------------------------------------
-  # check if argument matches our tag regex
-  #-----------------------------------------------------------
-  if [[ ! $RELEASE =~ $RELEASE_REGEX ]]; then
-    echo "Provided branch name [$RELEASE] does not match the required regex pattern [$RELEASE_REGEX]"
-    exit 1
-  fi
+
+  validate_what "$WHAT" products operators demos all
+  validate_release "$RELEASE"
 
   echo "Creating temporary working directory if it doesn't exist [$TEMP_RELEASE_FOLDER]"
   mkdir -p "$TEMP_RELEASE_FOLDER"
-  update_repos "$TEMP_RELEASE_FOLDER"
-  cleanup "$TEMP_RELEASE_FOLDER"
+  check_existing_branches
+  update_repos
+  cleanup
 }
 
 main "$@"

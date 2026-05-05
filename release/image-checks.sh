@@ -81,6 +81,7 @@ check_tags_for_operator secret-operator "$SDP_RELEASE"
 check_tags_for_operator spark-k8s-operator "$SDP_RELEASE"
 check_tags_for_operator superset-operator "$SDP_RELEASE"
 check_tags_for_operator trino-operator "$SDP_RELEASE"
+check_tags_for_operator opensearch-operator "$SDP_RELEASE"
 check_tags_for_operator zookeeper-operator "$SDP_RELEASE"
 
 # Be sure to check the product versions for the release you a checking for.

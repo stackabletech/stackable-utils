@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 #
-# See README.adoc
+# See README.md
 #
 set -euo pipefail
-# set -x
 
-#-----------------------------------------------------------
-# tags should be semver-compatible e.g. 23.1.1 not 23.01.1
-# this is needed for cargo commands to work properly
-#-----------------------------------------------------------
-TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
-REMOTE="origin"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
+
 PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE WITHOUT MANUAL CHECKING!
 > This PR contains information about commits have been cherry-picked to the release branch from the main branch, and may not reflect the correct chronology. Please check!"
+
 parse_inputs() {
   RELEASE_TAG=""
   PUSH=false
@@ -28,199 +26,140 @@ parse_inputs() {
       esac
       shift
   done
-  #-----------------------------------------------------------
-  # remove leading and trailing quotes
-  #-----------------------------------------------------------
-  RELEASE_TAG="${RELEASE_TAG%\"}"
-  RELEASE_TAG="${RELEASE_TAG#\"}"
-  #----------------------------------------------------------------------------------------------------
-  # for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-  #----------------------------------------------------------------------------------------------------
-  RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
-  RELEASE_BRANCH="release-$RELEASE"
+
+  RELEASE_TAG="$(strip_quotes "$RELEASE_TAG")"
 
   INITIAL_DIR="$PWD"
-  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-  TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+  derive_tag_vars "$RELEASE_TAG"
 
   echo "Settings: $RELEASE_BRANCH: Push: $PUSH"
 }
 
-# Check that the operator repos have been cloned locally, and that the release
-# branch and tag exists.
-check_operators() {
-  while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
-  do
-    echo "Operator: $OPERATOR"
-    if [ ! -d "$TEMP_RELEASE_FOLDER/$OPERATOR" ]; then
-      echo "Cloning folder: $TEMP_RELEASE_FOLDER/$OPERATOR"
-      # $TEMP_RELEASE_FOLDER has already been created in main()
-      git clone "git@github.com:stackabletech/${OPERATOR}.git" "$TEMP_RELEASE_FOLDER/$OPERATOR"
-    fi
-    cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
+check_single_operator() {
+  local operator="$1"
+  ( # subshell to isolate cd
+    echo "Operator: $operator"
+    ensure_clone "$operator"
+    cd "$TEMP_RELEASE_FOLDER/$operator"
 
-    if ! git diff-index --quiet HEAD --; then
-      >&2 echo "Dirty git index for $OPERATOR. Check working tree or staged changes. Exiting."
-      exit 2
-    fi
+    require_clean_worktree "$operator"
+    require_release_branch "$operator"
 
-    # Note, if this needs to check the branch exists locally, then use:
-    # "^[ *]*$RELEASE_BRANCH\$"
-    if ! git branch -a | grep "$RELEASE_BRANCH\$"; then
-      >&2 echo "Expected release branch is missing: $OPERATOR/$RELEASE_BRANCH"
+    if ! git ls-remote --tags "$REMOTE" "refs/tags/${RELEASE_TAG}" | grep -q "refs/tags/${RELEASE_TAG}"; then
+      >&2 echo "Expected tag $RELEASE_TAG missing for operator $operator"
       exit 1
     fi
-    git fetch --tags
-    if ! git tag | grep "^$RELEASE_TAG\$"; then
-      >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
-      exit 1
-    fi
-  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+  )
 }
 
-# Update the operator changelogs on main, and check they do not differ from
-# the changelog in the release branch.
-update_operators() {
-  while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
-  do
-    cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
+update_single_operator() {
+  local operator="$1"
+  ( # subshell to isolate cd
+    cd "$TEMP_RELEASE_FOLDER/$operator"
 
     git checkout main
     git pull
 
-    # New branch that updates the CHANGELOG
-    CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
-    # Branch out from main
-    git switch -c "$CHANGELOG_BRANCH"
-    # Checkout CHANGELOG changes from the release tag
+    local changelog_branch="chore/update-changelog-from-release-$RELEASE_TAG"
+    git switch -c "$changelog_branch"
     git checkout "$RELEASE_TAG" -- CHANGELOG.md
-    # Ensure only the CHANGELOG has been modified and there
-    # are no conflicts.
-    CHANGELOG_MODIFIED=$(git status --short)
-    if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
-      echo "Failed to update CHANGELOG.md in main for operator $OPERATOR"
+
+    local changelog_modified
+    changelog_modified=$(git status --short)
+    if [ "M  CHANGELOG.md" != "$changelog_modified" ]; then
+      echo "Failed to update CHANGELOG.md in main for operator $operator"
       exit 1
     fi
-    # Commit the updated CHANGELOG.
+
     git add CHANGELOG.md
     git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
-    # Maybe push and create pull request
+
     if "$PUSH"; then
-      git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
-      gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+      git push -u "${REMOTE}" "${changelog_branch}"
+      gh pr create --reviewer stackabletech/developers --base main --head "${changelog_branch}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
     else
       echo "Dry-run: not pushing..."
-      git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
-      gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+      git push --dry-run "${REMOTE}" "${changelog_branch}"
+      gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${changelog_branch}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
     fi
-  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+  )
 }
 
-# Check that the docker-images repo has been cloned locally, and that the release
-# branch and tag exists.
 check_products() {
-  if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
-    echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-      # $TEMP_RELEASE_FOLDER has already been created in main()
-      git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-  fi
-  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  ( # subshell to isolate cd
+    ensure_clone "$DOCKER_IMAGES_REPO"
+    cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
-  if ! git diff-index --quiet HEAD --; then
-    >&2 echo "Dirty git index for $DOCKER_IMAGES_REPO. Check working tree or staged changes. Exiting."
-    exit 2
-  fi
+    require_clean_worktree "$DOCKER_IMAGES_REPO"
+    require_release_branch "$DOCKER_IMAGES_REPO"
 
-  # Note, if this needs to check the branch exists locally, then use:
-  # "^[ *]*$RELEASE_BRANCH\$"
-  if ! git branch -a | grep "$RELEASE_BRANCH\$"; then
-    >&2 echo "Expected release branch is missing: $DOCKER_IMAGES_REPO/$RELEASE_BRANCH"
-    exit 1
-  fi
-
-  git fetch --tags
-  # check tags: N.B. look for exact match
-  if ! git tag | grep "^$RELEASE_TAG\$"; then
-    >&2 echo "Expected tag $RELEASE_TAG missing for $DOCKER_IMAGES_REPO"
-    exit 1
-  fi
+    if ! git ls-remote --tags "$REMOTE" "refs/tags/${RELEASE_TAG}" | grep -q "refs/tags/${RELEASE_TAG}"; then
+      >&2 echo "Expected tag $RELEASE_TAG missing for $DOCKER_IMAGES_REPO"
+      exit 1
+    fi
+  )
 }
 
-# Update the docker-images changelogs on main, and check they do not differ from
-# the changelog in the release branch.
 update_products() {
-  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  ( # subshell to isolate cd
+    cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
-  git checkout main
-  git pull
+    git checkout main
+    git pull
 
-  # New branch that updates the CHANGELOG
-  CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
-  # Branch out from main
-  git switch -c "$CHANGELOG_BRANCH"
-  # Checkout CHANGELOG changes from the release tag
-  git checkout "$RELEASE_TAG" -- CHANGELOG.md
-  # Ensure only the CHANGELOG has been modified and there
-  # are no conflicts.
-  CHANGELOG_MODIFIED=$(git status --short)
-  if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
-    echo "Failed to update CHANGELOG.md in main for $DOCKER_IMAGES_REPO"
-    exit 1
-  fi
-  # Commit the updated CHANGELOG.
-  git add CHANGELOG.md
-  git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
-  # Maybe push and create pull request
-  if "$PUSH"; then
-    git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
-    gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
-  else
-    echo "Dry-run: not pushing..."
-    git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
-    gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
-  fi
+    local changelog_branch="chore/update-changelog-from-release-$RELEASE_TAG"
+    git switch -c "$changelog_branch"
+    git checkout "$RELEASE_TAG" -- CHANGELOG.md
+
+    local changelog_modified
+    changelog_modified=$(git status --short)
+    if [ "M  CHANGELOG.md" != "$changelog_modified" ]; then
+      echo "Failed to update CHANGELOG.md in main for $DOCKER_IMAGES_REPO"
+      exit 1
+    fi
+
+    git add CHANGELOG.md
+    git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
+
+    if "$PUSH"; then
+      git push -u "${REMOTE}" "${changelog_branch}"
+      gh pr create --reviewer stackabletech/developers --base main --head "${changelog_branch}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+    else
+      echo "Dry-run: not pushing..."
+      git push --dry-run "${REMOTE}" "${changelog_branch}"
+      gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${changelog_branch}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+    fi
+  )
 }
-
 
 main() {
   parse_inputs "$@"
-  #-----------------------------------------------------------
-  # check if tag argument provided
-  #-----------------------------------------------------------
+
   if [ -z "${RELEASE_TAG}" ]; then
     echo "Usage: post-release.sh [options]"
     echo "-t <tag>"
     echo "-p Push changes. Default: false"
     exit 1
   fi
-  #-----------------------------------------------------------
-  # check if argument matches our tag regex
-  #-----------------------------------------------------------
-  if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
-    echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
-    exit 1
-  fi
 
-  if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-    echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
-    mkdir -p "$TEMP_RELEASE_FOLDER"
+  # WHAT defaults to "all" so empty is valid here
+  if [ -n "$WHAT" ]; then
+    validate_what "$WHAT" products operators all
   fi
+  validate_tag "$RELEASE_TAG" "$TAG_REGEX_FINAL"
+
+  ensure_temp_folder
 
   if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-    # sanity checks before we start: folder, branches etc.
     check_products
-
     echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
     update_products
   fi
   if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-    # sanity checks before we start: folder, branches etc.
-    check_operators
-
+    for_each_operator check_single_operator
     echo "Update the operator main changelog for release $RELEASE_TAG"
-    update_operators
+    for_each_operator update_single_operator
   fi
-
 }
 
 main "$@"

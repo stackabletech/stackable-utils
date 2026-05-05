@@ -1,46 +1,41 @@
 #!/usr/bin/env bash
 #
-# See README.adoc
+# See README.md
 #
 set -euo pipefail
-# set -x
 
-# tags should be semver-compatible e.g. 23.1.1 not 23.01.1
-# this is needed for cargo commands to work properly
-# optional release-candidate suffixes are in the form:
-#	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
-TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
-REPOSITORY="origin"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
 
 tag_products() {
-	# assume that the branch exists and has either been pushed or has been created locally
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	( # subshell to isolate cd
+		cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
-	# the PR branch should already exist
-	git switch "$RELEASE_BRANCH"
-	if $PUSH; then
-		git pull
-	else
-		git pull || echo "Dry-run: remote branch doesn't exist yet..."
-		# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
-	fi
-	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
-	push_branch
+		git switch "$RELEASE_BRANCH"
+		if $PUSH; then
+			git pull
+		else
+			git pull || echo "Dry-run: remote branch doesn't exist yet..."
+		fi
+		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
+		push_tag
+	)
 }
 
-tag_operators() {
-	while IFS="" read -r operator || [ -n "$operator" ]; do
+tag_single_operator() {
+	local operator="$1"
+	( # subshell to isolate cd
 		cd "${TEMP_RELEASE_FOLDER}/${operator}"
 		git switch "$RELEASE_BRANCH"
 		if $PUSH; then
 			git pull
 		else
 			git pull || echo "Dry-run: remote branch doesn't exist yet..."
-			# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
 		fi
 		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
-		push_branch
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+		push_tag
+	)
 }
 
 tag_repos() {
@@ -48,58 +43,30 @@ tag_repos() {
 		tag_products
 	fi
 	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		tag_operators
-	fi
-}
-
-check_tag_is_valid() {
-	git fetch --tags
-
-	# check tags: N.B. look for exact match
-	if git tag --list | grep -E "^$RELEASE_TAG\$"; then
-		>&2 echo "Tag $RELEASE_TAG already exists!"
-		exit 1
+		for_each_operator tag_single_operator
 	fi
 }
 
 check_products() {
-	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
-		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-  		# $TEMP_RELEASE_FOLDER has already been created in main()
-  		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-	fi
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	( # subshell to isolate cd
+		ensure_clone "$DOCKER_IMAGES_REPO"
+		cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 
-	# switch to the release branch, which should exist as tagging
-	# is subsequent to creating the branch.
-	BRANCH_EXISTS=$(git branch -a | grep -E "$RELEASE_BRANCH$")
-
-	if [ -z "${BRANCH_EXISTS}" ]; then
-		>&2 echo "Expected release branch is missing: $RELEASE_BRANCH"
-		exit 1
-	fi
-
-	check_tag_is_valid
+		require_release_branch "$DOCKER_IMAGES_REPO"
+		check_tag_is_valid "$RELEASE_TAG" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	)
 }
 
-check_operators() {
-	while IFS="" read -r operator || [ -n "$operator" ]; do
+check_single_operator() {
+	local operator="$1"
+	( # subshell to isolate cd
 		echo "Operator: $operator"
-		if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
-			echo "Cloning folder: $TEMP_RELEASE_FOLDER/${operator}"
-			# $TEMP_RELEASE_FOLDER has already been created in main()
-			git clone "git@github.com:stackabletech/${operator}.git" "$TEMP_RELEASE_FOLDER/${operator}"
-
-		fi
+		ensure_clone "$operator"
 		cd "$TEMP_RELEASE_FOLDER/${operator}"
-		# Note, if this needs to check the branch exists locally, then use:
-		# "^[ *]*$RELEASE_BRANCH\$"
-		if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
-			>&2 echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
-			exit 1
-		fi
-		check_tag_is_valid
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+
+		require_release_branch "$operator"
+		check_tag_is_valid "$RELEASE_TAG" "$TEMP_RELEASE_FOLDER/${operator}"
+	)
 }
 
 checks() {
@@ -107,24 +74,17 @@ checks() {
 		check_products
 	fi
 	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		check_operators
+		for_each_operator check_single_operator
 	fi
 }
 
-push_branch() {
+push_tag() {
 	if $PUSH; then
 		echo "Pushing changes..."
-		git push "${REPOSITORY}" "${RELEASE_TAG}"
+		git push "$REMOTE" "${RELEASE_TAG}"
 	else
 		echo "Dry-run: not pushing..."
-		git push --dry-run "${REPOSITORY}" "${RELEASE_TAG}"
-	fi
-}
-
-cleanup() {
-	if $CLEANUP; then
-		echo "Cleaning up..."
-		rm -rf "$TEMP_RELEASE_FOLDER"
+		git push --dry-run "$REMOTE" "${RELEASE_TAG}"
 	fi
 }
 
@@ -154,72 +114,28 @@ parse_inputs() {
 		shift
 	done
 
-	# remove leading and trailing quotes
-	RELEASE_TAG="${RELEASE_TAG%\"}"
-	RELEASE_TAG="${RELEASE_TAG#\"}"
+	RELEASE_TAG="$(strip_quotes "$RELEASE_TAG")"
 
-	# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-	RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
-	RELEASE_BRANCH="release-$RELEASE"
 	INITIAL_DIR="$PWD"
-	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+	derive_tag_vars "$RELEASE_TAG"
 
 	echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
-}
-
-check_dependencies() {
-	# check for a globally configured git user
-	if ! git_user=$(git config --global --includes --get user.name) \
-	|| ! git_email=$(git config --global --includes --get user.email); then
-		>&2 echo "Error: global git user name/email is not set."
-		exit 1
-	else
-		echo "global git user: $git_user <$git_email>"
-		echo "Is this correct? (y/n)"
-		read -r response
-		if [[ "$response" == "y" || "$response" == "Y" ]]; then
-			echo "Proceeding with $git_user <$git_email>"
-		else
-			>&2 echo "User not accepted. Exiting."
-			exit 1
-		fi
-	fi
-
-	# check gh authentication: if this fails you will need to e.g. gh auth login
-	gh auth status
-	yq --version
-	python --version
-	cargo --version
-	cargo set-version --version
-	# check for jinja2-cli including pyyaml package
-	jinja2 --version
-	python -m pip show pyyaml
 }
 
 main() {
 	parse_inputs "$@"
 
-	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
-		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
+		>&2 echo "Usage: tag-release-candidate.sh -t <tag> [-p] [-c] [-w products|operators|all]"
 		exit 1
 	fi
 
-	# check if argument matches our tag regex
-	if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
-		>&2 echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
-		exit 1
-	fi
+	validate_what "$WHAT" products operators all
+	validate_tag "$RELEASE_TAG" "$TAG_REGEX"
 
-	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-	  	echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
-  		mkdir -p "$TEMP_RELEASE_FOLDER"
-	fi
+	ensure_temp_folder
+	check_basic_dependencies
 
-	check_dependencies
-
-	# sanity checks before we start: folder, branches etc.
 	checks
 
 	tag_repos
