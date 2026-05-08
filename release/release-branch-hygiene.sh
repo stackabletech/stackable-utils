@@ -30,9 +30,19 @@ update_products() {
   # rather than being pushed directly to the release branch.
   git switch -c "${WORK_BRANCH}"
 
-  echo "Pls manually bump the UBI base images"
+  echo "Pls manually bump the UBI base images in $BASE_DIR/$DOCKER_IMAGES_REPO"
   echo 'Tip: I found the following images when searching for "registry.access.redhat.com/ubi" in Dockerfiles:'
   grep -r 'FROM registry.access.redhat.com/ubi' **/Dockerfile
+
+  read -r -p "Press Enter once you have updated the UBI base images (or Ctrl+C to abort)... "
+
+  # Pick up any edits the user made. Skip if they already committed themselves
+  # or if they made no changes at all.
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Staging and committing UBI base image bumps..."
+    git add --update
+    git commit -m "chore: UBI base image bumps"
+  fi
 
   raise_pr "$DOCKER_IMAGES_REPO" "chore: UBI base image bumps"
 
