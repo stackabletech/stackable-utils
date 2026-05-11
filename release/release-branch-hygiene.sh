@@ -6,6 +6,9 @@ set -euo pipefail
 # set -x
 
 REMOTE="origin"
+# Collects "<repo>|<title>|<url>" entries for every PR raised during the run,
+# so we can print a consolidated summary at the end.
+CREATED_PRS=()
 #----------------------------------------------------------------------------------------------------
 # tags should be semver-compatible e.g. 23.1 and not 23.01
 # this is needed for cargo commands to work properly: although it is not strictly needed
@@ -113,15 +116,36 @@ raise_pr() {
     echo "Pushing ${WORK_BRANCH} to ${REPOSITORY}"
     git push -u "$REMOTE" "$WORK_BRANCH"
     echo "Creating PR ${WORK_BRANCH} -> ${RELEASE_BRANCH} on ${REPOSITORY}"
-    gh pr create \
+    local PR_URL
+    PR_URL=$(gh pr create \
       --base "$RELEASE_BRANCH" \
       --head "$WORK_BRANCH" \
       --title "$PR_TITLE" \
-      --body "Patch level maintenance updates for \`${RELEASE_BRANCH}\` (created by release-branch-hygiene.sh)."
+      --body "Patch level maintenance updates for \`${RELEASE_BRANCH}\` (created by release-branch-hygiene.sh).")
+    CREATED_PRS+=("${REPOSITORY}|${PR_TITLE}|${PR_URL}")
   else
     echo "Dry-run: not pushing ${WORK_BRANCH} or creating PR for ${REPOSITORY}"
     git push --dry-run -u "$REMOTE" "$WORK_BRANCH"
   fi
+}
+
+print_summary() {
+  echo
+  echo "================ PR Summary ================"
+  if [ ${#CREATED_PRS[@]} -eq 0 ]; then
+    if $PUSH; then
+      echo "No PRs were created."
+    else
+      echo "Dry-run: no PRs were created (re-run with --push to actually open PRs)."
+    fi
+    return
+  fi
+  echo "Created ${#CREATED_PRS[@]} PR(s):"
+  for entry in "${CREATED_PRS[@]}"; do
+    IFS='|' read -r repo title url <<<"$entry"
+    echo "  - ${repo}: ${title}"
+    echo "      ${url}"
+  done
 }
 
 cleanup() {
@@ -187,6 +211,7 @@ main() {
   mkdir -p "$TEMP_RELEASE_FOLDER"
   update_repos "$TEMP_RELEASE_FOLDER"
   cleanup "$TEMP_RELEASE_FOLDER"
+  print_summary
 }
 
 main "$@"
