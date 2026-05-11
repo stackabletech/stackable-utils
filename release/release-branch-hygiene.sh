@@ -74,6 +74,8 @@ update_operators() {
     cargo update
     # cargo test # Will be done by CI and takes too long
     make regenerate-nix
+    # We are explicitly not regenerating the CRDs, as we don't want CRD changes to sneak in.
+    # We rather let the CI checks fail and inspect manually.
     git add Cargo.lock Cargo.nix
     git commit -m "chore: Rust dependency patch level updates"
 
