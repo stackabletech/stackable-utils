@@ -19,7 +19,7 @@ update_products() {
     git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
   else
     echo "Repo directory ($BASE_DIR/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-    git clone --branch main --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
+    git clone --branch main "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
     cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
     assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
     # try to switch to the release branch (if continuing from someone else), or create it
@@ -45,7 +45,7 @@ update_operators() {
       git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
     else
       echo "Repo directory ($BASE_DIR/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-      git clone --branch main --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
+      git clone --branch main "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
       cd "$BASE_DIR/${operator}"
       assert_cwd_is_repo "$operator"
       # try to switch to the release branch (if continuing from someone else), or create it
@@ -64,7 +64,7 @@ update_demos() {
     assert_clean_index "$DEMOS_REPO"
     git pull && git switch "${RELEASE_BRANCH}"
   else
-    git clone --branch main --depth 1 "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
+    git clone --branch main "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
     cd "$BASE_DIR/$DEMOS_REPO"
     assert_cwd_is_repo "$DEMOS_REPO"
     git switch "${RELEASE_BRANCH}" 2> /dev/null  || git switch -c "${RELEASE_BRANCH}"
