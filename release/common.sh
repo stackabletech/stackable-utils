@@ -175,6 +175,31 @@ assert_cwd_is_repo() {
 	fi
 }
 
+# Assert that the current git branch matches the expected name.
+# Uses exact string comparison - no regex.
+#
+# Usage:
+#   assert_on_branch "release-26.3"
+#   assert_on_branch "$PR_BRANCH"
+#
+# Exits with an error if the current branch doesn't match.
+assert_on_branch() {
+	local expected="$1"
+
+	if [ -z "$expected" ]; then
+		>&2 echo "Error: assert_on_branch: expected branch name is required."
+		exit 1
+	fi
+
+	local actual
+	actual=$(git branch --show-current)
+
+	if [ "$actual" != "$expected" ]; then
+		>&2 echo "Error: expected to be on branch '$expected', but currently on '$actual'."
+		exit 1
+	fi
+}
+
 # Assert that the current git working tree has no staged or unstaged
 # changes to tracked files. Untracked files trigger a warning and
 # a confirmation prompt.
