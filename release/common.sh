@@ -148,6 +148,33 @@ validate_release_base_version() {
 	fi
 }
 
+# Assert that the current directory is inside a git repository.
+# Optionally checks that the repository name matches an expected value.
+#
+# Usage:
+#   assert_cwd_is_repo                     # just checks we're in a git repo
+#   assert_cwd_is_repo "airflow-operator"  # also checks the repo name
+#
+# Exits with an error if the check fails.
+assert_cwd_is_repo() {
+	local expected_name="${1:-}"
+
+	local repo_root
+	if ! repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+		>&2 echo "Error: current directory ($(pwd)) is not inside a git repository."
+		exit 1
+	fi
+
+	if [ -n "$expected_name" ]; then
+		local actual_name
+		actual_name=$(basename "$repo_root")
+		if [ "$actual_name" != "$expected_name" ]; then
+			>&2 echo "Error: expected to be in repo '$expected_name', but current repo is '$actual_name'."
+			exit 1
+		fi
+	fi
+}
+
 # Assert that the current git working tree has no staged or unstaged
 # changes to tracked files. Untracked files trigger a warning and
 # a confirmation prompt.
