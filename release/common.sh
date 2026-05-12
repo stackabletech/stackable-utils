@@ -200,6 +200,43 @@ assert_on_branch() {
 	fi
 }
 
+# Assert that a named git remote exists and points to the expected
+# repository under github.com/stackabletech.
+#
+# Usage:
+#   assert_remote_exists "origin" "airflow-operator"
+#
+# Handles both SSH (git@github.com:stackabletech/...) and
+# HTTPS (https://github.com/stackabletech/...) remote URLs.
+# The .git suffix is stripped before comparison.
+#
+# Exits with an error if the remote doesn't exist or points elsewhere.
+assert_remote_exists() {
+	local remote="$1"
+	local expected_repo="$2"
+
+	if [ -z "$remote" ] || [ -z "$expected_repo" ]; then
+		>&2 echo "Error: assert_remote_exists requires a remote name and expected repo name."
+		exit 1
+	fi
+
+	local url
+	if ! url=$(git remote get-url "$remote" 2>/dev/null); then
+		>&2 echo "Error: git remote '$remote' does not exist."
+		exit 1
+	fi
+
+	# Strip trailing .git if present
+	url="${url%.git}"
+
+	# Match both SSH and HTTPS URL formats
+	local expected_pattern="github\.com[:/]stackabletech/${expected_repo}$"
+	if [[ ! $url =~ $expected_pattern ]]; then
+		>&2 echo "Error: remote '$remote' points to '$url', expected github.com/stackabletech/$expected_repo."
+		exit 1
+	fi
+}
+
 # Assert that the current git working tree has no staged or unstaged
 # changes to tracked files. Untracked files trigger a warning and
 # a confirmation prompt.
