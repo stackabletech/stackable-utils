@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 #
-# See README.adoc
+# See README.md
 #
 set -euo pipefail
 # set -x
 
-#-----------------------------------------------------------
-# tags should be semver-compatible e.g. 23.1.1 not 23.01.1
-# this is needed for cargo commands to work properly
-#-----------------------------------------------------------
-TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+$"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 REMOTE="origin"
 PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE WITHOUT MANUAL CHECKING!
@@ -58,11 +56,8 @@ check_operators() {
       git clone "git@github.com:stackabletech/${OPERATOR}.git" "$TEMP_RELEASE_FOLDER/$OPERATOR"
     fi
     cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
-
-    if ! git diff-index --quiet HEAD --; then
-      >&2 echo "Dirty git index for $OPERATOR. Check working tree or staged changes. Exiting."
-      exit 2
-    fi
+    assert_cwd_is_repo "$OPERATOR"
+    assert_clean_index "$OPERATOR"
 
     # Note, if this needs to check the branch exists locally, then use:
     # "^[ *]*$RELEASE_BRANCH\$"
@@ -84,14 +79,18 @@ update_operators() {
   while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
   do
     cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
+    assert_cwd_is_repo "$OPERATOR"
+    assert_clean_index "$OPERATOR"
 
     git checkout main
+    assert_on_branch "main"
     git pull
 
     # New branch that updates the CHANGELOG
     CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
     # Branch out from main
     git switch -c "$CHANGELOG_BRANCH"
+    assert_on_branch "$CHANGELOG_BRANCH"
     # Checkout CHANGELOG changes from the release tag
     git checkout "$RELEASE_TAG" -- CHANGELOG.md
     # Ensure only the CHANGELOG has been modified and there
@@ -104,7 +103,9 @@ update_operators() {
     # Commit the updated CHANGELOG.
     git add CHANGELOG.md
     git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
+    assert_clean_index "$OPERATOR"
     # Maybe push and create pull request
+    assert_remote_exists "$REMOTE" "$OPERATOR"
     if "$PUSH"; then
       git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
       gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
@@ -121,15 +122,12 @@ update_operators() {
 check_products() {
   if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
     echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-      # $TEMP_RELEASE_FOLDER has already been created in main()
-      git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+    # $TEMP_RELEASE_FOLDER has already been created in main()
+    git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
   fi
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-
-  if ! git diff-index --quiet HEAD --; then
-    >&2 echo "Dirty git index for $DOCKER_IMAGES_REPO. Check working tree or staged changes. Exiting."
-    exit 2
-  fi
+  assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
+  assert_clean_index "$DOCKER_IMAGES_REPO"
 
   # Note, if this needs to check the branch exists locally, then use:
   # "^[ *]*$RELEASE_BRANCH\$"
@@ -150,14 +148,18 @@ check_products() {
 # the changelog in the release branch.
 update_products() {
   cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
+  assert_clean_index "$DOCKER_IMAGES_REPO"
 
   git checkout main
+  assert_on_branch "main"
   git pull
 
   # New branch that updates the CHANGELOG
   CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
   # Branch out from main
   git switch -c "$CHANGELOG_BRANCH"
+  assert_on_branch "$CHANGELOG_BRANCH"
   # Checkout CHANGELOG changes from the release tag
   git checkout "$RELEASE_TAG" -- CHANGELOG.md
   # Ensure only the CHANGELOG has been modified and there
@@ -170,7 +172,9 @@ update_products() {
   # Commit the updated CHANGELOG.
   git add CHANGELOG.md
   git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
+  assert_clean_index "$DOCKER_IMAGES_REPO"
   # Maybe push and create pull request
+  assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
   if "$PUSH"; then
     git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
     gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
@@ -184,43 +188,42 @@ update_products() {
 
 main() {
   parse_inputs "$@"
-  #-----------------------------------------------------------
-  # check if tag argument provided
-  #-----------------------------------------------------------
+
   if [ -z "${RELEASE_TAG}" ]; then
-    echo "Usage: post-release.sh [options]"
-    echo "-t <tag>"
-    echo "-p Push changes. Default: false"
+    >&2 echo "Usage: post-release.sh -t <tag> [-p] [-w products|operators|all]"
     exit 1
   fi
-  #-----------------------------------------------------------
-  # check if argument matches our tag regex
-  #-----------------------------------------------------------
-  if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
-    echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
-    exit 1
-  fi
+
+  # Post-release is only for final releases, not release candidates.
+  validate_tag --no-rc "$RELEASE_TAG"
+  validate_what "$WHAT" "products" "operators" "all"
+  check_common_dependencies
 
   if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
     echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
     mkdir -p "$TEMP_RELEASE_FOLDER"
   fi
 
-  if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-    # sanity checks before we start: folder, branches etc.
-    check_products
-
-    echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
-    update_products
-  fi
-  if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-    # sanity checks before we start: folder, branches etc.
-    check_operators
-
-    echo "Update the operator main changelog for release $RELEASE_TAG"
-    update_operators
-  fi
-
+  case "$WHAT" in
+    products)
+      check_products
+      echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
+      update_products
+      ;;
+    operators)
+      check_operators
+      echo "Update the operator main changelog for release $RELEASE_TAG"
+      update_operators
+      ;;
+    all)
+      check_products
+      echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
+      update_products
+      check_operators
+      echo "Update the operator main changelog for release $RELEASE_TAG"
+      update_operators
+      ;;
+  esac
 }
 
 main "$@"
