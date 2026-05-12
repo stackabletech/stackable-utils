@@ -15,7 +15,7 @@ PR_MSG="> [!CAUTION]
 
 rc_branch_products() {
 	# assume that the branch exists and has either been pushed or has been created locally
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	pushd "$DOCKER_IMAGES_REPO" > /dev/null
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -29,11 +29,12 @@ rc_branch_products() {
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
 	push_branch
+	popd > /dev/null
 }
 
 rc_branch_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
-		cd "${TEMP_RELEASE_FOLDER}/${operator}"
+		pushd "${operator}" > /dev/null
 		assert_cwd_is_repo "$operator"
 		assert_clean_index "$operator"
 		git switch "$PR_BRANCH"
@@ -75,10 +76,12 @@ rc_branch_operators() {
 		assert_clean_index "$operator"
 		assert_remote_exists "$REMOTE" "$operator"
 		push_branch
+		popd > /dev/null
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 rc_branch_repos() {
+	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) rc_branch_products ;;
 		operators) rc_branch_operators ;;
@@ -112,12 +115,11 @@ check_tag_is_valid() {
 check_products() {
 	echo "Checking products"
 
-	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
-		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-  		# $TEMP_RELEASE_FOLDER has already been created in main()
-  		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	if [ ! -d "$DOCKER_IMAGES_REPO" ]; then
+		echo "Cloning folder: $DOCKER_IMAGES_REPO"
+		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$DOCKER_IMAGES_REPO"
 	fi
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	pushd "$DOCKER_IMAGES_REPO" > /dev/null
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -149,6 +151,7 @@ check_products() {
 	assert_on_branch "$PR_BRANCH"
 
 	check_tag_is_valid
+	popd > /dev/null
 }
 
 check_operators() {
@@ -156,13 +159,11 @@ check_operators() {
 
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
-		if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
-			echo "Cloning folder: $TEMP_RELEASE_FOLDER/${operator}"
-			# $TEMP_RELEASE_FOLDER has already been created in main()
-			git clone "git@github.com:stackabletech/${operator}.git" "$TEMP_RELEASE_FOLDER/${operator}"
-
+		if [ ! -d "${operator}" ]; then
+			echo "Cloning folder: ${operator}"
+			git clone "git@github.com:stackabletech/${operator}.git" "${operator}"
 		fi
-		cd "$TEMP_RELEASE_FOLDER/${operator}"
+		pushd "${operator}" > /dev/null
 		assert_cwd_is_repo "$operator"
 		assert_clean_index "$operator"
 
@@ -191,10 +192,12 @@ check_operators() {
 		assert_on_branch "$PR_BRANCH"
 
 		check_tag_is_valid
+		popd > /dev/null
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 checks() {
+	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
 		operators) check_operators ;;

@@ -11,16 +11,16 @@ source "$SCRIPT_DIR/common.sh"
 REMOTE="origin"
 
 update_products() {
-  if [ -d "$BASE_DIR/$DOCKER_IMAGES_REPO" ]; then
-    echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
-    cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
+  if [ -d "$DOCKER_IMAGES_REPO" ]; then
+    echo "Directory '$DOCKER_IMAGES_REPO' exists. Entering, and switching to '${RELEASE_BRANCH}' branch and Updating..."
+    pushd "$DOCKER_IMAGES_REPO" > /dev/null
     assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
     assert_clean_index "$DOCKER_IMAGES_REPO"
     git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
   else
-    echo "Repo directory ($BASE_DIR/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-    git clone --branch main "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
+    echo "Directory '$DOCKER_IMAGES_REPO' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
+    git clone --branch main "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$DOCKER_IMAGES_REPO"
+    pushd "$DOCKER_IMAGES_REPO" > /dev/null
     assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
     # try to switch to the release branch (if continuing from someone else), or create it
     git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
@@ -32,21 +32,22 @@ update_products() {
 
   echo
   echo "Check $BASE_DIR/$DOCKER_IMAGES_REPO"
+  popd > /dev/null
 }
 
 update_operators() {
   while IFS="" read -r operator || [ -n "$operator" ]
   do
-    if [ -d "$BASE_DIR/${operator}" ]; then
-      echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
-      cd "$BASE_DIR/${operator}"
+    if [ -d "${operator}" ]; then
+      echo "Directory '$operator' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
+      pushd "${operator}" > /dev/null
       assert_cwd_is_repo "$operator"
       assert_clean_index "$operator"
       git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
     else
-      echo "Repo directory ($BASE_DIR/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-      git clone --branch main "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
-      cd "$BASE_DIR/${operator}"
+      echo "Directory '$operator' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
+      git clone --branch main "git@github.com:stackabletech/${operator}.git" "${operator}"
+      pushd "${operator}" > /dev/null
       assert_cwd_is_repo "$operator"
       # try to switch to the release branch (if continuing from someone else), or create it
       git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
@@ -54,20 +55,23 @@ update_operators() {
     assert_on_branch "$RELEASE_BRANCH"
     assert_remote_exists "$REMOTE" "$operator"
     push_branch "$operator"
+    popd > /dev/null
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 update_demos() {
-  if [ -d "$BASE_DIR/$DEMOS_REPO" ]; then
-    cd "$BASE_DIR/$DEMOS_REPO"
+  if [ -d "$DEMOS_REPO" ]; then
+    echo "Directory '$DEMOS_REPO' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
+    pushd "$DEMOS_REPO" > /dev/null
     assert_cwd_is_repo "$DEMOS_REPO"
     assert_clean_index "$DEMOS_REPO"
     git pull && git switch "${RELEASE_BRANCH}"
   else
-    git clone --branch main "git@github.com:stackabletech/${DEMOS_REPO}.git" "$BASE_DIR/$DEMOS_REPO"
-    cd "$BASE_DIR/$DEMOS_REPO"
+    echo "Directory '$DEMOS_REPO' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
+    git clone --branch main "git@github.com:stackabletech/${DEMOS_REPO}.git" "$DEMOS_REPO"
+    pushd "$DEMOS_REPO" > /dev/null
     assert_cwd_is_repo "$DEMOS_REPO"
-    git switch "${RELEASE_BRANCH}" 2> /dev/null  || git switch -c "${RELEASE_BRANCH}"
+    git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
   fi
   assert_on_branch "$RELEASE_BRANCH"
 
@@ -77,10 +81,12 @@ update_demos() {
 
   assert_remote_exists "$REMOTE" "$DEMOS_REPO"
   push_branch "$DEMOS_REPO"
+  popd > /dev/null
 }
 
 update_repos() {
   local BASE_DIR="$1";
+  cd "$BASE_DIR"
 
   case "$WHAT" in
     products) update_products ;;

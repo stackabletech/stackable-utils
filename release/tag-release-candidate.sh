@@ -12,7 +12,7 @@ REMOTE="origin"
 
 tag_products() {
 	# assume that the branch exists and has either been pushed or has been created locally
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	pushd "$DOCKER_IMAGES_REPO" > /dev/null
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -29,13 +29,14 @@ tag_products() {
 	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
 	push_branch
+	popd > /dev/null
 }
 
 # TODO: tag_operators and tag_products share the same logic, just with a loop.
 # Extract the common tagging procedure into a shared function.
 tag_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
-		cd "${TEMP_RELEASE_FOLDER}/${operator}"
+		pushd "${operator}" > /dev/null
 		assert_cwd_is_repo "$operator"
 		assert_clean_index "$operator"
 
@@ -51,10 +52,12 @@ tag_operators() {
 		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		assert_remote_exists "$REMOTE" "$operator"
 		push_branch
+		popd > /dev/null
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 tag_repos() {
+	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) tag_products ;;
 		operators) tag_operators ;;
@@ -76,14 +79,14 @@ check_tag_is_valid() {
 }
 
 check_products() {
-	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
+	if [ ! -d "$DOCKER_IMAGES_REPO" ]; then
 		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-		# $TEMP_RELEASE_FOLDER has already been created in main()
-		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$DOCKER_IMAGES_REPO"
 	fi
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	pushd "$DOCKER_IMAGES_REPO" > /dev/null
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
+	# TODO (@NickLarsenNZ): Probably need a pull here
 
 	# switch to the release branch, which should exist as tagging
 	# is subsequent to creating the branch.
@@ -95,19 +98,21 @@ check_products() {
 	fi
 
 	check_tag_is_valid
+	popd > /dev/null
 }
 
 check_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		echo "Operator: $operator"
-		if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
+		if [ ! -d "${operator}" ]; then
 			echo "Cloning folder: $TEMP_RELEASE_FOLDER/${operator}"
-			# $TEMP_RELEASE_FOLDER has already been created in main()
-			git clone "git@github.com:stackabletech/${operator}.git" "$TEMP_RELEASE_FOLDER/${operator}"
+			git clone "git@github.com:stackabletech/${operator}.git" "${operator}"
 		fi
-		cd "$TEMP_RELEASE_FOLDER/${operator}"
+		pushd "${operator}" > /dev/null
 		assert_cwd_is_repo "$operator"
 		assert_clean_index "$operator"
+		# TODO (@NickLarsenNZ): Probably need a pull here
+
 		# Note, if this needs to check the branch exists locally, then use:
 		# "^[ *]*$RELEASE_BRANCH\$"
 		if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
@@ -115,10 +120,12 @@ check_operators() {
 			exit 1
 		fi
 		check_tag_is_valid
+		popd > /dev/null
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 checks() {
+	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
 		operators) check_operators ;;

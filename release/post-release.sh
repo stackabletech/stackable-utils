@@ -50,14 +50,14 @@ check_operators() {
   while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
   do
     echo "Operator: $OPERATOR"
-    if [ ! -d "$TEMP_RELEASE_FOLDER/$OPERATOR" ]; then
-      echo "Cloning folder: $TEMP_RELEASE_FOLDER/$OPERATOR"
-      # $TEMP_RELEASE_FOLDER has already been created in main()
-      git clone "git@github.com:stackabletech/${OPERATOR}.git" "$TEMP_RELEASE_FOLDER/$OPERATOR"
+    if [ ! -d "$OPERATOR" ]; then
+      echo "Cloning folder: $OPERATOR"
+      git clone "git@github.com:stackabletech/${OPERATOR}.git" "$OPERATOR"
     fi
-    cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
+    pushd "$OPERATOR" > /dev/null
     assert_cwd_is_repo "$OPERATOR"
     assert_clean_index "$OPERATOR"
+    # TODO (@NickLarsenNZ): Probably need a pull here
 
     # Note, if this needs to check the branch exists locally, then use:
     # "^[ *]*$RELEASE_BRANCH\$"
@@ -70,6 +70,7 @@ check_operators() {
       >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
       exit 1
     fi
+    popd > /dev/null
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
@@ -78,7 +79,7 @@ check_operators() {
 update_operators() {
   while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
   do
-    cd "$TEMP_RELEASE_FOLDER/$OPERATOR"
+    pushd "$OPERATOR" > /dev/null
     assert_cwd_is_repo "$OPERATOR"
     assert_clean_index "$OPERATOR"
 
@@ -114,20 +115,21 @@ update_operators() {
       git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
       gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
     fi
+    popd > /dev/null
   done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 # Check that the docker-images repo has been cloned locally, and that the release
 # branch and tag exists.
 check_products() {
-  if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
+  if [ ! -d "$DOCKER_IMAGES_REPO" ]; then
     echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-    # $TEMP_RELEASE_FOLDER has already been created in main()
-    git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+    git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$DOCKER_IMAGES_REPO"
   fi
-  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  pushd "$DOCKER_IMAGES_REPO" > /dev/null
   assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
   assert_clean_index "$DOCKER_IMAGES_REPO"
+  # TODO (@NickLarsenNZ): Probably need a pull here
 
   # Note, if this needs to check the branch exists locally, then use:
   # "^[ *]*$RELEASE_BRANCH\$"
@@ -142,12 +144,13 @@ check_products() {
     >&2 echo "Expected tag $RELEASE_TAG missing for $DOCKER_IMAGES_REPO"
     exit 1
   fi
+  popd > /dev/null
 }
 
 # Update the docker-images changelogs on main, and check they do not differ from
 # the changelog in the release branch.
 update_products() {
-  cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+  pushd "$DOCKER_IMAGES_REPO" > /dev/null
   assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
   assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -183,6 +186,7 @@ update_products() {
     git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
     gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
   fi
+  popd > /dev/null
 }
 
 
@@ -203,6 +207,8 @@ main() {
     echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
     mkdir -p "$TEMP_RELEASE_FOLDER"
   fi
+
+  cd "$TEMP_RELEASE_FOLDER"
 
   case "$WHAT" in
     products)
