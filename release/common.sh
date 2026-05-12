@@ -71,6 +71,83 @@ check_common_dependencies() {
 	yq --version
 }
 
+# CalVer base pattern: YY.M where month is 1-12 without leading zero.
+# Used by both tag and branch validation.
+CALVER_BASE='[0-9][0-9]\.([1-9]|1[0-2])'
+
+# Validate a release tag in CalVer format.
+#
+# Accepted formats:
+#   YY.M.P       e.g. 26.3.0, 25.11.1
+#   YY.M.P-rcN   e.g. 26.3.0-rc1, 25.11.1-rc12
+#
+# Usage:
+#   validate_tag "$RELEASE_TAG"          # accepts both final and RC tags
+#   validate_tag --no-rc "$RELEASE_TAG"  # rejects RC tags (for post-release)
+#
+# Exits with an error if the tag doesn't match.
+validate_tag() {
+	local no_rc=false
+	while [[ "$1" == --* ]]; do
+		case "$1" in
+		--no-rc) no_rc=true ;;
+		*)
+			>&2 echo "Error: validate_tag: unknown flag '$1'."
+			exit 1
+			;;
+		esac
+		shift
+	done
+	local tag="$1"
+
+	if [ -z "$tag" ]; then
+		>&2 echo "Error: release tag is required."
+		exit 1
+	fi
+
+	if [ "$#" -gt 1 ]; then
+		>&2 echo "Error: validate_tag: unexpected trailing arguments: ${*:2}"
+		exit 1
+	fi
+
+	local tag_regex="^${CALVER_BASE}\.[0-9]+(-rc[0-9]+)?$"
+	if [[ ! $tag =~ $tag_regex ]]; then
+		>&2 echo "Error: tag '$tag' does not match CalVer format (e.g. 26.3.0 or 26.3.0-rc1)."
+		exit 1
+	fi
+
+	if $no_rc && [[ $tag =~ -rc[0-9]+$ ]]; then
+		>&2 echo "Error: tag '$tag' is a release candidate. This step is only for final releases (e.g. 26.3.0, not 26.3.0-rc1)."
+		exit 1
+	fi
+}
+
+# Validate a release base version in CalVer format (YY.M).
+# This is the base from which branch names (release-YY.M) and
+# tags (YY.M.P, YY.M.P-rcN) are derived.
+#
+# Accepted format:
+#   YY.M   e.g. 26.3, 25.11
+#
+# Usage:
+#   validate_release_base_version "$RELEASE"
+#
+# Exits with an error if the version doesn't match.
+validate_release_base_version() {
+	local version="$1"
+
+	if [ -z "$version" ]; then
+		>&2 echo "Error: release version is required."
+		exit 1
+	fi
+
+	local version_regex="^${CALVER_BASE}$"
+	if [[ ! $version =~ $version_regex ]]; then
+		>&2 echo "Error: release version '$version' does not match CalVer format (e.g. 26.3 or 25.11)."
+		exit 1
+	fi
+}
+
 # Assert that the current git working tree has no staged or unstaged
 # changes to tracked files. Untracked files trigger a warning and
 # a confirmation prompt.
