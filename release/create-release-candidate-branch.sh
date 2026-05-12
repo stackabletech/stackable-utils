@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 #
-# See README.adoc
+# See README.md
 #
 set -euo pipefail
 # set -x
 
-# tags should be semver-compatible e.g. 23.1.1 not 23.01.1
-# this is needed for cargo commands to work properly
-# optional release-candidate suffixes are in the form:
-#	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
-TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 REMOTE="origin"
 PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE MANUALLY!
@@ -18,19 +16,27 @@ PR_MSG="> [!CAUTION]
 rc_branch_products() {
 	# assume that the branch exists and has either been pushed or has been created locally
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
+	assert_clean_index "$DOCKER_IMAGES_REPO"
 
 	# the PR branch should already exist
 	git switch "$PR_BRANCH"
+	assert_on_branch "$PR_BRANCH"
 	update_product_images_changelogs
-
+	assert_on_branch "$PR_BRANCH"
 	git commit -sam "chore: Release $RELEASE_TAG"
+	assert_clean_index "$DOCKER_IMAGES_REPO"
+	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
 	push_branch
 }
 
 rc_branch_operators() {
 	while IFS="" read -r operator || [ -n "$operator" ]; do
 		cd "${TEMP_RELEASE_FOLDER}/${operator}"
+		assert_cwd_is_repo "$operator"
+		assert_clean_index "$operator"
 		git switch "$PR_BRANCH"
+		assert_on_branch "$PR_BRANCH"
 
 		# Update git submodules if needed
 		if [ -f .gitmodules ]; then
@@ -53,18 +59,23 @@ rc_branch_operators() {
 		# inserts a single line with tag and date
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
 
+		assert_on_branch "$PR_BRANCH"
 		git commit -sam "chore: Release $RELEASE_TAG"
+		assert_clean_index "$operator"
+		assert_remote_exists "$REMOTE" "$operator"
 		push_branch
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 rc_branch_repos() {
-	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		rc_branch_products
-	fi
-	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		rc_branch_operators
-	fi
+	case "$WHAT" in
+		products) rc_branch_products ;;
+		operators) rc_branch_operators ;;
+		all)
+			rc_branch_products
+			rc_branch_operators
+			;;
+	esac
 }
 
 check_tag_is_valid() {
@@ -96,10 +107,13 @@ check_products() {
   		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
 	fi
 	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
+	assert_clean_index "$DOCKER_IMAGES_REPO"
 
 	# Need to update here because if we deleted the local state, or someone else continues
-    # we might be back on main, or on the release branch without having pulled updates from fixes.
+	# we might be back on main, or on the release branch without having pulled updates from fixes.
 	git fetch && git switch "$RELEASE_BRANCH" && git pull
+	assert_on_branch "$RELEASE_BRANCH"
 
 	# switch to the release branch, which should exist as tagging
 	# is subsequent to creating the branch.
@@ -121,6 +135,7 @@ check_products() {
 
 	# create a new branch for the PR off of this
 	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	assert_on_branch "$PR_BRANCH"
 
 	check_tag_is_valid
 }
@@ -137,10 +152,13 @@ check_operators() {
 
 		fi
 		cd "$TEMP_RELEASE_FOLDER/${operator}"
+		assert_cwd_is_repo "$operator"
+		assert_clean_index "$operator"
 
 		# Need to update here because if we deleted the local state, or someone else continues
 		# we might be back on main, or on the release branch without having pulled updates from fixes.
 		git fetch && git switch "$RELEASE_BRANCH" && git pull
+		assert_on_branch "$RELEASE_BRANCH"
 		# Note, if this needs to check the branch exists locally, then use:
 		# "^[ *]*$RELEASE_BRANCH\$"
 		if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
@@ -159,18 +177,21 @@ check_operators() {
 
 		# create a new branch for the PR off of this
 		git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+		assert_on_branch "$PR_BRANCH"
 
 		check_tag_is_valid
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
 checks() {
-	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		check_products
-	fi
-	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		check_operators
-	fi
+	case "$WHAT" in
+		products) check_products ;;
+		operators) check_operators ;;
+		all)
+			check_products
+			check_operators
+			;;
+	esac
 }
 
 update_code() {
@@ -293,30 +314,13 @@ parse_inputs() {
 }
 
 check_dependencies() {
-	# check for a globally configured git user
-	if ! git_user=$(git config --global --includes --get user.name) \
-	|| ! git_email=$(git config --global --includes --get user.email); then
-		>&2 echo "Error: global git user name/email is not set."
-		exit 1
-	else
-		echo "global git user: $git_user <$git_email>"
-		echo "Is this correct? (y/n)"
-		read -r response
-		if [[ "$response" == "y" || "$response" == "Y" ]]; then
-			echo "Proceeding with $git_user <$git_email>"
-		else
-			>&2 echo "User not accepted. Exiting."
-			exit 1
-		fi
-	fi
+	check_common_dependencies
 
-	# check gh authentication: if this fails you will need to e.g. gh auth login
-	gh auth status
-	yq --version
+	# Additional dependencies for operator RC branch creation
 	python --version
 	cargo --version
 	cargo set-version --version
-	# check for jinja2-cli including pyyaml package
+	# jinja2-cli including pyyaml package (for docs templating)
 	jinja2 --version
 	python -m pip show pyyaml
 }
@@ -324,21 +328,17 @@ check_dependencies() {
 main() {
 	parse_inputs "$@"
 
-	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
 		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
 		exit 1
 	fi
 
-	# check if argument matches our tag regex
-	if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
-		>&2 echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
-		exit 1
-	fi
+	validate_tag "$RELEASE_TAG"
+	validate_what "$WHAT" "products" "operators" "all"
 
 	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-	  	echo "Creating folder for cloning docker images and/or operators: [$TEMP_RELEASE_FOLDER]"
-  		mkdir -p "$TEMP_RELEASE_FOLDER"
+		echo "Creating folder for cloning docker images and/or operators: [$TEMP_RELEASE_FOLDER]"
+		mkdir -p "$TEMP_RELEASE_FOLDER"
 	fi
 
 	check_dependencies
