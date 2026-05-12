@@ -23,8 +23,9 @@ rc_branch_products() {
 	git switch "$PR_BRANCH"
 	assert_on_branch "$PR_BRANCH"
 	update_product_images_changelogs
+	git add CHANGELOG.md
 	assert_on_branch "$PR_BRANCH"
-	git commit -sam "chore: Release $RELEASE_TAG"
+	git commit -sm "chore: Release $RELEASE_TAG"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
 	push_branch
@@ -46,21 +47,31 @@ rc_branch_operators() {
 		# set tag version where relevant
 		cargo set-version --offline --workspace "$RELEASE_TAG"
 		cargo update --workspace
+		git add Cargo.toml Cargo.lock
+
 		# Run via nix-shell for the correct dependencies. Makefile already calls
 		# nix stuff, so it shouldn't be a problem for non-nix users.
 		nix-shell --run 'make regenerate-charts'
+		# TODO: These make targets can modify many paths. Ideally we would
+		# explicitly add the known output paths instead of staging all changes.
+		git add deploy/helm
+
 		nix-shell --run 'make regenerate-nix'
+		git add Cargo.nix crate-hashes.json nix/
 
 		update_code "$TEMP_RELEASE_FOLDER/${operator}"
+		git add docs/ tests/
 
 		# ensure .j2 changes are resolved
 		"$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
+		git add docs/
 
 		# inserts a single line with tag and date
 		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
+		git add CHANGELOG.md
 
 		assert_on_branch "$PR_BRANCH"
-		git commit -sam "chore: Release $RELEASE_TAG"
+		git commit -sm "chore: Release $RELEASE_TAG"
 		assert_clean_index "$operator"
 		assert_remote_exists "$REMOTE" "$operator"
 		push_branch
