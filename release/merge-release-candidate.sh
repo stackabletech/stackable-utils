@@ -5,6 +5,9 @@
 set -euo pipefail
 # set -x
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 parse_inputs() {
 	RELEASE_TAG=""
 	PUSH=false
@@ -103,44 +106,30 @@ merge_products() {
 }
 
 merge() {
-	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		merge_products
-	fi
-	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		merge_operators
-	fi
+	case "$WHAT" in
+		products) merge_products ;;
+		operators) merge_operators ;;
+		all)
+			merge_products
+			merge_operators
+			;;
+	esac
 }
 
 check_dependencies() {
-	# check for a globally configured git user
-	if ! git_user=$(git config --global --includes --get user.name) \
-	|| ! git_email=$(git config --global --includes --get user.email); then
-		>&2 echo "Error: global git user name/email is not set."
-		exit 1
-	else
-		echo "global git user: $git_user <$git_email>"
-		echo "Is this correct? (y/n)"
-		read -r response
-		if [[ "$response" == "y" || "$response" == "Y" ]]; then
-			echo "Proceeding with $git_user <$git_email>"
-		else
-			>&2 echo "User not accepted. Exiting."
-			exit 1
-		fi
-	fi
-	# check gh authentication: if this fails you will need to e.g. gh auth login
-	gh auth status
+	check_common_dependencies
 }
 
 main() {
 	parse_inputs "$@"
 
-	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
-		>&2 echo "Usage: create-release-merge-and-tag.sh -t <tag> [-w products|operators|all]"
+		>&2 echo "Usage: merge-release-candidate.sh -t <tag> [-p] [-w products|operators|all]"
 		exit 1
 	fi
 
+	validate_tag "$RELEASE_TAG"
+	validate_what "$WHAT" "products" "operators" "all"
 	check_dependencies
 	merge
 }
