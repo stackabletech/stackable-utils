@@ -26,6 +26,7 @@ rc_branch_products() {
 	git add CHANGELOG.md
 	assert_on_branch "$PR_BRANCH"
 	git commit -sm "chore: Release $RELEASE_TAG"
+	# TODO: Assert we are some commits ahead of the release branch (we just committed)
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
 	push_branch
@@ -73,6 +74,7 @@ rc_branch_operators() {
 
 		assert_on_branch "$PR_BRANCH"
 		git commit -sm "chore: Release $RELEASE_TAG"
+		# TODO: Assert we are some commits ahead of the release branch (we just committed)
 		assert_clean_index "$operator"
 		assert_remote_exists "$REMOTE" "$operator"
 		push_branch

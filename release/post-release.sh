@@ -83,6 +83,7 @@ update_operators() {
     git checkout main
     assert_on_branch "main"
     git pull
+    # TODO: Assert we are in sync with origin/main (0 ahead, 0 behind after pull)
 
     # New branch that updates the CHANGELOG
     CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
@@ -151,6 +152,7 @@ update_products() {
   git checkout main
   assert_on_branch "main"
   git pull
+  # TODO: Assert we are in sync with origin/main (0 ahead, 0 behind after pull)
 
   # New branch that updates the CHANGELOG
   CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"

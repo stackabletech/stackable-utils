@@ -26,6 +26,7 @@ tag_products() {
 		# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
 	fi
 	assert_on_branch "$RELEASE_BRANCH"
+	# TODO: Assert we are in sync with the remote release branch (0 ahead, 0 behind after pull)
 	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
 	push_branch
@@ -49,6 +50,7 @@ tag_operators() {
 			# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
 		fi
 		assert_on_branch "$RELEASE_BRANCH"
+		# TODO: Assert we are in sync with the remote release branch (0 ahead, 0 behind after pull)
 		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 		assert_remote_exists "$REMOTE" "$operator"
 		push_branch
