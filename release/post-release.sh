@@ -59,12 +59,9 @@ check_operators() {
     assert_clean_index "$OPERATOR"
     # TODO (@NickLarsenNZ): Probably need a pull here
 
-    # Note, if this needs to check the branch exists locally, then use:
-    # "^[ *]*$RELEASE_BRANCH\$"
-    if ! git branch -a | grep "$RELEASE_BRANCH\$"; then
-      >&2 echo "Expected release branch is missing: $OPERATOR/$RELEASE_BRANCH"
-      exit 1
-    fi
+    # The release branch should exist (created in a prior step)
+  # NOTE: Do we need to check if the branch exists locally?
+    assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
     git fetch --tags
     if ! git tag | grep "^$RELEASE_TAG\$"; then
       >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
@@ -131,12 +128,9 @@ check_products() {
   assert_clean_index "$DOCKER_IMAGES_REPO"
   # TODO (@NickLarsenNZ): Probably need a pull here
 
-  # Note, if this needs to check the branch exists locally, then use:
-  # "^[ *]*$RELEASE_BRANCH\$"
-  if ! git branch -a | grep "$RELEASE_BRANCH\$"; then
-    >&2 echo "Expected release branch is missing: $DOCKER_IMAGES_REPO/$RELEASE_BRANCH"
-    exit 1
-  fi
+  # The release branch should exist (created in a prior step)
+  # NOTE: Do we need to check if the branch exists locally?
+  assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
   git fetch --tags
   # check tags: N.B. look for exact match

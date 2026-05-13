@@ -295,6 +295,76 @@ setup_temp_repo_with_remote() {
 	teardown_temp_repo
 }
 
+# --- remote_branch_exists / assert_remote_branch_exists / assert_remote_branch_not_exists ---
+
+setup_temp_repo_with_remote_branch() {
+	# Create a bare remote repo and a local clone with a branch
+	TEST_REMOTE=$(mktemp -d)
+	git -C "$TEST_REMOTE" init --bare --quiet
+	TEST_REPO=$(mktemp -d)
+	git clone "$TEST_REMOTE" "$TEST_REPO" --quiet
+	cd "$TEST_REPO"
+	git commit --allow-empty -m "init" --quiet
+	git push --quiet
+	git checkout -b "release-26.3" --quiet
+	git push -u origin "release-26.3" --quiet
+}
+
+teardown_temp_repo_with_remote_branch() {
+	rm -rf "$TEST_REPO" "$TEST_REMOTE"
+}
+
+@test "remote_branch_exists: returns 0 for existing branch" {
+	setup_temp_repo_with_remote_branch
+	run remote_branch_exists "origin" "release-26.3"
+	[ "$status" -eq 0 ]
+	teardown_temp_repo_with_remote_branch
+}
+
+@test "remote_branch_exists: returns 1 for missing branch" {
+	setup_temp_repo_with_remote_branch
+	run remote_branch_exists "origin" "release-99.9"
+	[ "$status" -eq 1 ]
+	teardown_temp_repo_with_remote_branch
+}
+
+@test "remote_branch_exists: does not match partial names" {
+	setup_temp_repo_with_remote_branch
+	run remote_branch_exists "origin" "release-26"
+	[ "$status" -eq 1 ]
+	teardown_temp_repo_with_remote_branch
+}
+
+@test "assert_remote_branch_exists: passes for existing branch" {
+	setup_temp_repo_with_remote_branch
+	run assert_remote_branch_exists "origin" "release-26.3"
+	[ "$status" -eq 0 ]
+	teardown_temp_repo_with_remote_branch
+}
+
+@test "assert_remote_branch_exists: fails for missing branch" {
+	setup_temp_repo_with_remote_branch
+	run assert_remote_branch_exists "origin" "release-99.9"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"does not exist on remote"* ]]
+	teardown_temp_repo_with_remote_branch
+}
+
+@test "assert_remote_branch_not_exists: passes for missing branch" {
+	setup_temp_repo_with_remote_branch
+	run assert_remote_branch_not_exists "origin" "pr-26.3.0-rc1"
+	[ "$status" -eq 0 ]
+	teardown_temp_repo_with_remote_branch
+}
+
+@test "assert_remote_branch_not_exists: fails for existing branch" {
+	setup_temp_repo_with_remote_branch
+	run assert_remote_branch_not_exists "origin" "release-26.3"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"already exists on remote"* ]]
+	teardown_temp_repo_with_remote_branch
+}
+
 # --- assert_clean_index (needs temp git repo) ---
 
 @test "assert_clean_index: passes on clean repo" {

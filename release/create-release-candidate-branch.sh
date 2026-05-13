@@ -128,23 +128,13 @@ check_products() {
 	git fetch && git switch "$RELEASE_BRANCH" && git pull
 	assert_on_branch "$RELEASE_BRANCH"
 
-	# switch to the release branch, which should exist as tagging
-	# is subsequent to creating the branch.
-	# Note, if this needs to check the branch exists locally, then use:
-	# "^[ *]*$RELEASE_BRANCH\$"
-	if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
-		>&2 echo "Expected release branch is missing: $RELEASE_BRANCH"
-		exit 1
-	fi
+	# The release branch should exist (created in a prior step)
+	# NOTE: Do we need to check if the branch exists locally?
+	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
-	# the new PR should not exist, otherwise a duplicate commit
-	# will be prepared
-	# Note, if this needs to check the branch exists locally, then use:
-	# "^[ *]*$PR_BRANCH\$"
-	if git branch -a | grep -E "$PR_BRANCH\$"; then
-		>&2 echo "PR branch already exists: ${REMOTE}/$PR_BRANCH"
-		exit 1
-	fi
+	# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
+	# NOTE: Do we need to check if the branch DOES NOT exist locally?
+	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
 
 	# create a new branch for the PR off of this
 	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
@@ -171,21 +161,13 @@ check_operators() {
 		# we might be back on main, or on the release branch without having pulled updates from fixes.
 		git fetch && git switch "$RELEASE_BRANCH" && git pull
 		assert_on_branch "$RELEASE_BRANCH"
-		# Note, if this needs to check the branch exists locally, then use:
-		# "^[ *]*$RELEASE_BRANCH\$"
-		if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
-			>&2 echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
-			exit 1
-		fi
+		# The release branch should exist (created in a prior step)
+		# NOTE: Do we need to check if the branch exists locally?
+		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
-		# the new PR should not exist, otherwise a duplicate commit
-		# will be prepared
-		# Note, if this needs to check the branch exists locally, then use:
-		# "^[ *]*$PR_BRANCH\$"
-		if git branch -a | grep -E "$PR_BRANCH\$"; then
-			>&2 echo "PR branch already exists: ${operator}/$PR_BRANCH"
-			exit 1
-		fi
+		# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
+		# NOTE: Do we need to check if the branch DOES NOT exist locally?
+		assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
 
 		# create a new branch for the PR off of this
 		git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"

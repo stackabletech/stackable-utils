@@ -237,6 +237,49 @@ assert_remote_exists() {
 	fi
 }
 
+# Check whether a remote branch exists.
+# Uses `git branch --list -r` with an exact pattern to avoid partial matches.
+# Returns 0 if the branch exists, 1 if not. Does not exit on failure.
+#
+# Usage:
+#   if remote_branch_exists "origin" "release-26.3"; then ...
+remote_branch_exists() {
+	local remote="$1"
+	local branch="$2"
+
+	if [ -z "$remote" ] || [ -z "$branch" ]; then
+		>&2 echo "Error: remote_branch_exists requires a remote name and branch name."
+		exit 1
+	fi
+
+	git fetch "$remote" --quiet
+	[ -n "$(git branch --list -r "${remote}/${branch}")" ]
+}
+
+# Assert that a remote branch exists.
+# Exits with an error if the branch is not found on the remote.
+#
+# Usage:
+#   assert_remote_branch_exists "origin" "release-26.3"
+assert_remote_branch_exists() {
+	if ! remote_branch_exists "$@"; then
+		>&2 echo "Error: branch '$2' does not exist on remote '$1'."
+		exit 1
+	fi
+}
+
+# Assert that a remote branch does NOT exist.
+# Used to verify we won't collide with an existing branch when creating one.
+#
+# Usage:
+#   assert_remote_branch_not_exists "origin" "pr-26.3.0-rc1"
+assert_remote_branch_not_exists() {
+	if remote_branch_exists "$@"; then
+		>&2 echo "Error: branch '$2' already exists on remote '$1'."
+		exit 1
+	fi
+}
+
 # Assert that the current git working tree has no staged or unstaged
 # changes to tracked files. Untracked files trigger a warning and
 # a confirmation prompt.

@@ -88,14 +88,10 @@ check_products() {
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 	# TODO (@NickLarsenNZ): Probably need a pull here
 
-	# switch to the release branch, which should exist as tagging
-	# is subsequent to creating the branch.
-	BRANCH_EXISTS=$(git branch -a | grep -E "$RELEASE_BRANCH$")
-
-	if [ -z "${BRANCH_EXISTS}" ]; then
-		>&2 echo "Expected release branch is missing: $RELEASE_BRANCH"
-		exit 1
-	fi
+	# The release branch should exist (created in a prior step)
+	# NOTE: Do we need to check if the branch exists locally?
+	# Which branch should we be on here? Does it matter?
+	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
 	check_tag_is_valid
 	popd > /dev/null
@@ -113,12 +109,10 @@ check_operators() {
 		assert_clean_index "$operator"
 		# TODO (@NickLarsenNZ): Probably need a pull here
 
-		# Note, if this needs to check the branch exists locally, then use:
-		# "^[ *]*$RELEASE_BRANCH\$"
-		if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
-			>&2 echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
-			exit 1
-		fi
+		# The release branch should exist (created in a prior step)
+		# NOTE: Do we need to check if the branch exists locally?
+		# Which branch should we be on here? Does it matter?
+		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 		check_tag_is_valid
 		popd > /dev/null
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
