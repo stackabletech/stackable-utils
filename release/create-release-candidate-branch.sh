@@ -92,25 +92,6 @@ rc_branch_repos() {
 	esac
 }
 
-check_tag_is_valid() {
-	git fetch --tags
-
-	# check tags: N.B. look for exact match
-	if git tag --list | grep -E "^$RELEASE_TAG\$"; then
-		>&2 echo "Tag $RELEASE_TAG already exists!"
-		exit 1
-	fi
-
-	# Do we want proper semver version checking?
-	# We should switch this script to python if so.
-	#EXISTING_TAGS=$(git tag --list | grep -E "$RELEASE" | sort -V)
-	#for EXISTING_TAG in $EXISTING_TAGS; do
-	#	if [[ "$RELEASE_TAG" < "$EXISTING_TAG" ]]; then
-	#		>&2 echo "Error: Proposed tag $RELEASE_TAG is earlier than existing tag $EXISTING_TAG."
-	#		exit 1
-	#	fi
-	#done
-}
 
 check_products() {
 	echo "Checking products"
@@ -140,7 +121,7 @@ check_products() {
 	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 	assert_on_branch "$PR_BRANCH"
 
-	check_tag_is_valid
+	assert_tag_not_exists "$RELEASE_TAG"
 	popd > /dev/null
 }
 
@@ -173,7 +154,7 @@ check_operators() {
 		git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 		assert_on_branch "$PR_BRANCH"
 
-		check_tag_is_valid
+		assert_tag_not_exists "$RELEASE_TAG"
 		popd > /dev/null
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }

@@ -68,15 +68,6 @@ tag_repos() {
 	esac
 }
 
-check_tag_is_valid() {
-	git fetch --tags
-
-	# check tags: N.B. look for exact match
-	if git tag --list | grep -E "^$RELEASE_TAG\$"; then
-		>&2 echo "Tag $RELEASE_TAG already exists!"
-		exit 1
-	fi
-}
 
 check_products() {
 	if [ ! -d "$DOCKER_IMAGES_REPO" ]; then
@@ -93,7 +84,7 @@ check_products() {
 	# Which branch should we be on here? Does it matter?
 	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
-	check_tag_is_valid
+	assert_tag_not_exists "$RELEASE_TAG"
 	popd > /dev/null
 }
 
@@ -113,7 +104,7 @@ check_operators() {
 		# NOTE: Do we need to check if the branch exists locally?
 		# Which branch should we be on here? Does it matter?
 		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
-		check_tag_is_valid
+		assert_tag_not_exists "$RELEASE_TAG"
 		popd > /dev/null
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }

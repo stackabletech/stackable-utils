@@ -237,6 +237,28 @@ assert_remote_exists() {
 	fi
 }
 
+# Assert that a tag does NOT exist in the repository.
+# Fetches tags first to ensure we have the latest state.
+#
+# Usage:
+#   assert_tag_not_exists "$RELEASE_TAG"
+#
+# Exits with an error if the tag already exists.
+assert_tag_not_exists() {
+	local tag="$1"
+
+	if [ -z "$tag" ]; then
+		>&2 echo "Error: assert_tag_not_exists requires a tag name."
+		exit 1
+	fi
+
+	git fetch --tags --quiet
+	if [ -n "$(git tag --list "$tag")" ]; then
+		>&2 echo "Error: tag '$tag' already exists!"
+		exit 1
+	fi
+}
+
 # Check whether a remote branch exists.
 # Uses `git branch --list -r` with an exact pattern to avoid partial matches.
 # Returns 0 if the branch exists, 1 if not. Does not exit on failure.

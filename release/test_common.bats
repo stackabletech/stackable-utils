@@ -295,6 +295,35 @@ setup_temp_repo_with_remote() {
 	teardown_temp_repo
 }
 
+# --- assert_tag_not_exists ---
+
+@test "assert_tag_not_exists: passes when tag does not exist" {
+	setup_temp_repo
+	cd "$TEST_REPO"
+	run assert_tag_not_exists "26.3.0"
+	[ "$status" -eq 0 ]
+	teardown_temp_repo
+}
+
+@test "assert_tag_not_exists: fails when tag exists" {
+	setup_temp_repo
+	cd "$TEST_REPO"
+	git tag "26.3.0"
+	run assert_tag_not_exists "26.3.0"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"already exists"* ]]
+	teardown_temp_repo
+}
+
+@test "assert_tag_not_exists: does not match partial tag names" {
+	setup_temp_repo
+	cd "$TEST_REPO"
+	git tag "26.3.0-rc1"
+	run assert_tag_not_exists "26.3.0"
+	[ "$status" -eq 0 ]
+	teardown_temp_repo
+}
+
 # --- remote_branch_exists / assert_remote_branch_exists / assert_remote_branch_not_exists ---
 
 setup_temp_repo_with_remote_branch() {
