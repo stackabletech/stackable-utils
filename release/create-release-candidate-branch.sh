@@ -72,7 +72,13 @@ rc_branch_operator() {
 
 	# Run via nix-shell for the correct dependencies. Makefile already calls
 	# nix stuff, so it shouldn't be a problem for non-nix users.
-	nix-shell --run 'make regenerate-charts'
+	#
+	# LIBGIT2_NO_PKG_CONFIG: Workaround for non-NixOS users. nix-shell provides
+	# libgit2 at build time (found via pkg-config), but LD_LIBRARY_PATH may not
+	# include the nix store at runtime, causing a crash. This forces libgit2-sys
+	# to statically link its bundled copy instead. The proper fix belongs in the
+	# operator repos' nix shells.
+	LIBGIT2_NO_PKG_CONFIG=1 nix-shell --run 'make regenerate-charts'
 	# TODO: These make targets can modify many paths. Ideally we would
 	# explicitly add the known output paths instead of staging all changes.
 	git add deploy/helm
