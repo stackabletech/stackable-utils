@@ -301,11 +301,7 @@ main() {
 	validate_tag "$RELEASE_TAG"
 	validate_what "$WHAT" "products" "operators" "all"
 
-	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-		echo "Creating folder for cloning docker images and/or operators: [$TEMP_RELEASE_FOLDER]"
-		mkdir -p "$TEMP_RELEASE_FOLDER"
-	fi
-
+	ensure_temp_folder
 	check_dependencies
 
 	# sanity checks before we start: folder, branches etc.

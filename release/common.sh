@@ -49,6 +49,15 @@ ensure_clone() {
 	fi
 }
 
+# Ensure the temp release folder exists.
+# Requires $TEMP_RELEASE_FOLDER to be set (via derive_tag_vars or derive_branch_vars).
+ensure_temp_folder() {
+	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
+		echo "Creating folder: [$TEMP_RELEASE_FOLDER]"
+		mkdir -p "$TEMP_RELEASE_FOLDER"
+	fi
+}
+
 # Strip leading and trailing double quotes from a string.
 #
 # Usage:

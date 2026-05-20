@@ -129,8 +129,7 @@ main() {
   validate_what "$WHAT" "products" "operators" "demos" "all"
   check_common_dependencies
 
-  echo "Creating temporary working directory if it doesn't exist [$TEMP_RELEASE_FOLDER]"
-  mkdir -p "$TEMP_RELEASE_FOLDER"
+  ensure_temp_folder
   update_repos "$TEMP_RELEASE_FOLDER"
   cleanup "$TEMP_RELEASE_FOLDER"
 }

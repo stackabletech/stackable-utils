@@ -181,11 +181,7 @@ main() {
   validate_what "$WHAT" "products" "operators" "all"
   check_common_dependencies
 
-  if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-    echo "Creating folder for cloning docker images and operators: [$TEMP_RELEASE_FOLDER]"
-    mkdir -p "$TEMP_RELEASE_FOLDER"
-  fi
-
+  ensure_temp_folder
   cd "$TEMP_RELEASE_FOLDER"
 
   case "$WHAT" in

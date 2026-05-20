@@ -44,6 +44,24 @@ setup() {
 	[[ " ${results[*]} " == *" airflow-operator:extra "* ]]
 }
 
+# --- ensure_temp_folder ---
+
+@test "ensure_temp_folder: creates folder if missing" {
+	TEMP_RELEASE_FOLDER=$(mktemp -d)/test-release
+	run ensure_temp_folder
+	[ "$status" -eq 0 ]
+	[ -d "$TEMP_RELEASE_FOLDER" ]
+	rm -rf "$(dirname "$TEMP_RELEASE_FOLDER")"
+}
+
+@test "ensure_temp_folder: skips if folder exists" {
+	TEMP_RELEASE_FOLDER=$(mktemp -d)
+	run ensure_temp_folder
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"Creating"* ]]
+	rm -rf "$TEMP_RELEASE_FOLDER"
+}
+
 # --- ensure_clone ---
 
 @test "ensure_clone: skips if directory exists" {
