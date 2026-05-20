@@ -42,35 +42,38 @@ parse_inputs() {
 	echo "Settings: ${PR_BRANCH}: Push: $PUSH:"
 }
 
+merge_operator() {
+	local operator="$1"
+	echo "Operator: $operator"
+	if $PUSH; then
+		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
+	else
+		# It is possible to dry-run with the PR existing, but we will simply use OPEN
+		echo "Dry-run: pretending the PR exists and is open"
+		STATE="OPEN"
+	fi
+	if [[ "$STATE" == "OPEN" ]]; then
+		echo "Processing ${operator} in branch ${PR_BRANCH} with state ${STATE}"
+		if $PUSH; then
+			echo "Reviewing..."
+			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+			# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
+			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+			echo "Merging..."
+			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
+		else
+			echo "Dry-run: not reviewing/merging..."
+			echo
+			echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
+		fi
+	else
+		echo "Skipping ${operator}, PR already closed"
+	fi
+}
+
 merge_operators() {
 	read -p "Ask someone to approve all of the operator PRs, then press Enter"
-	while IFS="" read -r operator || [ -n "$operator" ]; do
-		echo "Operator: $operator"
-		if $PUSH; then
-			STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
-		else
-			# It is possible to dry-run with the PR existing, but we will simply use OPEN
-			echo "Dry-run: pretending the PR exists and is open"
-			STATE="OPEN"
-		fi
-		if [[ "$STATE" == "OPEN" ]]; then
-			echo "Processing ${operator} in branch ${PR_BRANCH} with state ${STATE}"
-			if $PUSH; then
-				echo "Reviewing..."
-				# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
-				# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
-				# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
-				echo "Merging..."
-				gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
-			else
-				echo "Dry-run: not reviewing/merging..."
-				echo
-				echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
-			fi
-		else
-			echo "Skipping ${operator}, PR already closed"
-		fi
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+	for_each_operator merge_operator
 }
 
 merge_products() {

@@ -33,63 +33,62 @@ rc_branch_products() {
 	popd > /dev/null
 }
 
-rc_branch_operators() {
-	while IFS="" read -r operator || [ -n "$operator" ]; do
-		pushd "${operator}" > /dev/null
-		assert_cwd_is_repo "$operator"
-		assert_clean_index "$operator"
-		git switch "$PR_BRANCH"
-		assert_on_branch "$PR_BRANCH"
+rc_branch_operator() {
+	local operator="$1"
+	pushd "${operator}" > /dev/null
+	assert_cwd_is_repo "$operator"
+	assert_clean_index "$operator"
+	git switch "$PR_BRANCH"
+	assert_on_branch "$PR_BRANCH"
 
-		# Update git submodules if needed
-		if [ -f .gitmodules ]; then
-			git submodule update --recursive --init
-		fi
+	# Update git submodules if needed
+	if [ -f .gitmodules ]; then
+		git submodule update --recursive --init
+	fi
 
-		# set tag version where relevant
-		cargo set-version --offline --workspace "$RELEASE_TAG"
-		cargo update --workspace
-		git add Cargo.toml Cargo.lock
+	# set tag version where relevant
+	cargo set-version --offline --workspace "$RELEASE_TAG"
+	cargo update --workspace
+	git add Cargo.toml Cargo.lock
 
-		# Run via nix-shell for the correct dependencies. Makefile already calls
-		# nix stuff, so it shouldn't be a problem for non-nix users.
-		nix-shell --run 'make regenerate-charts'
-		# TODO: These make targets can modify many paths. Ideally we would
-		# explicitly add the known output paths instead of staging all changes.
-		git add deploy/helm
+	# Run via nix-shell for the correct dependencies. Makefile already calls
+	# nix stuff, so it shouldn't be a problem for non-nix users.
+	nix-shell --run 'make regenerate-charts'
+	# TODO: These make targets can modify many paths. Ideally we would
+	# explicitly add the known output paths instead of staging all changes.
+	git add deploy/helm
 
-		nix-shell --run 'make regenerate-nix'
-		git add Cargo.nix crate-hashes.json nix/
+	nix-shell --run 'make regenerate-nix'
+	git add Cargo.nix crate-hashes.json nix/
 
-		update_code "$TEMP_RELEASE_FOLDER/${operator}"
-		git add docs/ tests/
+	update_code "$TEMP_RELEASE_FOLDER/${operator}"
+	git add docs/ tests/
 
-		# ensure .j2 changes are resolved
-		"$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
-		git add docs/
+	# ensure .j2 changes are resolved
+	"$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
+	git add docs/
 
-		# inserts a single line with tag and date
-		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
-		git add CHANGELOG.md
+	# inserts a single line with tag and date
+	update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
+	git add CHANGELOG.md
 
-		assert_on_branch "$PR_BRANCH"
-		git commit -sm "chore: Release $RELEASE_TAG"
-		# TODO: Assert we are some commits ahead of the release branch (we just committed)
-		assert_clean_index "$operator"
-		assert_remote_exists "$REMOTE" "$operator"
-		push_branch
-		popd > /dev/null
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+	assert_on_branch "$PR_BRANCH"
+	git commit -sm "chore: Release $RELEASE_TAG"
+	# TODO: Assert we are some commits ahead of the release branch (we just committed)
+	assert_clean_index "$operator"
+	assert_remote_exists "$REMOTE" "$operator"
+	push_branch
+	popd > /dev/null
 }
 
 rc_branch_repos() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) rc_branch_products ;;
-		operators) rc_branch_operators ;;
+		operators) for_each_operator rc_branch_operator ;;
 		all)
 			rc_branch_products
-			rc_branch_operators
+			for_each_operator rc_branch_operator
 			;;
 	esac
 }
@@ -127,48 +126,49 @@ check_products() {
 	popd > /dev/null
 }
 
-check_operators() {
-	echo "Checking operators"
+check_operator() {
+	local operator="$1"
+	echo "Operator: $operator"
+	if [ ! -d "${operator}" ]; then
+		echo "Cloning folder: ${operator}"
+		git clone "git@github.com:stackabletech/${operator}.git" "${operator}"
+	fi
+	pushd "${operator}" > /dev/null
+	assert_cwd_is_repo "$operator"
+	assert_clean_index "$operator"
 
-	while IFS="" read -r operator || [ -n "$operator" ]; do
-		echo "Operator: $operator"
-		if [ ! -d "${operator}" ]; then
-			echo "Cloning folder: ${operator}"
-			git clone "git@github.com:stackabletech/${operator}.git" "${operator}"
-		fi
-		pushd "${operator}" > /dev/null
-		assert_cwd_is_repo "$operator"
-		assert_clean_index "$operator"
+	# Need to update here because if we deleted the local state, or someone else continues
+	# we might be back on main, or on the release branch without having pulled updates from fixes.
+	git fetch && git switch "$RELEASE_BRANCH" && git pull
+	assert_on_branch "$RELEASE_BRANCH"
+	# The release branch should exist (created in a prior step)
+	# NOTE: Do we need to check if the branch exists locally?
+	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
-		# Need to update here because if we deleted the local state, or someone else continues
-		# we might be back on main, or on the release branch without having pulled updates from fixes.
-		git fetch && git switch "$RELEASE_BRANCH" && git pull
-		assert_on_branch "$RELEASE_BRANCH"
-		# The release branch should exist (created in a prior step)
-		# NOTE: Do we need to check if the branch exists locally?
-		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+	# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
+	# NOTE: Do we need to check if the branch DOES NOT exist locally?
+	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
 
-		# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
-		# NOTE: Do we need to check if the branch DOES NOT exist locally?
-		assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
+	# create a new branch for the PR off of this
+	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	assert_on_branch "$PR_BRANCH"
 
-		# create a new branch for the PR off of this
-		git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
-		assert_on_branch "$PR_BRANCH"
-
-		assert_tag_not_exists "$RELEASE_TAG"
-		popd > /dev/null
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+	assert_tag_not_exists "$RELEASE_TAG"
+	popd > /dev/null
 }
 
 checks() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
-		operators) check_operators ;;
+		operators)
+			echo "Checking operators"
+			for_each_operator check_operator
+			;;
 		all)
 			check_products
-			check_operators
+			echo "Checking operators"
+			for_each_operator check_operator
 			;;
 	esac
 }

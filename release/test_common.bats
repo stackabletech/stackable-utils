@@ -25,6 +25,25 @@ setup() {
 	export GIT_COMMITTER_EMAIL="test@test"
 }
 
+# --- for_each_operator ---
+
+@test "for_each_operator: calls function for each operator" {
+	INITIAL_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && cd .. && pwd)"
+	collected=()
+	collect_operator() { collected+=("$1"); }
+	for_each_operator collect_operator
+	[ "${#collected[@]}" -gt 0 ]
+	[[ " ${collected[*]} " == *" airflow-operator "* ]]
+}
+
+@test "for_each_operator: passes extra arguments" {
+	INITIAL_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && cd .. && pwd)"
+	results=()
+	collect_with_extra() { results+=("$1:$2"); }
+	for_each_operator collect_with_extra "extra"
+	[[ " ${results[*]} " == *" airflow-operator:extra "* ]]
+}
+
 # --- strip_double_quotes ---
 
 @test "strip_double_quotes: removes surrounding quotes" {

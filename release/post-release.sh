@@ -35,77 +35,74 @@ parse_inputs() {
   echo "Settings: $RELEASE_BRANCH: Push: $PUSH"
 }
 
-# Check that the operator repos have been cloned locally, and that the release
+# Check that an operator repo has been cloned locally, and that the release
 # branch and tag exists.
-check_operators() {
-  while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
-  do
-    echo "Operator: $OPERATOR"
-    if [ ! -d "$OPERATOR" ]; then
-      echo "Cloning folder: $OPERATOR"
-      git clone "git@github.com:stackabletech/${OPERATOR}.git" "$OPERATOR"
-    fi
-    pushd "$OPERATOR" > /dev/null
-    assert_cwd_is_repo "$OPERATOR"
-    assert_clean_index "$OPERATOR"
-    # TODO (@NickLarsenNZ): Probably need a pull here
+check_operator() {
+  local OPERATOR="$1"
+  echo "Operator: $OPERATOR"
+  if [ ! -d "$OPERATOR" ]; then
+    echo "Cloning folder: $OPERATOR"
+    git clone "git@github.com:stackabletech/${OPERATOR}.git" "$OPERATOR"
+  fi
+  pushd "$OPERATOR" > /dev/null
+  assert_cwd_is_repo "$OPERATOR"
+  assert_clean_index "$OPERATOR"
+  # TODO (@NickLarsenNZ): Probably need a pull here
 
-    # The release branch should exist (created in a prior step)
+  # The release branch should exist (created in a prior step)
   # NOTE: Do we need to check if the branch exists locally?
-    assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
-    git fetch --tags
-    if ! git tag | grep "^$RELEASE_TAG\$"; then
-      >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
-      exit 1
-    fi
-    popd > /dev/null
-  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+  assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+  git fetch --tags
+  if ! git tag | grep "^$RELEASE_TAG\$"; then
+    >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
+    exit 1
+  fi
+  popd > /dev/null
 }
 
-# Update the operator changelogs on main, and check they do not differ from
+
+# Update an operator's changelog on main, and check it does not differ from
 # the changelog in the release branch.
-update_operators() {
-  while IFS="" read -r OPERATOR || [ -n "$OPERATOR" ]
-  do
-    pushd "$OPERATOR" > /dev/null
-    assert_cwd_is_repo "$OPERATOR"
-    assert_clean_index "$OPERATOR"
+update_operator() {
+  local OPERATOR="$1"
+  pushd "$OPERATOR" > /dev/null
+  assert_cwd_is_repo "$OPERATOR"
+  assert_clean_index "$OPERATOR"
 
-    git checkout main
-    assert_on_branch "main"
-    git pull
-    # TODO: Assert we are in sync with origin/main (0 ahead, 0 behind after pull)
+  git checkout main
+  assert_on_branch "main"
+  git pull
+  # TODO: Assert we are in sync with origin/main (0 ahead, 0 behind after pull)
 
-    # New branch that updates the CHANGELOG
-    CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
-    # Branch out from main
-    git switch -c "$CHANGELOG_BRANCH"
-    assert_on_branch "$CHANGELOG_BRANCH"
-    # Checkout CHANGELOG changes from the release tag
-    git checkout "$RELEASE_TAG" -- CHANGELOG.md
-    # Ensure only the CHANGELOG has been modified and there
-    # are no conflicts.
-    CHANGELOG_MODIFIED=$(git status --short)
-    if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
-      echo "Failed to update CHANGELOG.md in main for operator $OPERATOR"
-      exit 1
-    fi
-    # Commit the updated CHANGELOG.
-    git add CHANGELOG.md
-    git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
-    assert_clean_index "$OPERATOR"
-    # Maybe push and create pull request
-    assert_remote_exists "$REMOTE" "$OPERATOR"
-    if "$PUSH"; then
-      git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
-      gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
-    else
-      echo "Dry-run: not pushing..."
-      git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
-      gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
-    fi
-    popd > /dev/null
-  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+  # New branch that updates the CHANGELOG
+  CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
+  # Branch out from main
+  git switch -c "$CHANGELOG_BRANCH"
+  assert_on_branch "$CHANGELOG_BRANCH"
+  # Checkout CHANGELOG changes from the release tag
+  git checkout "$RELEASE_TAG" -- CHANGELOG.md
+  # Ensure only the CHANGELOG has been modified and there
+  # are no conflicts.
+  CHANGELOG_MODIFIED=$(git status --short)
+  if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
+    echo "Failed to update CHANGELOG.md in main for operator $OPERATOR"
+    exit 1
+  fi
+  # Commit the updated CHANGELOG.
+  git add CHANGELOG.md
+  git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
+  assert_clean_index "$OPERATOR"
+  # Maybe push and create pull request
+  assert_remote_exists "$REMOTE" "$OPERATOR"
+  if "$PUSH"; then
+    git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
+    gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+  else
+    echo "Dry-run: not pushing..."
+    git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
+    gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
+  fi
+  popd > /dev/null
 }
 
 # Check that the docker-images repo has been cloned locally, and that the release
@@ -204,17 +201,17 @@ main() {
       update_products
       ;;
     operators)
-      check_operators
+      for_each_operator check_operator
       echo "Update the operator main changelog for release $RELEASE_TAG"
-      update_operators
+      for_each_operator update_operator
       ;;
     all)
       check_products
       echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
       update_products
-      check_operators
+      for_each_operator check_operator
       echo "Update the operator main changelog for release $RELEASE_TAG"
-      update_operators
+      for_each_operator update_operator
       ;;
   esac
 }

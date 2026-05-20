@@ -35,28 +35,26 @@ update_products() {
   popd > /dev/null
 }
 
-update_operators() {
-  while IFS="" read -r operator || [ -n "$operator" ]
-  do
-    if [ -d "${operator}" ]; then
-      echo "Directory '$operator' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
-      pushd "${operator}" > /dev/null
-      assert_cwd_is_repo "$operator"
-      assert_clean_index "$operator"
-      git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
-    else
-      echo "Directory '$operator' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
-      git clone --branch main "git@github.com:stackabletech/${operator}.git" "${operator}"
-      pushd "${operator}" > /dev/null
-      assert_cwd_is_repo "$operator"
-      # try to switch to the release branch (if continuing from someone else), or create it
-      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
-    fi
-    assert_on_branch "$RELEASE_BRANCH"
-    assert_remote_exists "$REMOTE" "$operator"
-    push_branch "$operator"
-    popd > /dev/null
-  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+update_operator() {
+  local operator="$1"
+  if [ -d "${operator}" ]; then
+    echo "Directory '$operator' exists. Entering, and switching to '${RELEASE_BRANCH}' branch and Updating..."
+    pushd "${operator}" > /dev/null
+    assert_cwd_is_repo "$operator"
+    assert_clean_index "$operator"
+    git pull && git switch "${RELEASE_BRANCH}" # Switch to local branch (remote doesn't yet exist)
+  else
+    echo "Directory '$operator' doesn't exist. Cloning, entering, and switching to '${RELEASE_BRANCH}' branch"
+    git clone --branch main "git@github.com:stackabletech/${operator}.git" "${operator}"
+    pushd "${operator}" > /dev/null
+    assert_cwd_is_repo "$operator"
+    # try to switch to the release branch (if continuing from someone else), or create it
+    git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
+  fi
+  assert_on_branch "$RELEASE_BRANCH"
+  assert_remote_exists "$REMOTE" "$operator"
+  push_branch "$operator"
+  popd > /dev/null
 }
 
 update_demos() {
@@ -90,11 +88,11 @@ update_repos() {
 
   case "$WHAT" in
     products) update_products ;;
-    operators) update_operators ;;
+    operators) for_each_operator update_operator ;;
     demos) update_demos ;;
     all)
       update_products
-      update_operators
+      for_each_operator update_operator
       update_demos
       ;;
   esac

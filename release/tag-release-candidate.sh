@@ -33,39 +33,38 @@ tag_products() {
 	popd > /dev/null
 }
 
-# TODO: tag_operators and tag_products share the same logic, just with a loop.
+# TODO: tag_operator and tag_products share the same logic.
 # Extract the common tagging procedure into a shared function.
-tag_operators() {
-	while IFS="" read -r operator || [ -n "$operator" ]; do
-		pushd "${operator}" > /dev/null
-		assert_cwd_is_repo "$operator"
-		assert_clean_index "$operator"
+tag_operator() {
+	local operator="$1"
+	pushd "${operator}" > /dev/null
+	assert_cwd_is_repo "$operator"
+	assert_clean_index "$operator"
 
-		git switch "$RELEASE_BRANCH"
-		assert_on_branch "$RELEASE_BRANCH"
-		if $PUSH; then
-			git pull
-		else
-			git pull || echo "Dry-run: remote branch doesn't exist yet..."
-			# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
-		fi
-		assert_on_branch "$RELEASE_BRANCH"
-		# TODO: Assert we are in sync with the remote release branch (0 ahead, 0 behind after pull)
-		git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
-		assert_remote_exists "$REMOTE" "$operator"
-		push_branch
-		popd > /dev/null
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+	git switch "$RELEASE_BRANCH"
+	assert_on_branch "$RELEASE_BRANCH"
+	if $PUSH; then
+		git pull
+	else
+		git pull || echo "Dry-run: remote branch doesn't exist yet..."
+		# NOTE (@NickLarsenNZ): We could add a fake commit, but that would poison the current state.
+	fi
+	assert_on_branch "$RELEASE_BRANCH"
+	# TODO: Assert we are in sync with the remote release branch (0 ahead, 0 behind after pull)
+	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
+	assert_remote_exists "$REMOTE" "$operator"
+	push_branch
+	popd > /dev/null
 }
 
 tag_repos() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) tag_products ;;
-		operators) tag_operators ;;
+		operators) for_each_operator tag_operator ;;
 		all)
 			tag_products
-			tag_operators
+			for_each_operator tag_operator
 			;;
 	esac
 }
@@ -90,35 +89,34 @@ check_products() {
 	popd > /dev/null
 }
 
-check_operators() {
-	while IFS="" read -r operator || [ -n "$operator" ]; do
-		echo "Operator: $operator"
-		if [ ! -d "${operator}" ]; then
-			echo "Cloning folder: $TEMP_RELEASE_FOLDER/${operator}"
-			git clone "git@github.com:stackabletech/${operator}.git" "${operator}"
-		fi
-		pushd "${operator}" > /dev/null
-		assert_cwd_is_repo "$operator"
-		assert_clean_index "$operator"
-		# TODO (@NickLarsenNZ): Probably need a pull here
+check_operator() {
+	local operator="$1"
+	echo "Operator: $operator"
+	if [ ! -d "${operator}" ]; then
+		echo "Cloning folder: $TEMP_RELEASE_FOLDER/${operator}"
+		git clone "git@github.com:stackabletech/${operator}.git" "${operator}"
+	fi
+	pushd "${operator}" > /dev/null
+	assert_cwd_is_repo "$operator"
+	assert_clean_index "$operator"
+	# TODO (@NickLarsenNZ): Probably need a pull here
 
-		# The release branch should exist (created in a prior step)
-		# NOTE: Do we need to check if the branch exists locally?
-		# Which branch should we be on here? Does it matter?
-		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
-		assert_tag_not_exists "$RELEASE_TAG"
-		popd > /dev/null
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+	# The release branch should exist (created in a prior step)
+	# NOTE: Do we need to check if the branch exists locally?
+	# Which branch should we be on here? Does it matter?
+	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+	assert_tag_not_exists "$RELEASE_TAG"
+	popd > /dev/null
 }
 
 checks() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
-		operators) check_operators ;;
+		operators) for_each_operator check_operator ;;
 		all)
 			check_products
-			check_operators
+			for_each_operator check_operator
 			;;
 	esac
 }

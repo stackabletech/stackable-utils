@@ -14,6 +14,24 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 	exit 1
 fi
 
+# Iterate over operators from config.yaml, calling a function for each.
+# Requires $INITIAL_DIR to be set (for reading config.yaml).
+#
+# Usage:
+#   for_each_operator my_function
+#   for_each_operator my_function "extra_arg"
+#
+# The function receives the operator name as its first argument,
+# followed by any extra arguments passed to for_each_operator.
+for_each_operator() {
+	local func="$1"
+	shift
+
+	while IFS="" read -r operator || [ -n "$operator" ]; do
+		"$func" "$operator" "$@"
+	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+}
+
 # Strip leading and trailing double quotes from a string.
 #
 # Usage:
