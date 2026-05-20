@@ -44,6 +44,48 @@ setup() {
 	[[ " ${results[*]} " == *" airflow-operator:extra "* ]]
 }
 
+# --- update_changelog ---
+
+@test "update_changelog: inserts tag entry" {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	echo "## [Unreleased]" > "$tmpdir/CHANGELOG.md"
+	update_changelog "$tmpdir/CHANGELOG.md" "26.3.0"
+	grep -q "## \[26.3.0\]" "$tmpdir/CHANGELOG.md"
+	grep -q "## \[Unreleased\]" "$tmpdir/CHANGELOG.md"
+	rm -rf "$tmpdir"
+}
+
+@test "update_changelog: skips if tag already present" {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	printf "## [Unreleased]\n\n## [26.3.0] - 2026-05-20\n" > "$tmpdir/CHANGELOG.md"
+	run update_changelog "$tmpdir/CHANGELOG.md" "26.3.0"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"already contains"* ]]
+	rm -rf "$tmpdir"
+}
+
+@test "update_changelog: does not match partial tags" {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	printf "## [Unreleased]\n\n## [26.3.0-rc1] - 2026-05-20\n" > "$tmpdir/CHANGELOG.md"
+	update_changelog "$tmpdir/CHANGELOG.md" "26.3.0"
+	grep -q "## \[26.3.0\]" "$tmpdir/CHANGELOG.md"
+	grep -q "## \[26.3.0-rc1\]" "$tmpdir/CHANGELOG.md"
+	rm -rf "$tmpdir"
+}
+
+@test "update_changelog: rejects invalid tag" {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	echo "## [Unreleased]" > "$tmpdir/CHANGELOG.md"
+	run update_changelog "$tmpdir/CHANGELOG.md" "26.3"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"does not match CalVer format"* ]]
+	rm -rf "$tmpdir"
+}
+
 # --- ensure_temp_folder ---
 
 @test "ensure_temp_folder: creates folder if missing" {

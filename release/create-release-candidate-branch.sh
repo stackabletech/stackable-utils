@@ -22,7 +22,7 @@ rc_branch_products() {
 	# the PR branch should already exist
 	git switch "$PR_BRANCH"
 	assert_on_branch "$PR_BRANCH"
-	update_product_images_changelogs
+	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
 	git add CHANGELOG.md
 	assert_on_branch "$PR_BRANCH"
 	git commit -sm "chore: Release $RELEASE_TAG"
@@ -69,7 +69,7 @@ rc_branch_operator() {
 	git add docs/
 
 	# inserts a single line with tag and date
-	update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
+	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
 	git add CHANGELOG.md
 
 	assert_on_branch "$PR_BRANCH"
@@ -233,15 +233,6 @@ cleanup() {
 	fi
 }
 
-update_changelog() {
-	TODAY=$(date +'%Y-%m-%d')
-	sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" "$1"/CHANGELOG.md
-}
-
-update_product_images_changelogs() {
-	TODAY=$(date +'%Y-%m-%d')
-	sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./CHANGELOG.md
-}
 
 # TODO: Consider moving validation (validate_tag, validate_what) into parse_inputs
 parse_inputs() {

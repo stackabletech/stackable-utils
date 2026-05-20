@@ -58,6 +58,27 @@ ensure_temp_folder() {
 	fi
 }
 
+# Update a CHANGELOG.md file with a release tag entry.
+# Idempotent: skips if the tag is already present in the changelog.
+#
+# Usage:
+#   update_changelog "path/to/CHANGELOG.md" "$RELEASE_TAG"
+update_changelog() {
+	local changelog="$1"
+	local tag="$2"
+
+	validate_tag "$tag"
+
+	if grep -qF "## [$tag]" "$changelog"; then
+		echo "Changelog already contains $tag, skipping"
+		return
+	fi
+
+	local today
+	today=$(date +'%Y-%m-%d')
+	sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$tag] - $today/I" "$changelog"
+}
+
 # Strip leading and trailing double quotes from a string.
 #
 # Usage:
