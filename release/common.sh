@@ -32,6 +32,23 @@ for_each_operator() {
 	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
 }
 
+# Clone a repo from stackabletech if it doesn't already exist locally.
+# Must be called from the directory where the clone should be created.
+#
+# Usage:
+#   ensure_clone "airflow-operator"              # clone default branch
+#   ensure_clone "airflow-operator" "--branch main"  # clone specific branch
+ensure_clone() {
+	local repo="$1"
+	local clone_args="${2:-}"
+
+	if [ ! -d "$repo" ]; then
+		echo "Cloning $repo..."
+		# shellcheck disable=SC2086
+		git clone $clone_args "git@github.com:stackabletech/${repo}.git" "$repo"
+	fi
+}
+
 # Strip leading and trailing double quotes from a string.
 #
 # Usage:

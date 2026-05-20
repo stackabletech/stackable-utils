@@ -40,10 +40,7 @@ parse_inputs() {
 check_operator() {
   local OPERATOR="$1"
   echo "Operator: $OPERATOR"
-  if [ ! -d "$OPERATOR" ]; then
-    echo "Cloning folder: $OPERATOR"
-    git clone "git@github.com:stackabletech/${OPERATOR}.git" "$OPERATOR"
-  fi
+  ensure_clone "$OPERATOR"
   pushd "$OPERATOR" > /dev/null
   assert_cwd_is_repo "$OPERATOR"
   assert_clean_index "$OPERATOR"
@@ -108,10 +105,7 @@ update_operator() {
 # Check that the docker-images repo has been cloned locally, and that the release
 # branch and tag exists.
 check_products() {
-  if [ ! -d "$DOCKER_IMAGES_REPO" ]; then
-    echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-    git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$DOCKER_IMAGES_REPO"
-  fi
+  ensure_clone "$DOCKER_IMAGES_REPO"
   pushd "$DOCKER_IMAGES_REPO" > /dev/null
   assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
   assert_clean_index "$DOCKER_IMAGES_REPO"

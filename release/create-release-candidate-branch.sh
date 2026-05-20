@@ -97,10 +97,7 @@ rc_branch_repos() {
 check_products() {
 	echo "Checking products"
 
-	if [ ! -d "$DOCKER_IMAGES_REPO" ]; then
-		echo "Cloning folder: $DOCKER_IMAGES_REPO"
-		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$DOCKER_IMAGES_REPO"
-	fi
+	ensure_clone "$DOCKER_IMAGES_REPO"
 	pushd "$DOCKER_IMAGES_REPO" > /dev/null
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
@@ -129,10 +126,7 @@ check_products() {
 check_operator() {
 	local operator="$1"
 	echo "Operator: $operator"
-	if [ ! -d "${operator}" ]; then
-		echo "Cloning folder: ${operator}"
-		git clone "git@github.com:stackabletech/${operator}.git" "${operator}"
-	fi
+	ensure_clone "$operator"
 	pushd "${operator}" > /dev/null
 	assert_cwd_is_repo "$operator"
 	assert_clean_index "$operator"

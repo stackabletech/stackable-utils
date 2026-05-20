@@ -44,6 +44,19 @@ setup() {
 	[[ " ${results[*]} " == *" airflow-operator:extra "* ]]
 }
 
+# --- ensure_clone ---
+
+@test "ensure_clone: skips if directory exists" {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	cd "$tmpdir"
+	mkdir "my-repo"
+	run ensure_clone "my-repo"
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"Cloning"* ]]
+	rm -rf "$tmpdir"
+}
+
 # --- strip_double_quotes ---
 
 @test "strip_double_quotes: removes surrounding quotes" {
