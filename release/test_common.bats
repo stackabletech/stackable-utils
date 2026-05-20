@@ -186,6 +186,17 @@ setup() {
 	[ "$TEMP_RELEASE_FOLDER" == "/tmp/stackable-release-25.11" ]
 }
 
+# --- derive_branch_vars ---
+
+@test "derive_branch_vars: sets all variables" {
+	INITIAL_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && cd .. && pwd)"
+	derive_branch_vars "26.3"
+	[ "$RELEASE_BRANCH" == "release-26.3" ]
+	[ "$TEMP_RELEASE_FOLDER" == "/tmp/stackable-release-26.3" ]
+	[ -n "$DOCKER_IMAGES_REPO" ]
+	[ -n "$DEMOS_REPO" ]
+}
+
 # --- assert_cwd_is_repo (needs temp git repo) ---
 
 setup_temp_repo() {

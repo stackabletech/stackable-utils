@@ -166,6 +166,23 @@ derive_tag_vars() {
 	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 }
 
+# Derive common variables from a release base version (YY.M).
+# Requires $INITIAL_DIR to be set (for reading config.yaml).
+#
+# Sets: RELEASE_BRANCH, DOCKER_IMAGES_REPO, DEMOS_REPO, TEMP_RELEASE_FOLDER
+#
+# Usage:
+#   INITIAL_DIR="$PWD"
+#   derive_branch_vars "$RELEASE_BASE"
+derive_branch_vars() {
+	local release_base="$1" # e.g., 26.3
+
+	RELEASE_BRANCH="release-$release_base"                # e.g., release-26.3
+	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
+	DEMOS_REPO=$(yq '... comments="" | .demos-repo ' "$INITIAL_DIR"/release/config.yaml)
+	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+}
+
 # Assert that the current directory is inside a git repository.
 # Optionally checks that the repository name matches an expected value.
 #

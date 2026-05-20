@@ -140,12 +140,9 @@ parse_inputs() {
   # remove leading and trailing quotes
   RELEASE_BASE="${RELEASE_BASE%\"}"
   RELEASE_BASE="${RELEASE_BASE#\"}"
-  RELEASE_BRANCH="release-$RELEASE_BASE"
 
   INITIAL_DIR="$PWD"
-  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-  DEMOS_REPO=$(yq '... comments="" | .demos-repo ' "$INITIAL_DIR"/release/config.yaml)
-  TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+  derive_branch_vars "$RELEASE_BASE"
 
   echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }
