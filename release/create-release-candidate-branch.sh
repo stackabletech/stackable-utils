@@ -13,6 +13,28 @@ PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE MANUALLY!
 > This branch will be merged (and the commit tagged) by stackable-utils once any necessary commits have been cherry-picked to here from the main branch."
 
+# Commit staged release changes and push the PR branch.
+# Skips the commit if nothing is staged (idempotent for re-runs).
+# Asserts we are on the correct branch before committing and that
+# the remote is correct before pushing.
+#
+# Usage:
+#   commit_and_push_rc "$DOCKER_IMAGES_REPO"
+#   commit_and_push_rc "$operator"
+commit_and_push_rc() {
+	local repo="$1"
+	assert_on_branch "$PR_BRANCH"
+	if git diff --cached --quiet; then
+		echo "No changes to commit for $repo (already up to date)"
+	else
+		git commit -sm "chore: Release $RELEASE_TAG"
+		# TODO: Assert we are some commits ahead of the release branch (we just committed)
+		assert_clean_index "$repo"
+	fi
+	assert_remote_exists "$REMOTE" "$repo"
+	push_branch
+}
+
 rc_branch_products() {
 	# assume that the branch exists and has either been pushed or has been created locally
 	pushd "$DOCKER_IMAGES_REPO" > /dev/null
@@ -24,12 +46,7 @@ rc_branch_products() {
 	assert_on_branch "$PR_BRANCH"
 	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
 	git add CHANGELOG.md
-	assert_on_branch "$PR_BRANCH"
-	git commit -sm "chore: Release $RELEASE_TAG"
-	# TODO: Assert we are some commits ahead of the release branch (we just committed)
-	assert_clean_index "$DOCKER_IMAGES_REPO"
-	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
-	push_branch
+	commit_and_push_rc "$DOCKER_IMAGES_REPO"
 	popd > /dev/null
 }
 
@@ -72,12 +89,7 @@ rc_branch_operator() {
 	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
 	git add CHANGELOG.md
 
-	assert_on_branch "$PR_BRANCH"
-	git commit -sm "chore: Release $RELEASE_TAG"
-	# TODO: Assert we are some commits ahead of the release branch (we just committed)
-	assert_clean_index "$operator"
-	assert_remote_exists "$REMOTE" "$operator"
-	push_branch
+	commit_and_push_rc "$operator"
 	popd > /dev/null
 }
 
