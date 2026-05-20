@@ -350,7 +350,7 @@ assert_tag_not_exists() {
 }
 
 # Check whether a remote branch exists.
-# Uses `git branch --list -r` with an exact pattern to avoid partial matches.
+# Uses `git ls-remote` to check the remote directly without modifying local refs.
 # Returns 0 if the branch exists, 1 if not. Does not exit on failure.
 #
 # Usage:
@@ -364,8 +364,7 @@ remote_branch_exists() {
 		exit 1
 	fi
 
-	git fetch "$remote" --quiet
-	[ -n "$(git branch --list -r "${remote}/${branch}")" ]
+	git ls-remote --exit-code --heads "$remote" "refs/heads/${branch}" > /dev/null 2>&1
 }
 
 # Assert that a remote branch exists.

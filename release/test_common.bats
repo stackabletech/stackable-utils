@@ -449,17 +449,17 @@ teardown_temp_repo_with_remote_branch() {
 	teardown_temp_repo_with_remote_branch
 }
 
-@test "remote_branch_exists: returns 1 for missing branch" {
+@test "remote_branch_exists: returns 2 for missing branch" {
 	setup_temp_repo_with_remote_branch
 	run remote_branch_exists "origin" "release-99.9"
-	[ "$status" -eq 1 ]
+	[ "$status" -eq 2 ]
 	teardown_temp_repo_with_remote_branch
 }
 
 @test "remote_branch_exists: does not match partial names" {
 	setup_temp_repo_with_remote_branch
 	run remote_branch_exists "origin" "release-26"
-	[ "$status" -eq 1 ]
+	[ "$status" -eq 2 ]
 	teardown_temp_repo_with_remote_branch
 }
 
