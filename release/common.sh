@@ -327,24 +327,24 @@ assert_remote_exists() {
 	fi
 }
 
-# Assert that a tag does NOT exist in the repository.
-# Fetches tags first to ensure we have the latest state.
+# Assert that a tag does NOT exist on the remote.
+# Uses `git ls-remote` to check the remote directly without modifying local refs.
 #
 # Usage:
-#   assert_tag_not_exists "$RELEASE_TAG"
+#   assert_tag_not_exists "origin" "$RELEASE_TAG"
 #
 # Exits with an error if the tag already exists.
 assert_tag_not_exists() {
-	local tag="$1"
+	local remote="$1"
+	local tag="$2"
 
-	if [ -z "$tag" ]; then
-		>&2 echo "Error: assert_tag_not_exists requires a tag name."
+	if [ -z "$remote" ] || [ -z "$tag" ]; then
+		>&2 echo "Error: assert_tag_not_exists requires a remote name and tag name."
 		exit 1
 	fi
 
-	git fetch --tags --quiet
-	if [ -n "$(git tag --list "$tag")" ]; then
-		>&2 echo "Error: tag '$tag' already exists!"
+	if git ls-remote --tags "$remote" "refs/tags/${tag}" | grep -q "refs/tags/${tag}"; then
+		>&2 echo "Error: tag '$tag' already exists on remote '$remote'!"
 		exit 1
 	fi
 }

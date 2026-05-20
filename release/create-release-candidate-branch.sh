@@ -119,7 +119,7 @@ check_products() {
 	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 	assert_on_branch "$PR_BRANCH"
 
-	assert_tag_not_exists "$RELEASE_TAG"
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 	popd > /dev/null
 }
 
@@ -147,7 +147,7 @@ check_operator() {
 	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 	assert_on_branch "$PR_BRANCH"
 
-	assert_tag_not_exists "$RELEASE_TAG"
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 	popd > /dev/null
 }
 

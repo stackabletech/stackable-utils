@@ -82,7 +82,7 @@ check_products() {
 	# Which branch should we be on here? Does it matter?
 	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
-	assert_tag_not_exists "$RELEASE_TAG"
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 	popd > /dev/null
 }
 
@@ -99,7 +99,7 @@ check_operator() {
 	# NOTE: Do we need to check if the branch exists locally?
 	# Which branch should we be on here? Does it matter?
 	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
-	assert_tag_not_exists "$RELEASE_TAG"
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 	popd > /dev/null
 }
 
