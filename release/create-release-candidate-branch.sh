@@ -81,7 +81,7 @@ rc_branch_operator() {
 	LIBGIT2_NO_PKG_CONFIG=1 nix-shell --run 'make regenerate-charts'
 	# TODO: These make targets can modify many paths. Ideally we would
 	# explicitly add the known output paths instead of staging all changes.
-	git add deploy/helm
+	git add deploy/helm extra/
 
 	nix-shell --run 'make regenerate-nix'
 	git add Cargo.nix crate-hashes.json nix/
