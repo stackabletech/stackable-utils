@@ -137,9 +137,7 @@ parse_inputs() {
       esac
       shift
   done
-  # remove leading and trailing quotes
-  RELEASE_BASE="${RELEASE_BASE%\"}"
-  RELEASE_BASE="${RELEASE_BASE#\"}"
+  RELEASE_BASE="$(strip_double_quotes "$RELEASE_BASE")"
 
   INITIAL_DIR="$PWD"
   derive_branch_vars "$RELEASE_BASE"

@@ -14,6 +14,17 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 	exit 1
 fi
 
+# Strip leading and trailing double quotes from a string.
+#
+# Usage:
+#   VAR="$(strip_double_quotes "$VAR")"
+strip_double_quotes() {
+	local val="$1"
+	val="${val%\"}"
+	val="${val#\"}"
+	echo "$val"
+}
+
 # Validate the -w/--what parameter against a set of allowed values.
 #
 # Usage:

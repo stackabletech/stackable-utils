@@ -25,6 +25,23 @@ setup() {
 	export GIT_COMMITTER_EMAIL="test@test"
 }
 
+# --- strip_double_quotes ---
+
+@test "strip_double_quotes: removes surrounding quotes" {
+	run strip_double_quotes '"hello"'
+	[ "$output" == 'hello' ]
+}
+
+@test "strip_double_quotes: leaves unquoted string unchanged" {
+	run strip_double_quotes 'hello'
+	[ "$output" == 'hello' ]
+}
+
+@test "strip_double_quotes: handles empty string" {
+	run strip_double_quotes ''
+	[ "$output" == '' ]
+}
+
 # --- validate_what ---
 
 @test "validate_what: accepts valid value" {

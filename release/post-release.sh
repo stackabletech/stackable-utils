@@ -27,10 +27,7 @@ parse_inputs() {
       esac
       shift
   done
-  #-----------------------------------------------------------
-  # remove leading and trailing quotes
-  RELEASE_TAG="${RELEASE_TAG%\"}"
-  RELEASE_TAG="${RELEASE_TAG#\"}"
+  RELEASE_TAG="$(strip_double_quotes "$RELEASE_TAG")"
 
   INITIAL_DIR="$PWD"
   derive_tag_vars "$RELEASE_TAG"
