@@ -79,6 +79,110 @@ update_changelog() {
 	sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$tag] - $today/I" "$changelog"
 }
 
+# Verify release transformations are correct before committing.
+# Checks whichever files exist, so it is safe to call for both operators and products.
+# Returns non-zero if any check fails.
+#
+# Usage:
+#   verify_release "$dir" "$RELEASE_TAG" "$RELEASE_BASE"
+verify_release() {
+	local dir="$1"
+	local tag="$2"
+	local release_base="$3"
+	local errors=0
+
+	echo "Verifying release transformations in $(basename "$dir")..."
+
+	# Cargo.toml workspace version
+	if [ -f "$dir/Cargo.toml" ] && grep -q '^\[workspace\.package\]' "$dir/Cargo.toml"; then
+		local cargo_ver
+		cargo_ver=$(grep -A 20 '^\[workspace\.package\]' "$dir/Cargo.toml" | grep -m1 '^version' | grep -oP '"\K[^"]+' || true)
+		if [ -n "$cargo_ver" ] && [ "$cargo_ver" != "$tag" ]; then
+			>&2 echo "  FAIL: Cargo.toml workspace version is '$cargo_ver', expected '$tag'"
+			errors=$((errors + 1))
+		fi
+	fi
+
+	# Helm Chart.yaml version and appVersion
+	local chart_yaml
+	chart_yaml=$(find "$dir/deploy/helm" -maxdepth 2 -name "Chart.yaml" -print -quit 2>/dev/null || true)
+	if [ -n "$chart_yaml" ]; then
+		local chart_ver chart_app_ver
+		chart_ver=$(yq '.version' "$chart_yaml")
+		chart_app_ver=$(yq '.appVersion' "$chart_yaml")
+		if [ "$chart_ver" != "$tag" ]; then
+			>&2 echo "  FAIL: Chart.yaml version is '$chart_ver', expected '$tag'"
+			errors=$((errors + 1))
+		fi
+		if [ "$chart_app_ver" != "$tag" ]; then
+			>&2 echo "  FAIL: Chart.yaml appVersion is '$chart_app_ver', expected '$tag'"
+			errors=$((errors + 1))
+		fi
+	fi
+
+	# antora.yml: version should be YY.M (release base), prerelease should be false
+	if [ -f "$dir/docs/antora.yml" ]; then
+		local antora_ver antora_prerelease
+		antora_ver=$(yq '.version' "$dir/docs/antora.yml")
+		antora_prerelease=$(yq '.prerelease' "$dir/docs/antora.yml")
+		if [ "$antora_ver" != "$release_base" ]; then
+			>&2 echo "  FAIL: antora.yml version is '$antora_ver', expected '$release_base'"
+			errors=$((errors + 1))
+		fi
+		if [ "$antora_prerelease" != "false" ]; then
+			>&2 echo "  FAIL: antora.yml prerelease is '$antora_prerelease', expected 'false'"
+			errors=$((errors + 1))
+		fi
+	fi
+
+	# templating_vars.yaml: no *dev* versions remaining
+	if [ -f "$dir/docs/templating_vars.yaml" ]; then
+		local dev_entries
+		dev_entries=$(yq '.versions | to_entries[] | select(.value | test("dev")) | .key' "$dir/docs/templating_vars.yaml" 2>/dev/null || true)
+		if [ -n "$dev_entries" ]; then
+			>&2 echo "  FAIL: templating_vars.yaml still has dev versions:"
+			>&2 echo "$dev_entries" | sed 's/^/    /'
+			errors=$((errors + 1))
+		fi
+	fi
+
+	# tests/release.yaml: all operatorVersion entries should match the tag
+	if [ -f "$dir/tests/release.yaml" ]; then
+		local bad_versions
+		bad_versions=$(yq '.releases.tests.products[] | select(.operatorVersion != "'"$tag"'") | .operatorVersion' "$dir/tests/release.yaml" 2>/dev/null || true)
+		if [ -n "$bad_versions" ]; then
+			>&2 echo "  FAIL: tests/release.yaml has non-release operatorVersions:"
+			>&2 echo "$bad_versions" | sort -u | sed 's/^/    /'
+			errors=$((errors + 1))
+		fi
+	fi
+
+	# CHANGELOG.md should contain the release tag
+	if [ -f "$dir/CHANGELOG.md" ]; then
+		if ! grep -qF "## [$tag]" "$dir/CHANGELOG.md"; then
+			>&2 echo "  FAIL: CHANGELOG.md does not contain '## [$tag]'"
+			errors=$((errors + 1))
+		fi
+	fi
+
+	# No nightly@ references remaining in .adoc files
+	if [ -d "$dir/docs" ]; then
+		local nightly_refs
+		nightly_refs=$(grep -rl 'nightly@' "$dir/docs/" 2>/dev/null || true)
+		if [ -n "$nightly_refs" ]; then
+			>&2 echo "  FAIL: docs still contain 'nightly@' references:"
+			>&2 echo "$nightly_refs" | sed 's/^/    /'
+			errors=$((errors + 1))
+		fi
+	fi
+
+	if [ "$errors" -gt 0 ]; then
+		>&2 echo "Verification failed with $errors error(s)"
+		return 1
+	fi
+	echo "Verification passed"
+}
+
 # Strip leading and trailing double quotes from a string.
 #
 # Usage:

@@ -46,6 +46,7 @@ rc_branch_products() {
 	assert_on_branch "$PR_BRANCH"
 	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
 	git add CHANGELOG.md
+	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
 	commit_and_push_rc "$DOCKER_IMAGES_REPO"
 	popd > /dev/null
 }
@@ -89,6 +90,7 @@ rc_branch_operator() {
 	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
 	git add CHANGELOG.md
 
+	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
 	commit_and_push_rc "$operator"
 	popd > /dev/null
 }

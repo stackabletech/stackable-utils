@@ -44,6 +44,65 @@ setup() {
 	[[ " ${results[*]} " == *" airflow-operator:extra "* ]]
 }
 
+# --- verify_release ---
+
+setup_verify_release_dir() {
+	VERIFY_DIR=$(mktemp -d)
+	# CHANGELOG with tag
+	printf "## [Unreleased]\n\n## [26.3.0] - 2026-05-20\n" > "$VERIFY_DIR/CHANGELOG.md"
+}
+
+teardown_verify_release_dir() {
+	rm -rf "$VERIFY_DIR"
+}
+
+@test "verify_release: passes with correct changelog" {
+	setup_verify_release_dir
+	run verify_release "$VERIFY_DIR" "26.3.0" "26.3"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Verification passed"* ]]
+	teardown_verify_release_dir
+}
+
+@test "verify_release: fails when changelog missing tag" {
+	setup_verify_release_dir
+	echo "## [Unreleased]" > "$VERIFY_DIR/CHANGELOG.md"
+	run verify_release "$VERIFY_DIR" "26.3.0" "26.3"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"CHANGELOG.md does not contain"* ]]
+	teardown_verify_release_dir
+}
+
+@test "verify_release: fails when antora version is wrong" {
+	setup_verify_release_dir
+	mkdir -p "$VERIFY_DIR/docs"
+	printf "version: \"99.9\"\nprerelease: false\n" > "$VERIFY_DIR/docs/antora.yml"
+	run verify_release "$VERIFY_DIR" "26.3.0" "26.3"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"antora.yml version is '99.9'"* ]]
+	teardown_verify_release_dir
+}
+
+@test "verify_release: fails when antora prerelease is not false" {
+	setup_verify_release_dir
+	mkdir -p "$VERIFY_DIR/docs"
+	printf "version: \"26.3\"\nprerelease: true\n" > "$VERIFY_DIR/docs/antora.yml"
+	run verify_release "$VERIFY_DIR" "26.3.0" "26.3"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"antora.yml prerelease is 'true'"* ]]
+	teardown_verify_release_dir
+}
+
+@test "verify_release: fails when nightly refs remain in docs" {
+	setup_verify_release_dir
+	mkdir -p "$VERIFY_DIR/docs"
+	echo "xref:nightly@home:index.adoc[]" > "$VERIFY_DIR/docs/test.adoc"
+	run verify_release "$VERIFY_DIR" "26.3.0" "26.3"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"nightly@"* ]]
+	teardown_verify_release_dir
+}
+
 # --- update_changelog ---
 
 @test "update_changelog: inserts tag entry" {
