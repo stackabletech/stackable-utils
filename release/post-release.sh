@@ -12,6 +12,7 @@ REMOTE="origin"
 PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE WITHOUT MANUAL CHECKING!
 > This PR contains information about commits have been cherry-picked to the release branch from the main branch, and may not reflect the correct chronology. Please check!"
+# TODO: Consider moving validation (validate_tag, validate_what) into parse_inputs
 parse_inputs() {
   RELEASE_TAG=""
   PUSH=false
@@ -28,18 +29,11 @@ parse_inputs() {
   done
   #-----------------------------------------------------------
   # remove leading and trailing quotes
-  #-----------------------------------------------------------
   RELEASE_TAG="${RELEASE_TAG%\"}"
   RELEASE_TAG="${RELEASE_TAG#\"}"
-  #----------------------------------------------------------------------------------------------------
-  # for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-  #----------------------------------------------------------------------------------------------------
-  RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
-  RELEASE_BRANCH="release-$RELEASE"
 
   INITIAL_DIR="$PWD"
-  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-  TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+  derive_tag_vars "$RELEASE_TAG"
 
   echo "Settings: $RELEASE_BRANCH: Push: $PUSH"
 }

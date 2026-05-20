@@ -8,6 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
+# TODO: Consider moving validation (validate_tag, validate_what) into parse_inputs
 parse_inputs() {
 	RELEASE_TAG=""
 	PUSH=false
@@ -36,11 +37,9 @@ parse_inputs() {
 	# remove leading and trailing quotes
 	RELEASE_TAG="${RELEASE_TAG%\"}"
 	RELEASE_TAG="${RELEASE_TAG#\"}"
-	# N.B. this has to match what is used in other scripts
-	PR_BRANCH="pr-$RELEASE_TAG"
 
 	INITIAL_DIR="$PWD"
-	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
+	derive_tag_vars "$RELEASE_TAG"
 
 	echo "Settings: ${PR_BRANCH}: Push: $PUSH:"
 }

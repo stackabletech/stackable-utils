@@ -178,7 +178,7 @@ update_code() {
 		echo "Updating antora docs for $1"
 
 		# antora version should be major.minor, not patch level
-		yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
+		yq -i ".version = \"${RELEASE_BASE}\"" "$1/docs/antora.yml"
 		yq -i '.prerelease = false' "$1/docs/antora.yml"
 
 		# Not all operators have a getting started guide
@@ -192,7 +192,7 @@ update_code() {
 			# We assume that the tag (e.g. 23.7.1) is applied to an earlier tag in the same
 			# release (e.g. 23.7.0) so search+replace on the major.minor tag will suffice.
 			# TODO: this may pick up versions of external components as well.
-			yq -i "(.versions.[] | select(. == \"${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+			yq -i "(.versions.[] | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
 
 			yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
 			yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
@@ -212,7 +212,7 @@ update_code() {
 
 	# do this for patch releases/release candidates too.
 	# i.e. replace 24.11.0-rc1 with 24.11.0, 24.7.0 with 24.7.1 etc.
-	yq -i "(.releases.tests.products[].operatorVersion | select(. == \"${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$1/tests/release.yaml"
+	yq -i "(.releases.tests.products[].operatorVersion | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/tests/release.yaml"
 
 	# Some tests perform **label** inspection and for (only) these cases specific labels should be updated.
 	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
@@ -249,6 +249,7 @@ update_product_images_changelogs() {
 	sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./CHANGELOG.md
 }
 
+# TODO: Consider moving validation (validate_tag, validate_what) into parse_inputs
 parse_inputs() {
 	RELEASE_TAG=""
 	PUSH=false
@@ -279,15 +280,8 @@ parse_inputs() {
 	RELEASE_TAG="${RELEASE_TAG%\"}"
 	RELEASE_TAG="${RELEASE_TAG#\"}"
 
-	# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-	RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
-	RELEASE_BRANCH="release-$RELEASE"
-	# N.B. this has to match what is used in other scripts
-	PR_BRANCH="pr-$RELEASE_TAG"
-
 	INITIAL_DIR="$PWD"
-	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+	derive_tag_vars "$RELEASE_TAG"
 
 	echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }

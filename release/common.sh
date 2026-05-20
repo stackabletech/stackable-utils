@@ -130,7 +130,7 @@ validate_tag() {
 #   YY.M   e.g. 26.3, 25.11
 #
 # Usage:
-#   validate_release_base_version "$RELEASE"
+#   validate_release_base_version "$RELEASE_BASE"
 #
 # Exits with an error if the version doesn't match.
 validate_release_base_version() {
@@ -146,6 +146,24 @@ validate_release_base_version() {
 		>&2 echo "Error: release version '$version' does not match CalVer format (e.g. 26.3 or 25.11)."
 		exit 1
 	fi
+}
+
+# Derive common variables from a release tag.
+# Requires $INITIAL_DIR to be set (for reading config.yaml).
+#
+# Sets: RELEASE_BASE, RELEASE_BRANCH, PR_BRANCH, DOCKER_IMAGES_REPO, TEMP_RELEASE_FOLDER
+#
+# Usage:
+#   INITIAL_DIR="$PWD"
+#   derive_tag_vars "$RELEASE_TAG"
+derive_tag_vars() {
+	local tag="$1"
+
+	RELEASE_BASE="$(cut -d'.' -f1,2 <<< "$tag")" # e.g., 26.3 from 26.3.0-rc1
+	RELEASE_BRANCH="release-$RELEASE_BASE"      # e.g., release-26.3
+	PR_BRANCH="pr-$tag"                          # e.g., pr-26.3.0-rc1
+	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
+	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 }
 
 # Assert that the current directory is inside a git repository.

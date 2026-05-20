@@ -165,6 +165,27 @@ setup() {
 	[ "$status" -eq 1 ]
 }
 
+# --- derive_tag_vars ---
+
+@test "derive_tag_vars: sets all variables from a final tag" {
+	INITIAL_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && cd .. && pwd)"
+	derive_tag_vars "26.3.0"
+	[ "$RELEASE_BASE" == "26.3" ]
+	[ "$RELEASE_BRANCH" == "release-26.3" ]
+	[ "$PR_BRANCH" == "pr-26.3.0" ]
+	[ "$TEMP_RELEASE_FOLDER" == "/tmp/stackable-release-26.3" ]
+	[ -n "$DOCKER_IMAGES_REPO" ]
+}
+
+@test "derive_tag_vars: sets all variables from an RC tag" {
+	INITIAL_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && cd .. && pwd)"
+	derive_tag_vars "25.11.1-rc2"
+	[ "$RELEASE_BASE" == "25.11" ]
+	[ "$RELEASE_BRANCH" == "release-25.11" ]
+	[ "$PR_BRANCH" == "pr-25.11.1-rc2" ]
+	[ "$TEMP_RELEASE_FOLDER" == "/tmp/stackable-release-25.11" ]
+}
+
 # --- assert_cwd_is_repo (needs temp git repo) ---
 
 setup_temp_repo() {

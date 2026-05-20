@@ -120,15 +120,16 @@ cleanup() {
   fi
 }
 
+# TODO: Consider moving validation (validate_release_base_version, validate_what) into parse_inputs
 parse_inputs() {
-  RELEASE=""
+  RELEASE_BASE="" # e.g., 26.3 (YY.M, no patch level)
   PUSH=false
   CLEANUP=false
   WHAT=""
 
   while [[ "$#" -gt 0 ]]; do
       case $1 in
-          -b|--branch) RELEASE="$2"; shift ;;
+          -b|--branch) RELEASE_BASE="$2"; shift ;;
           -w|--what) WHAT="$2"; shift ;;
           -p|--push) PUSH=true ;;
           -c|--cleanup) CLEANUP=true ;;
@@ -136,12 +137,10 @@ parse_inputs() {
       esac
       shift
   done
-  #-----------------------------------------------------------
   # remove leading and trailing quotes
-  #-----------------------------------------------------------
-  RELEASE="${RELEASE%\"}"
-  RELEASE="${RELEASE#\"}"
-  RELEASE_BRANCH="release-$RELEASE"
+  RELEASE_BASE="${RELEASE_BASE%\"}"
+  RELEASE_BASE="${RELEASE_BASE#\"}"
+  RELEASE_BRANCH="release-$RELEASE_BASE"
 
   INITIAL_DIR="$PWD"
   DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
@@ -154,12 +153,12 @@ parse_inputs() {
 main() {
   parse_inputs "$@"
 
-  if [ -z "${RELEASE}" ]; then
+  if [ -z "${RELEASE_BASE}" ]; then
     >&2 echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w products|operators|demos|all]"
     exit 1
   fi
 
-  validate_release_base_version "$RELEASE"
+  validate_release_base_version "$RELEASE_BASE"
   validate_what "$WHAT" "products" "operators" "demos" "all"
   check_common_dependencies
 
