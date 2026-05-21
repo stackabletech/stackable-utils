@@ -38,11 +38,11 @@ parse_inputs() {
 
 # Check that an operator repo has been cloned locally, and that the release
 # branch and tag exists.
-check_operator() {
+check_operator() (
   local OPERATOR="$1"
   echo "Operator: $OPERATOR"
   ensure_clone "$OPERATOR"
-  pushd "$OPERATOR" > /dev/null
+  cd "$OPERATOR"
   assert_cwd_is_repo "$OPERATOR"
   assert_clean_index "$OPERATOR"
   # TODO (@NickLarsenNZ): Probably need a pull here
@@ -55,15 +55,14 @@ check_operator() {
     >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
     exit 1
   fi
-  popd > /dev/null
-}
+)
 
 
 # Update an operator's changelog on main, and check it does not differ from
 # the changelog in the release branch.
-update_operator() {
+update_operator() (
   local OPERATOR="$1"
-  pushd "$OPERATOR" > /dev/null
+  cd "$OPERATOR"
   assert_cwd_is_repo "$OPERATOR"
   assert_clean_index "$OPERATOR"
 
@@ -100,14 +99,13 @@ update_operator() {
     git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
     gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
   fi
-  popd > /dev/null
-}
+)
 
 # Check that the docker-images repo has been cloned locally, and that the release
 # branch and tag exists.
-check_products() {
+check_products() (
   ensure_clone "$DOCKER_IMAGES_REPO"
-  pushd "$DOCKER_IMAGES_REPO" > /dev/null
+  cd "$DOCKER_IMAGES_REPO"
   assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
   assert_clean_index "$DOCKER_IMAGES_REPO"
   # TODO (@NickLarsenNZ): Probably need a pull here
@@ -122,13 +120,12 @@ check_products() {
     >&2 echo "Expected tag $RELEASE_TAG missing for $DOCKER_IMAGES_REPO"
     exit 1
   fi
-  popd > /dev/null
-}
+)
 
 # Update the docker-images changelogs on main, and check they do not differ from
 # the changelog in the release branch.
-update_products() {
-  pushd "$DOCKER_IMAGES_REPO" > /dev/null
+update_products() (
+  cd "$DOCKER_IMAGES_REPO"
   assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
   assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -165,8 +162,7 @@ update_products() {
     git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
     gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
   fi
-  popd > /dev/null
-}
+)
 
 
 main() {

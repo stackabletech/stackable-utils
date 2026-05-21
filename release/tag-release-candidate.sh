@@ -11,9 +11,9 @@ source "$SCRIPT_DIR/common.sh"
 
 REMOTE="origin"
 
-tag_products() {
+tag_products() (
 	# assume that the branch exists and has either been pushed or has been created locally
-	pushd "$DOCKER_IMAGES_REPO" > /dev/null
+	cd "$DOCKER_IMAGES_REPO"
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -31,14 +31,13 @@ tag_products() {
 	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
 	push_branch
-	popd > /dev/null
-}
+)
 
 # TODO: tag_operator and tag_products share the same logic.
 # Extract the common tagging procedure into a shared function.
-tag_operator() {
+tag_operator() (
 	local operator="$1"
-	pushd "${operator}" > /dev/null
+	cd "${operator}"
 	assert_cwd_is_repo "$operator"
 	assert_clean_index "$operator"
 
@@ -55,8 +54,7 @@ tag_operator() {
 	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
 	assert_remote_exists "$REMOTE" "$operator"
 	push_branch
-	popd > /dev/null
-}
+)
 
 tag_repos() {
 	cd "$TEMP_RELEASE_FOLDER"
@@ -71,9 +69,9 @@ tag_repos() {
 }
 
 
-check_products() {
+check_products() (
 	ensure_clone "$DOCKER_IMAGES_REPO"
-	pushd "$DOCKER_IMAGES_REPO" > /dev/null
+	cd "$DOCKER_IMAGES_REPO"
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 	# TODO (@NickLarsenNZ): Probably need a pull here
@@ -84,14 +82,13 @@ check_products() {
 	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
-	popd > /dev/null
-}
+)
 
-check_operator() {
+check_operator() (
 	local operator="$1"
 	echo "Operator: $operator"
 	ensure_clone "$operator"
-	pushd "${operator}" > /dev/null
+	cd "${operator}"
 	assert_cwd_is_repo "$operator"
 	assert_clean_index "$operator"
 	# TODO (@NickLarsenNZ): Probably need a pull here
@@ -101,8 +98,7 @@ check_operator() {
 	# Which branch should we be on here? Does it matter?
 	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
-	popd > /dev/null
-}
+)
 
 checks() {
 	cd "$TEMP_RELEASE_FOLDER"

@@ -36,9 +36,9 @@ commit_and_push_rc() {
 	push_branch
 }
 
-rc_branch_products() {
+rc_branch_products() (
 	# assume that the branch exists and has either been pushed or has been created locally
-	pushd "$DOCKER_IMAGES_REPO" > /dev/null
+	cd "$DOCKER_IMAGES_REPO"
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -49,12 +49,11 @@ rc_branch_products() {
 	git add CHANGELOG.md
 	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
 	commit_and_push_rc "$DOCKER_IMAGES_REPO"
-	popd > /dev/null
-}
+)
 
-rc_branch_operator() {
+rc_branch_operator() (
 	local operator="$1"
-	pushd "${operator}" > /dev/null
+	cd "${operator}"
 	assert_cwd_is_repo "$operator"
 	assert_clean_index "$operator"
 	git switch "$PR_BRANCH"
@@ -99,8 +98,7 @@ rc_branch_operator() {
 
 	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
 	commit_and_push_rc "$operator"
-	popd > /dev/null
-}
+)
 
 rc_branch_repos() {
 	cd "$TEMP_RELEASE_FOLDER"
@@ -115,11 +113,11 @@ rc_branch_repos() {
 }
 
 
-check_products() {
+check_products() (
 	echo "Checking products"
 
 	ensure_clone "$DOCKER_IMAGES_REPO"
-	pushd "$DOCKER_IMAGES_REPO" > /dev/null
+	cd "$DOCKER_IMAGES_REPO"
 	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
 	assert_clean_index "$DOCKER_IMAGES_REPO"
 
@@ -141,14 +139,13 @@ check_products() {
 	assert_on_branch "$PR_BRANCH"
 
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
-	popd > /dev/null
-}
+)
 
-check_operator() {
+check_operator() (
 	local operator="$1"
 	echo "Operator: $operator"
 	ensure_clone "$operator"
-	pushd "${operator}" > /dev/null
+	cd "${operator}"
 	assert_cwd_is_repo "$operator"
 	assert_clean_index "$operator"
 
@@ -169,8 +166,7 @@ check_operator() {
 	assert_on_branch "$PR_BRANCH"
 
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
-	popd > /dev/null
-}
+)
 
 checks() {
 	cd "$TEMP_RELEASE_FOLDER"

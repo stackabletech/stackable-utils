@@ -11,9 +11,9 @@ source "$SCRIPT_DIR/common.sh"
 
 REMOTE="origin"
 
-update_products() {
+update_products() (
   ensure_clone "$DOCKER_IMAGES_REPO" "--branch main"
-  pushd "$DOCKER_IMAGES_REPO" > /dev/null
+  cd "$DOCKER_IMAGES_REPO"
   assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
   assert_clean_index "$DOCKER_IMAGES_REPO"
   git pull && git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
@@ -24,25 +24,23 @@ update_products() {
 
   echo
   echo "Check $BASE_DIR/$DOCKER_IMAGES_REPO"
-  popd > /dev/null
-}
+)
 
-update_operator() {
+update_operator() (
   local operator="$1"
   ensure_clone "$operator" "--branch main"
-  pushd "${operator}" > /dev/null
+  cd "${operator}"
   assert_cwd_is_repo "$operator"
   assert_clean_index "$operator"
   git pull && git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
   assert_on_branch "$RELEASE_BRANCH"
   assert_remote_exists "$REMOTE" "$operator"
   push_branch "$operator"
-  popd > /dev/null
-}
+)
 
-update_demos() {
+update_demos() (
   ensure_clone "$DEMOS_REPO" "--branch main"
-  pushd "$DEMOS_REPO" > /dev/null
+  cd "$DEMOS_REPO"
   assert_cwd_is_repo "$DEMOS_REPO"
   assert_clean_index "$DEMOS_REPO"
   git pull && git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
@@ -54,8 +52,7 @@ update_demos() {
 
   assert_remote_exists "$REMOTE" "$DEMOS_REPO"
   push_branch "$DEMOS_REPO"
-  popd > /dev/null
-}
+)
 
 update_repos() {
   local BASE_DIR="$1";
