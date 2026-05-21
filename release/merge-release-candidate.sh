@@ -49,8 +49,7 @@ merge_operator() {
 	if $PUSH; then
 		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
 	else
-		# It is possible to dry-run with the PR existing, but we will simply use OPEN
-		echo "Dry-run: pretending the PR exists and is open"
+		echo "Dry-run: skipping PR existence check for ${operator}"
 		STATE="OPEN"
 	fi
 	if [[ "$STATE" == "OPEN" ]]; then
@@ -82,8 +81,7 @@ merge_products() {
 	if $PUSH; then
 		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
 	else
-		# It is possible to dry-run with the PR existing, but we will simply use OPEN
-		echo "Dry-run: pretending the PR exists and is open"
+		echo "Dry-run: skipping PR existence check for ${DOCKER_IMAGES_REPO}"
 		STATE="OPEN"
 	fi
 	if [[ "$STATE" == "OPEN" ]]; then
