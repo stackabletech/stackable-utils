@@ -135,7 +135,7 @@ check_products() (
 	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
 
 	# create a new branch for the PR off of this
-	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	git switch "$PR_BRANCH" "$RELEASE_BRANCH" 2>/dev/null || git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 	assert_on_branch "$PR_BRANCH"
 
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
@@ -162,7 +162,7 @@ check_operator() (
 	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
 
 	# create a new branch for the PR off of this
-	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	git switch "$PR_BRANCH" "$RELEASE_BRANCH" 2>/dev/null || git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
 	assert_on_branch "$PR_BRANCH"
 
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
