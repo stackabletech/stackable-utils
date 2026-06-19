@@ -245,7 +245,7 @@ check_common_dependencies() {
 	fi
 
 	# gh authentication: if this fails you will need to e.g. gh auth login
-	gh auth status
+	gh auth status || echo "You need to 'run gh auth login' before rerunning the script" && exit 1
 
 	# yq (YAML processor) - https://github.com/mikefarah/yq
 	yq --version
