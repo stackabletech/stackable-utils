@@ -77,7 +77,7 @@ rc_branch_operator() (
 	# include the nix store at runtime, causing a crash. This forces libgit2-sys
 	# to statically link its bundled copy instead. The proper fix belongs in the
 	# operator repos' nix shells.
-	LIBGIT2_NO_PKG_CONFIG=1 nix-shell --run 'make regenerate-charts'
+	nix-shell --run 'export LD_LIBRARY_PATH="$(nix-build ./. -A pkgs.libgit2.lib --no-out-link)/lib:$(nix-build ./. -A pkgs.openssl.out --no-out-link)/lib"; make regenerate-charts'
 	# TODO: These make targets can modify many paths. Ideally we would
 	# explicitly add the known output paths instead of staging all changes.
 	git add deploy/helm extra/
