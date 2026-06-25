@@ -67,6 +67,13 @@ rc_branch_operator() (
 	# set tag version where relevant
 	cargo set-version --offline --workspace "$RELEASE_TAG"
 	cargo update --workspace
+
+	# cargo-edit will also update the version in all workspaces but cert-tools/
+	# Cargo.toml should be managed separately. Intentionally revert this change
+	# and also correct Cargo.lock using cargo check.
+	git restore rust/cert-tools/Cargo.toml
+	cargo check
+
 	git add Cargo.toml Cargo.lock
 
 	# Run via nix-shell for the correct dependencies. Makefile already calls
