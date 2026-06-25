@@ -151,11 +151,23 @@ check_operator() (
 
 	# Need to update here because if we deleted the local state, or someone else continues
 	# we might be back on main, or on the release branch without having pulled updates from fixes.
-	git fetch && git switch "$RELEASE_BRANCH" && git pull
+	git fetch && git switch "$RELEASE_BRANCH"
+	if $PUSH; then
+	    # In push mode, we expect the remote branch to exist, so pull must not fail.
+		if ! git pull; then
+			echo "Unable to pull $RELEASE_BRANCH. Not in dry-run mode" >&2
+			exit 1
+		fi
+	else
+		# In dry-run mode, we can still get changes if the branch has been created. But it is ok if pull fails.
+		git pull 2>/dev/null || true
+	fi
 	assert_on_branch "$RELEASE_BRANCH"
-	# The release branch should exist (created in a prior step)
+	# The release branch exists if the previous (create-release-branch.sh) script was run with `-p`.
 	# NOTE: Do we need to check if the branch exists locally?
-	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+	if $PUSH; then
+		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+	fi
 
 	# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
 	# NOTE: Do we need to check if the branch DOES NOT exist locally?
