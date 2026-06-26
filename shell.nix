@@ -10,5 +10,6 @@ pkgs.mkShell {
     yq-go
     python311Packages.pip
     python311Packages.pyyaml
+    bats # for shell function testing
   ];
 }

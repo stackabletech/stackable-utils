@@ -1,176 +1,206 @@
 #!/usr/bin/env bash
 #
-# See README.adoc
+# See README.md
 #
 set -euo pipefail
 # set -x
 
-# tags should be semver-compatible e.g. 23.1.1 not 23.01.1
-# this is needed for cargo commands to work properly
-# optional release-candidate suffixes are in the form:
-#	- rc-1, e.g. 23.1.1-rc1, 23.12.1-rc12 etc.
-TAG_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])\.[0-9]+(-rc[0-9]+)?$"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
+
 REMOTE="origin"
 PR_MSG="> [!CAUTION]
 > ## DO NOT MERGE MANUALLY!
 > This branch will be merged (and the commit tagged) by stackable-utils once any necessary commits have been cherry-picked to here from the main branch."
 
-rc_branch_products() {
-	# assume that the branch exists and has either been pushed or has been created locally
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-
-	# the PR branch should already exist
-	git switch "$PR_BRANCH"
-	update_product_images_changelogs
-
-	git commit -sam "chore: Release $RELEASE_TAG"
+# Commit staged release changes and push the PR branch.
+# Skips the commit if nothing is staged (idempotent for re-runs).
+# Asserts we are on the correct branch before committing and that
+# the remote is correct before pushing.
+#
+# Usage:
+#   commit_and_push_rc "$DOCKER_IMAGES_REPO"
+#   commit_and_push_rc "$operator"
+commit_and_push_rc() {
+	local repo="$1"
+	assert_on_branch "$PR_BRANCH"
+	if git diff --cached --quiet; then
+		echo "No changes to commit for $repo (already up to date)"
+	else
+		git commit -sm "chore: Release $RELEASE_TAG"
+		# TODO: Assert we are some commits ahead of the release branch (we just committed)
+		assert_clean_index "$repo"
+	fi
+	assert_remote_exists "$REMOTE" "$repo"
 	push_branch
 }
 
-rc_branch_operators() {
-	while IFS="" read -r operator || [ -n "$operator" ]; do
-		cd "${TEMP_RELEASE_FOLDER}/${operator}"
-		git switch "$PR_BRANCH"
+rc_branch_products() (
+	# assume that the branch exists and has either been pushed or has been created locally
+	cd "$DOCKER_IMAGES_REPO"
+	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
+	assert_clean_index "$DOCKER_IMAGES_REPO"
 
-		# Update git submodules if needed
-		if [ -f .gitmodules ]; then
-			git submodule update --recursive --init
-		fi
+	# the PR branch should already exist
+	git switch "$PR_BRANCH"
+	assert_on_branch "$PR_BRANCH"
+	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
+	git add CHANGELOG.md
+	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
+	commit_and_push_rc "$DOCKER_IMAGES_REPO"
+)
 
-		# set tag version where relevant
-		cargo set-version --offline --workspace "$RELEASE_TAG"
-		cargo update --workspace
-		# Run via nix-shell for the correct dependencies. Makefile already calls
-		# nix stuff, so it shouldn't be a problem for non-nix users.
-		nix-shell --run 'make regenerate-charts'
-		nix-shell --run 'make regenerate-nix'
+rc_branch_operator() (
+	local operator="$1"
+	cd "${operator}"
+	assert_cwd_is_repo "$operator"
+	assert_clean_index "$operator"
+	git switch "$PR_BRANCH"
+	assert_on_branch "$PR_BRANCH"
 
-		update_code "$TEMP_RELEASE_FOLDER/${operator}"
+	# Update git submodules if needed
+	if [ -f .gitmodules ]; then
+		git submodule update --recursive --init
+	fi
 
-		# ensure .j2 changes are resolved
-		"$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
+	# set tag version where relevant
+	cargo set-version --offline --workspace "$RELEASE_TAG"
+	cargo update --workspace
 
-		# inserts a single line with tag and date
-		update_changelog "$TEMP_RELEASE_FOLDER/${operator}"
+	# cargo-edit will also update the version in all workspaces but cert-tools/
+	# Cargo.toml should be managed separately. Intentionally revert this change
+	# and also correct Cargo.lock using cargo check.
+	git restore rust/cert-tools/Cargo.toml
+	cargo check
 
-		git commit -sam "chore: Release $RELEASE_TAG"
-		push_branch
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
-}
+	git add Cargo.toml Cargo.lock
+
+	# Run via nix-shell for the correct dependencies. Makefile already calls
+	# nix stuff, so it shouldn't be a problem for non-nix users.
+	#
+	# Inside the nix-shell on non-Nixos hosts there can problems with the 
+	# resolution of the runtime shared-library: putting the lib dirs on
+	# LD_LIBRARY_PATH resolves this (NixOS hosts don't need it).
+	# The long-term fix belongs in the operator repos' nix shells:
+	# LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.libgit2 pkgs.openssl ];
+	nix-shell --run "export LD_LIBRARY_PATH=\"$(nix-build ./. -A pkgs.libgit2.lib --no-out-link)/lib:$(nix-build ./. -A pkgs.openssl.out --no-out-link)/lib\"; make regenerate-charts"
+	# TODO: These make targets can modify many paths. Ideally we would
+	# explicitly add the known output paths instead of staging all changes.
+	git add deploy/helm extra/
+
+	nix-shell --run 'make regenerate-nix'
+	git add Cargo.nix crate-hashes.json nix/
+
+	update_code "$TEMP_RELEASE_FOLDER/${operator}"
+	git add docs/ tests/
+
+	# ensure .j2 changes are resolved
+	"$TEMP_RELEASE_FOLDER/${operator}"/scripts/docs_templating.sh
+	git add docs/
+
+	# inserts a single line with tag and date
+	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
+	git add CHANGELOG.md
+
+	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
+	commit_and_push_rc "$operator"
+)
 
 rc_branch_repos() {
-	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		rc_branch_products
-	fi
-	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		rc_branch_operators
-	fi
+	cd "$TEMP_RELEASE_FOLDER"
+	case "$WHAT" in
+		products) rc_branch_products ;;
+		operators) for_each_operator rc_branch_operator ;;
+		all)
+			rc_branch_products
+			for_each_operator rc_branch_operator
+			;;
+	esac
 }
 
-check_tag_is_valid() {
-	git fetch --tags
 
-	# check tags: N.B. look for exact match
-	if git tag --list | grep -E "^$RELEASE_TAG\$"; then
-		>&2 echo "Tag $RELEASE_TAG already exists!"
-		exit 1
-	fi
-
-	# Do we want proper semver version checking?
-	# We should switch this script to python if so.
-	#EXISTING_TAGS=$(git tag --list | grep -E "$RELEASE" | sort -V)
-	#for EXISTING_TAG in $EXISTING_TAGS; do
-	#	if [[ "$RELEASE_TAG" < "$EXISTING_TAG" ]]; then
-	#		>&2 echo "Error: Proposed tag $RELEASE_TAG is earlier than existing tag $EXISTING_TAG."
-	#		exit 1
-	#	fi
-	#done
-}
-
-check_products() {
+check_products() (
 	echo "Checking products"
 
-	if [ ! -d "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO" ]; then
-		echo "Cloning folder: $TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-  		# $TEMP_RELEASE_FOLDER has already been created in main()
-  		git clone "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
-	fi
-	cd "$TEMP_RELEASE_FOLDER/$DOCKER_IMAGES_REPO"
+	ensure_clone "$DOCKER_IMAGES_REPO"
+	cd "$DOCKER_IMAGES_REPO"
+	assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
+	assert_clean_index "$DOCKER_IMAGES_REPO"
 
 	# Need to update here because if we deleted the local state, or someone else continues
-    # we might be back on main, or on the release branch without having pulled updates from fixes.
+	# we might be back on main, or on the release branch without having pulled updates from fixes.
 	git fetch && git switch "$RELEASE_BRANCH" && git pull
+	assert_on_branch "$RELEASE_BRANCH"
 
-	# switch to the release branch, which should exist as tagging
-	# is subsequent to creating the branch.
-	# Note, if this needs to check the branch exists locally, then use:
-	# "^[ *]*$RELEASE_BRANCH\$"
-	if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
-		>&2 echo "Expected release branch is missing: $RELEASE_BRANCH"
-		exit 1
-	fi
+	# The release branch should exist (created in a prior step)
+	# NOTE: Do we need to check if the branch exists locally?
+	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
 
-	# the new PR should not exist, otherwise a duplicate commit
-	# will be prepared
-	# Note, if this needs to check the branch exists locally, then use:
-	# "^[ *]*$PR_BRANCH\$"
-	if git branch -a | grep -E "$PR_BRANCH\$"; then
-		>&2 echo "PR branch already exists: ${REMOTE}/$PR_BRANCH"
-		exit 1
-	fi
+	# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
+	# NOTE: Do we need to check if the branch DOES NOT exist locally?
+	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
 
 	# create a new branch for the PR off of this
-	git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	git switch "$PR_BRANCH" "$RELEASE_BRANCH" 2>/dev/null || git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	assert_on_branch "$PR_BRANCH"
 
-	check_tag_is_valid
-}
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
+)
 
-check_operators() {
-	echo "Checking operators"
+check_operator() (
+	local operator="$1"
+	echo "Operator: $operator"
+	ensure_clone "$operator"
+	cd "${operator}"
+	assert_cwd_is_repo "$operator"
+	assert_clean_index "$operator"
 
-	while IFS="" read -r operator || [ -n "$operator" ]; do
-		echo "Operator: $operator"
-		if [ ! -d "$TEMP_RELEASE_FOLDER/${operator}" ]; then
-			echo "Cloning folder: $TEMP_RELEASE_FOLDER/${operator}"
-			# $TEMP_RELEASE_FOLDER has already been created in main()
-			git clone "git@github.com:stackabletech/${operator}.git" "$TEMP_RELEASE_FOLDER/${operator}"
-
-		fi
-		cd "$TEMP_RELEASE_FOLDER/${operator}"
-
-		# Need to update here because if we deleted the local state, or someone else continues
-		# we might be back on main, or on the release branch without having pulled updates from fixes.
-		git fetch && git switch "$RELEASE_BRANCH" && git pull
-		# Note, if this needs to check the branch exists locally, then use:
-		# "^[ *]*$RELEASE_BRANCH\$"
-		if ! git branch -a | grep -E "$RELEASE_BRANCH\$"; then
-			>&2 echo "Expected release branch is missing: ${operator}/$RELEASE_BRANCH"
+	# Need to update here because if we deleted the local state, or someone else continues
+	# we might be back on main, or on the release branch without having pulled updates from fixes.
+	git fetch && git switch "$RELEASE_BRANCH"
+	if $PUSH; then
+	    # In push mode, we expect the remote branch to exist, so pull must not fail.
+		if ! git pull; then
+			echo "Unable to pull $RELEASE_BRANCH. Not in dry-run mode" >&2
 			exit 1
 		fi
+	else
+		# In dry-run mode, we can still get changes if the branch has been created. But it is ok if pull fails.
+		git pull 2>/dev/null || true
+	fi
+	assert_on_branch "$RELEASE_BRANCH"
+	# The release branch exists if the previous (create-release-branch.sh) script was run with `-p`.
+	# NOTE: Do we need to check if the branch exists locally?
+	if $PUSH; then
+		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+	fi
 
-		# the new PR should not exist, otherwise a duplicate commit
-		# will be prepared
-		# Note, if this needs to check the branch exists locally, then use:
-		# "^[ *]*$PR_BRANCH\$"
-		if git branch -a | grep -E "$PR_BRANCH\$"; then
-			>&2 echo "PR branch already exists: ${operator}/$PR_BRANCH"
-			exit 1
-		fi
+	# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
+	# NOTE: Do we need to check if the branch DOES NOT exist locally?
+	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
 
-		# create a new branch for the PR off of this
-		git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	# create a new branch for the PR off of this
+	git switch "$PR_BRANCH" "$RELEASE_BRANCH" 2>/dev/null || git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	assert_on_branch "$PR_BRANCH"
 
-		check_tag_is_valid
-	done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
-}
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
+)
 
 checks() {
-	if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		check_products
-	fi
-	if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-		check_operators
-	fi
+	cd "$TEMP_RELEASE_FOLDER"
+	case "$WHAT" in
+		products) check_products ;;
+		operators)
+			echo "Checking operators"
+			for_each_operator check_operator
+			;;
+		all)
+			check_products
+			echo "Checking operators"
+			for_each_operator check_operator
+			;;
+	esac
 }
 
 update_code() {
@@ -178,7 +208,7 @@ update_code() {
 		echo "Updating antora docs for $1"
 
 		# antora version should be major.minor, not patch level
-		yq -i ".version = \"${RELEASE}\"" "$1/docs/antora.yml"
+		yq -i ".version = \"${RELEASE_BASE}\"" "$1/docs/antora.yml"
 		yq -i '.prerelease = false' "$1/docs/antora.yml"
 
 		# Not all operators have a getting started guide
@@ -192,7 +222,7 @@ update_code() {
 			# We assume that the tag (e.g. 23.7.1) is applied to an earlier tag in the same
 			# release (e.g. 23.7.0) so search+replace on the major.minor tag will suffice.
 			# TODO: this may pick up versions of external components as well.
-			yq -i "(.versions.[] | select(. == \"${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+			yq -i "(.versions.[] | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
 
 			yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
 			yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
@@ -212,7 +242,7 @@ update_code() {
 
 	# do this for patch releases/release candidates too.
 	# i.e. replace 24.11.0-rc1 with 24.11.0, 24.7.0 with 24.7.1 etc.
-	yq -i "(.releases.tests.products[].operatorVersion | select(. == \"${RELEASE}*\")) |= \"${RELEASE_TAG}\"" "$1/tests/release.yaml"
+	yq -i "(.releases.tests.products[].operatorVersion | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/tests/release.yaml"
 
 	# Some tests perform **label** inspection and for (only) these cases specific labels should be updated.
 	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
@@ -239,16 +269,8 @@ cleanup() {
 	fi
 }
 
-update_changelog() {
-	TODAY=$(date +'%Y-%m-%d')
-	sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" "$1"/CHANGELOG.md
-}
 
-update_product_images_changelogs() {
-	TODAY=$(date +'%Y-%m-%d')
-	sed -i "s/^.*unreleased.*/## [Unreleased]\n\n## [$RELEASE_TAG] - $TODAY/I" ./CHANGELOG.md
-}
-
+# TODO: Consider moving validation (validate_tag, validate_what) into parse_inputs
 parse_inputs() {
 	RELEASE_TAG=""
 	PUSH=false
@@ -275,48 +297,22 @@ parse_inputs() {
 		shift
 	done
 
-	# remove leading and trailing quotes
-	RELEASE_TAG="${RELEASE_TAG%\"}"
-	RELEASE_TAG="${RELEASE_TAG#\"}"
-
-	# for a tag of e.g. 23.1.1, the release branch (already created) will be 23.1
-	RELEASE="$(cut -d'.' -f1,2 <<< "$RELEASE_TAG")"
-	RELEASE_BRANCH="release-$RELEASE"
-	# N.B. this has to match what is used in other scripts
-	PR_BRANCH="pr-$RELEASE_TAG"
+	RELEASE_TAG="$(strip_double_quotes "$RELEASE_TAG")"
 
 	INITIAL_DIR="$PWD"
-	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
+	derive_tag_vars "$RELEASE_TAG"
 
 	echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }
 
 check_dependencies() {
-	# check for a globally configured git user
-	if ! git_user=$(git config --global --includes --get user.name) \
-	|| ! git_email=$(git config --global --includes --get user.email); then
-		>&2 echo "Error: global git user name/email is not set."
-		exit 1
-	else
-		echo "global git user: $git_user <$git_email>"
-		echo "Is this correct? (y/n)"
-		read -r response
-		if [[ "$response" == "y" || "$response" == "Y" ]]; then
-			echo "Proceeding with $git_user <$git_email>"
-		else
-			>&2 echo "User not accepted. Exiting."
-			exit 1
-		fi
-	fi
+	check_common_dependencies
 
-	# check gh authentication: if this fails you will need to e.g. gh auth login
-	gh auth status
-	yq --version
+	# Additional dependencies for operator RC branch creation
 	python --version
 	cargo --version
 	cargo set-version --version
-	# check for jinja2-cli including pyyaml package
+	# jinja2-cli including pyyaml package (for docs templating)
 	jinja2 --version
 	python -m pip show pyyaml
 }
@@ -324,23 +320,15 @@ check_dependencies() {
 main() {
 	parse_inputs "$@"
 
-	# check if tag argument provided
 	if [ -z "${RELEASE_TAG}" ]; then
 		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
 		exit 1
 	fi
 
-	# check if argument matches our tag regex
-	if [[ ! $RELEASE_TAG =~ $TAG_REGEX ]]; then
-		>&2 echo "Provided tag [$RELEASE_TAG] does not match the required tag regex pattern [$TAG_REGEX]"
-		exit 1
-	fi
+	validate_tag "$RELEASE_TAG"
+	validate_what "$WHAT" "products" "operators" "all"
 
-	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
-	  	echo "Creating folder for cloning docker images and/or operators: [$TEMP_RELEASE_FOLDER]"
-  		mkdir -p "$TEMP_RELEASE_FOLDER"
-	fi
-
+	ensure_temp_folder
 	check_dependencies
 
 	# sanity checks before we start: folder, branches etc.

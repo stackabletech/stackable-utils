@@ -42,7 +42,8 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 # repeat the above with e.g. the tag 25.3.0 once a release candidate is accepted.
 
 # continue with the demos ...
-# create and push the release branch
+# create and push the release branch (demos are intentionally branch-only:
+# no RC branches, no tagging, no post-release steps)
 ./release/create-release-branch.sh -b 25.3 -w demos # Only add the -p flag after testing locally first
 
 # finally - i.e. when a release candidate has been accepted and the actual release has been tagged - patch the changelog file in the main branch
@@ -118,6 +119,7 @@ A set of scripts that automates some release steps. The release process has mult
 
 > - Steps 2-4 will check out the release branch (or clone it if does exist locally) and so can be run independently of each other.
 > - Any changes should be done manually between steps 2 and 3 i.e. by making changes in the PR branch and/or cherry-picking commits from main.
+> - Demos only require step 1 (branch creation). They are intentionally not tagged or given release candidates.
 
 ## Install requirements
 

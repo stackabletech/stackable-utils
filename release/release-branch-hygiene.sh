@@ -1,39 +1,33 @@
 #!/usr/bin/env bash
 #
-# See README.adoc
+# See README.md
 #
 set -euo pipefail
 # set -x
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
 REMOTE="origin"
 # Collects "<repo>|<title>|<url>" entries for every PR raised during the run,
 # so we can print a consolidated summary at the end.
 CREATED_PRS=()
-#----------------------------------------------------------------------------------------------------
-# tags should be semver-compatible e.g. 23.1 and not 23.01
-# this is needed for cargo commands to work properly: although it is not strictly needed
-# for the name of the release branch, the branch naming will be consistent with the cargo versioning.
-#----------------------------------------------------------------------------------------------------
-RELEASE_REGEX="^[0-9][0-9]\.([1-9]|[1][0-2])$"
 
 update_products() {
-  if [ -d "$BASE_DIR/$DOCKER_IMAGES_REPO" ]; then
-    echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
-    cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    git switch "${RELEASE_BRANCH}" && git pull
-  else
-    echo "Repo directory ($BASE_DIR/$DOCKER_IMAGES_REPO) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-    git clone --branch ${RELEASE_BRANCH} --depth 1 "git@github.com:stackabletech/${DOCKER_IMAGES_REPO}.git" "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    cd "$BASE_DIR/$DOCKER_IMAGES_REPO"
-    # try to switch to the release branch (if continuing from someone else), or create it
-    git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
-  fi
+  ensure_clone "$DOCKER_IMAGES_REPO" "--branch $RELEASE_BRANCH"
+  pushd "$DOCKER_IMAGES_REPO" > /dev/null
+  assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
+  assert_clean_index "$DOCKER_IMAGES_REPO"
+  git switch "${RELEASE_BRANCH}" && git pull
+  assert_on_branch "$RELEASE_BRANCH"
 
   # Create the work branch from the release branch so changes go through a PR
   # rather than being pushed directly to the release branch.
   git switch -c "${WORK_BRANCH}"
+  assert_on_branch "$WORK_BRANCH"
 
-  echo "Pls manually bump the UBI base images in $BASE_DIR/$DOCKER_IMAGES_REPO"
+  echo "Pls manually bump the UBI base images in $DOCKER_IMAGES_REPO"
   echo 'Tip: I found the following images when searching for "registry.access.redhat.com/ubi" in Dockerfiles:'
   grep -r 'FROM registry.access.redhat.com/ubi' **/Dockerfile
 
@@ -47,57 +41,58 @@ update_products() {
     git commit -m "chore: UBI base image bumps"
   fi
 
+  assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
   raise_pr "$DOCKER_IMAGES_REPO" "chore: UBI base image bumps"
 
   echo
-  echo "Check $BASE_DIR/$DOCKER_IMAGES_REPO"
+  echo "Check $DOCKER_IMAGES_REPO"
+  popd > /dev/null
 }
 
-update_operators() {
-  while IFS="" read -r operator || [ -n "$operator" ]
-  do
-    echo ">>> Now working on ${operator}"
+update_operator() {
+  local operator="$1"
+  echo ">>> Now working on ${operator}"
 
-    if [ -d "$BASE_DIR/${operator}" ]; then
-      echo "Directory exists. Switching to ${RELEASE_BRANCH} branch and Updating..."
-      cd "$BASE_DIR/${operator}"
-      git switch "${RELEASE_BRANCH}" && git pull
-    else
-      echo "Repo directory ($BASE_DIR/$operator) doesn't exist. Cloning and switching to ${RELEASE_BRANCH} branch"
-      git clone --branch ${RELEASE_BRANCH} --depth 1 "git@github.com:stackabletech/${operator}.git" "$BASE_DIR/${operator}"
-      cd "$BASE_DIR/${operator}"
-      # try to switch to the release branch (if continuing from someone else), or create it
-      git switch "${RELEASE_BRANCH}" || git switch -c "${RELEASE_BRANCH}"
-    fi
+  ensure_clone "$operator" "--branch $RELEASE_BRANCH"
+  pushd "${operator}" > /dev/null
+  assert_cwd_is_repo "$operator"
+  assert_clean_index "$operator"
+  git switch "${RELEASE_BRANCH}" && git pull
+  assert_on_branch "$RELEASE_BRANCH"
 
-    # Create the work branch from the release branch so changes go through a PR
-    # rather than being pushed directly to the release branch.
-    git switch -c "${WORK_BRANCH}"
+  # Create the work branch from the release branch so changes go through a PR
+  # rather than being pushed directly to the release branch.
+  git switch -c "${WORK_BRANCH}"
+  assert_on_branch "$WORK_BRANCH"
 
-    cargo update
-    # cargo test # Will be done by CI and takes too long
-    make regenerate-nix
-    # We are explicitly not regenerating the CRDs, as we don't want CRD changes to sneak in.
-    # We rather let the CI checks fail and inspect manually.
-    git add Cargo.lock Cargo.nix
-    git commit -m "chore: Rust dependency patch level updates"
+  cargo update
+  # cargo test # Will be done by CI and takes too long
+  make regenerate-nix
+  # We are explicitly not regenerating the CRDs, as we don't want CRD changes to sneak in.
+  # We rather let the CI checks fail and inspect manually.
+  git add Cargo.lock Cargo.nix
+  git commit -m "chore: Rust dependency patch level updates"
 
-    echo "FYI, these are the major/minor bumps we did't do:"
-    cargo +nightly -Z unstable-options update --breaking --dry-run
+  echo "FYI, these are the major/minor bumps we didn't do:"
+  cargo +nightly -Z unstable-options update --breaking --dry-run
 
-    raise_pr "$operator" "chore: Rust dependency patch level updates"
-  done < <(yq '... comments="" | .operators[] ' "$INITIAL_DIR"/release/config.yaml)
+  assert_remote_exists "$REMOTE" "$operator"
+  raise_pr "$operator" "chore: Rust dependency patch level updates"
+  popd > /dev/null
 }
 
 update_repos() {
   local BASE_DIR="$1";
+  cd "$BASE_DIR"
 
-  if [ "products" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-    update_products
-  fi
-  if [ "operators" == "$WHAT" ] || [ "all" == "$WHAT" ]; then
-    update_operators
-  fi
+  case "$WHAT" in
+    products) update_products ;;
+    operators) for_each_operator update_operator ;;
+    all)
+      update_products
+      for_each_operator update_operator
+      ;;
+  esac
 }
 
 raise_pr() {
@@ -148,6 +143,35 @@ print_summary() {
   done
 }
 
+# TODO: Consider moving validation (validate_release_base_version, validate_what) into parse_inputs
+parse_inputs() {
+  RELEASE_BASE="" # e.g., 26.3 (YY.M, no patch level)
+  PUSH=false
+  CLEANUP=false
+  WHAT=""
+
+  while [[ "$#" -gt 0 ]]; do
+      case $1 in
+          -b|--branch) RELEASE_BASE="$2"; shift ;;
+          -w|--what) WHAT="$2"; shift ;;
+          -p|--push) PUSH=true ;;
+          -c|--cleanup) CLEANUP=true ;;
+          *) echo "Unknown parameter passed: $1"; exit 1 ;;
+      esac
+      shift
+  done
+
+  RELEASE_BASE="$(strip_double_quotes "$RELEASE_BASE")"
+
+  INITIAL_DIR="$PWD"
+  derive_branch_vars "$RELEASE_BASE"
+  # A single timestamp is shared across all repos in this run so the work
+  # branches are easy to correlate.
+  WORK_BRANCH="${RELEASE_BRANCH}-maintenance-$(date +%s)"
+
+  echo "Settings: ${RELEASE_BRANCH}: Work branch: ${WORK_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
+}
+
 cleanup() {
   local BASE_DIR="$1";
 
@@ -157,58 +181,19 @@ cleanup() {
   fi
 }
 
-parse_inputs() {
-  RELEASE=""
-  PUSH=false
-  CLEANUP=false
-  WHAT=""
-
-  while [[ "$#" -gt 0 ]]; do
-      case $1 in
-          -b|--branch) RELEASE="$2"; shift ;;
-          -w|--what) WHAT="$2"; shift ;;
-          -p|--push) PUSH=true ;;
-          -c|--cleanup) CLEANUP=true ;;
-          *) echo "Unknown parameter passed: $1"; exit 1 ;;
-      esac
-      shift
-  done
-  #-----------------------------------------------------------
-  # remove leading and trailing quotes
-  #-----------------------------------------------------------
-  RELEASE="${RELEASE%\"}"
-  RELEASE="${RELEASE#\"}"
-  RELEASE_BRANCH="release-$RELEASE"
-  # A single timestamp is shared across all repos in this run so the work
-  # branches are easy to correlate.
-  WORK_BRANCH="${RELEASE_BRANCH}-maintenance-$(date +%s)"
-
-  INITIAL_DIR="$PWD"
-  DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
-  TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
-
-  echo "Settings: ${RELEASE_BRANCH}: Work branch: ${WORK_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
-}
-
 main() {
   parse_inputs "$@"
-  #-----------------------------------------------------------
-  # check if tag argument provided
-  #-----------------------------------------------------------
-  if [ -z "${RELEASE}" ]; then
-    echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w products|operators|demos|all]"
-    exit 1
-  fi
-  #-----------------------------------------------------------
-  # check if argument matches our tag regex
-  #-----------------------------------------------------------
-  if [[ ! $RELEASE =~ $RELEASE_REGEX ]]; then
-    echo "Provided branch name [$RELEASE] does not match the required regex pattern [$RELEASE_REGEX]"
+
+  if [ -z "${RELEASE_BASE}" ]; then
+    >&2 echo "Usage: release-branch-hygiene.sh -b <branch> [-p] [-c] [-w products|operators|all]"
     exit 1
   fi
 
-  echo "Creating temporary working directory if it doesn't exist [$TEMP_RELEASE_FOLDER]"
-  mkdir -p "$TEMP_RELEASE_FOLDER"
+  validate_release_base_version "$RELEASE_BASE"
+  validate_what "$WHAT" "products" "operators" "all"
+  check_common_dependencies
+
+  ensure_temp_folder
   update_repos "$TEMP_RELEASE_FOLDER"
   cleanup "$TEMP_RELEASE_FOLDER"
   print_summary
