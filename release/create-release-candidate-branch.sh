@@ -71,8 +71,10 @@ rc_branch_operator() (
 	# cargo-edit will also update the version in all workspaces but cert-tools/
 	# Cargo.toml should be managed separately. Intentionally revert this change
 	# and also correct Cargo.lock using cargo check.
-	git restore rust/cert-tools/Cargo.toml
-	cargo check
+	if [ -f rust/cert-tools/Cargo.toml ]; then
+		git restore rust/cert-tools/Cargo.toml
+		cargo check
+	fi
 
 	git add Cargo.toml Cargo.lock
 
