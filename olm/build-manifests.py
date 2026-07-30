@@ -8,15 +8,22 @@
 """
 (Re)Generate Stackable operator manifests for the Operator Lifecycle Manager (OLM).
 
-The script renders the Helm chart, looks up image digests on
-quay.io, and writes a complete OLM bundle under deploy/olm/<version>/.
+The script renders the Helm chart, looks up image digests on quay.io, and writes a
+complete OLM bundle to <repo-certified-operators>/operators/stackable-<op>/<release>/.
+
+Ensure the operator repository is checked out at the release tag before running this.
 
 Usage:
 
-    uv run --script olm/generate-olm.py --version 26.3.0 --repo-operator ~/repo/stackable/airflow-operator --output-dir deploy/olm
+    uv run --script olm/build-manifests.py \
+        --release 26.7.0 \
+        --openshift-versions v4.18-v4.22 \
+        --repo-operator ~/repo/stackable/airflow-operator \
+        --repo-certified-operators ~/repo/stackable/openshift-certified-operators
 
     # Or directly with python3 (PyYAML must be installed):
-    python3 olm/generate-olm.py --version 26.3.0 --repo-operator ~/repo/stackable/airflow-operator --openshift-versions v4.18-v4.21
+    python3 olm/build-manifests.py --release 26.7.0 --openshift-versions v4.18-v4.22 \
+        --repo-operator ~/repo/stackable/airflow-operator
 
 Requirements:
     - uv    (https://docs.astral.sh/uv/) — installs PyYAML automatically
@@ -38,6 +45,11 @@ import urllib.request
 import yaml
 
 __version__ = "0.0.1"
+
+# Quay.io repository that hosts the operator images. Since SDP 26.7.0 the images live
+# under the "sdp" path, e.g. quay.io/stackable/sdp/hbase-operator.
+QUAY_REPO = "stackable/sdp"
+
 
 class ManifestException(Exception):
     pass
@@ -130,7 +142,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     if args.op_name in {"secret-operator", "listener-operator"}:
         raise ManifestException(
-            f"Operator '{args.op_name}' is not supported by this script. Use the 'build-manifests.sh' for it."
+            f"Operator '{args.op_name}' is not supported by this script. "
+            f"Use 'scripts/generate-olm.py' in the {args.op_name} repository instead."
         )
 
     args.op_name = args.repo_operator.name
@@ -413,9 +426,27 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
     helm_values_path = template_path / "values.yaml"
     # Path to the custom values for OLM.
     olm_values_path = pathlib.Path(__file__).parent / "resources" / "values" / args.repo_operator.name / "values.yaml"
+    # Since SDP 26.7.0 the charts no longer define image.repository in values.yaml. It is
+    # supplied by a per-registry overlay instead. OLM bundles must reference quay.io, and
+    # the overlay also drives the IMAGE_REPOSITORY env var that tells the operator where to
+    # pull product images from. Without it the chart fails to render.
+    registry_values_path = template_path / "values" / "quay.io.yaml"
+    if not registry_values_path.exists():
+        raise ManifestException(
+            f"Registry values overlay not found: {registry_values_path}"
+        )
     helm_template_cmd = ["helm", "template", args.op_name,
+                         # Advertise the OpenShift API so that the charts render the
+                         # securitycontextconstraints rules guarded by
+                         # '.Capabilities.APIVersions.Has "security.openshift.io/v1"'.
+                         # Some operators gate more than one cluster role this way
+                         # (spark has three, opa has two), so relying on the chart is both
+                         # more complete and more deterministic than patching a single role
+                         # here.
+                         "--api-versions", "security.openshift.io/v1",
                          "--values", helm_values_path,
                          "--values", olm_values_path,
+                         "--values", registry_values_path,
                          template_path]
     try:
         logging.debug("start generate_helm_templates")
@@ -440,19 +471,6 @@ def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
             except KeyError:
                 pass
 
-            ### Patch the product cluster role with the SCC rule
-            if (
-                man["kind"] == "ClusterRole"
-                and man["metadata"]["name"] == f"{args.product}-clusterrole"
-            ):
-                man["rules"].append(
-                    {
-                        "apiGroups": ["security.openshift.io"],
-                        "resources": ["securitycontextconstraints"],
-                        "resourceNames": ["nonroot-v2"],
-                        "verbs": ["use"],
-                    }
-                )
             ### Patch the version label
             try:
                 if (
@@ -490,7 +508,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
     for image, release in images:
         release_tag = urllib.parse.urlencode({"specificTag": release})
         tag_url = (
-            f"https://quay.io/api/v1/repository/stackable/{image}/tag?{release_tag}"
+            f"https://quay.io/api/v1/repository/{QUAY_REPO}/{image}/tag/?{release_tag}"
         )
         logging.debug(f"Fetching image manifest from {tag_url}")
         with urllib.request.urlopen(tag_url) as response:
@@ -517,7 +535,7 @@ def quay_image(images: list[tuple[str, str]]) -> list[dict[str, str]]:
             result.append(
                 {
                     "name": image,
-                    "image": f"quay.io/stackable/{image}@{manifest_digest[0]}",
+                    "image": f"quay.io/{QUAY_REPO}/{image}@{manifest_digest[0]}",
                 }
             )
     logging.debug("finish op_image")
