@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
-source repos
+source "$(dirname -- "$0")/common"
 for product in "${products[@]}"; do
-    gh pr checks ${PR_BRANCH_NAME} -R stackabletech/${product}-operator
+    if [[ -z "$(pr_state "$product" "$PR_BRANCH_NAME")" ]]; then
+        echo "Skipping ${product}, no PR for ${PR_BRANCH_NAME}"
+        continue
+    fi
+    # Non-zero means checks are failing or still running.
+    # And that's what we want to see.
+    gh pr checks "$PR_BRANCH_NAME" -R "stackabletech/${product}-operator" || true
 done
-

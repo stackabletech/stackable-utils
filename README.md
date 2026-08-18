@@ -2,7 +2,7 @@
 
 See relevant READMEs:
 
-- [PR Bulk Tools](./bulk-pr/READMEOverview.md)
+- [PR Bulk Tools](./bulk-pr/README.md)
 - [OLM Overview](./olm/README.md)
 - [Stackable Quickstart](./quickstart/README.md)
 - [Release Workflow](./release/README.md)

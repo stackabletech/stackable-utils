@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PR_BRANCH_NAME=${1:?Must provide name of PR branch to operate on.}
-source repos
-# Disable gh paging for results.
-PAGER=
+source "$(dirname -- "$0")/common"
+# Disable gh paging for results. Needs exporting to reach gh.
+export PAGER=
 for product in "${products[@]}"; do
     echo "#### PRs for $product ###"
-    gh pr list -R stackabletech/${product}-operator
+    gh pr list -R "stackabletech/${product}-operator"
 done
