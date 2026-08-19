@@ -17,7 +17,8 @@ The recommended workflow for PRs created by the operator templating is:
 3. Run `pr_approve`
 
 ### Common parameters
-With the only exception of the `repos` script all scripts in this repository take the same parameter, which is the name of the branch the PRs you want to operate on was created from.
+All scripts in this repository take the same parameter, which is the name of the branch the PRs you want to operate on was created from.
+The exceptions are `repos` and `common`, which are sourced rather than run, and `pr_list`, which lists every open PR and so needs no branch.
 
 For example for a set of operator templating pull requests this will usually be in the form of `template_abd68ad` which is the fixed prefix `template_` followed by the short commit hash of the commit in the operator templating repo that it was based on.
 
@@ -38,7 +39,7 @@ Shows all checks for all PRs and their current status.
 Checks are shown per PR, hitting `q` switches to the next PR, Ctrl-C can be used to abort the entire script.
 
 ### pr_close
-Closes all PRs.
+Closes all PRs and deletes their branches.
 
 ### pr_diffs
 Shows the diffs for all PRs, this can be useful to double check that no unexpected changes were queued in any repository by accident.
@@ -56,5 +57,4 @@ The displayed status per PR can have the following values:
 | 1      | One or more checks failed or are still running | 
 
 ### pr_list
-List all open PRs in all `repos`.
-
+List all open PRs in all `repos`. Takes no parameter.

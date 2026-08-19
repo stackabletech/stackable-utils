@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Utility script. Not meant to be run on its own.
+
+# Resolve the repository list relative to this file.
+BULK_PR_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=./repos
+source "${BULK_PR_DIR}/repos"
+
+# Prints the state of the PR for a branch (OPEN, MERGED or CLOSED), or nothing
+# when that repository has no PR for the branch.
+# If we used gh pr view directly the whole script would abort when using set -e.
+pr_state() {
+    local product=$1 branch=$2
+    gh pr view "$branch" -R "stackabletech/${product}-operator" --json state --jq '.state' 2>/dev/null || true
+}
