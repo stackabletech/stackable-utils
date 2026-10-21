@@ -39,6 +39,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -49,6 +50,8 @@ __version__ = "0.0.1"
 # Quay.io repository that hosts the operator images. Since SDP 26.7.0 the images live
 # under the "sdp" path, e.g. quay.io/stackable/sdp/hbase-operator.
 QUAY_REPO = "stackable/sdp"
+
+HUB_API = "https://hub.stackable.tech/api/v1"
 
 
 class ManifestException(Exception):
@@ -384,12 +387,21 @@ def generate_csv(
         "spark-operator" if args.op_name == "spark-k8s-operator" else args.op_name
     )
 
+    chart = load_chart(args)
+    listing = CSV_LISTING[args.product]
+
     result["spec"]["version"] = args.release
-    result["spec"]["keywords"] = [args.product]
-    result["spec"]["displayName"] = CSV_DISPLAY_NAME[args.product]
+    result["spec"]["displayName"] = listing["display_name"]
+    result["spec"]["description"] = chart["description"]
+    # Charts from before SDP 26.11 carry no keywords.
+    result["spec"]["keywords"] = chart.get("keywords", [args.product])
+    result["spec"]["links"] = csv_links(chart)
+    result["spec"]["minKubeVersion"] = min_kube_version(args.release)
     result["metadata"]["name"] = f"{csv_name}.v{args.release}"
     result["metadata"]["annotations"]["containerImage"] = related_images[0]["image"]
-    result["metadata"]["annotations"]["description"] = CSV_DISPLAY_NAME[args.product]
+    result["metadata"]["annotations"]["description"] = chart["description"]
+    result["metadata"]["annotations"]["capabilities"] = listing["capabilities"]
+    result["metadata"]["annotations"]["categories"] = listing["categories"]
     result["metadata"]["annotations"]["repository"] = (
         f"https://github.com/stackabletech/{args.op_name}"
     )
@@ -417,6 +429,80 @@ def generate_csv(
     logging.debug("finish generate_csv")
 
     return result
+
+
+def load_chart(args: argparse.Namespace) -> dict:
+    chart_path = args.repo_operator / "deploy" / "helm" / args.op_name / "Chart.yaml"
+    return yaml.load(chart_path.read_text(), Loader=yaml.SafeLoader)
+
+
+def csv_links(chart: dict) -> list[dict[str, str]]:
+    """Turn the chart's Artifact Hub links into CSV links.
+
+    >>> links = "[{name: Documentation, url: https://docs.stackable.tech}, {name: support, url: https://github.com}]"
+    >>> csv_links({"annotations": {"artifacthub.io/links": links}})
+    [{'name': 'Documentation', 'url': 'https://docs.stackable.tech'}, {'name': 'Support', 'url': 'https://github.com'}]
+
+    Charts without the annotation get no links:
+
+    >>> csv_links({"description": "An older chart"})
+    []
+    """
+    links = yaml.load(
+        chart.get("annotations", {}).get("artifacthub.io/links", "[]"),
+        Loader=yaml.SafeLoader,
+    )
+    # Artifact Hub only highlights a link named exactly "support"; the console shows names as-is.
+    return [
+        {
+            "name": "Support" if link["name"] == "support" else link["name"],
+            "url": link["url"],
+        }
+        for link in links
+    ]
+
+
+def hub_release_name(release: str) -> str:
+    """Return the name the Stackable Hub uses for a release.
+
+    >>> hub_release_name("26.11.0")
+    '26.11'
+    >>> hub_release_name("26.7.1")
+    '26.7'
+    >>> hub_release_name("0.0.0-dev")
+    'latest'
+    """
+    if release == "0.0.0-dev":
+        return "latest"
+    return ".".join(release.split(".")[:2])
+
+
+def lowest_kube_version(platforms: list[dict]) -> str:
+    """Return the lowest Kubernetes version in the Hub's platform list, as a full version.
+
+    Versions compare numerically, so 1.9 is lower than 1.10:
+
+    >>> lowest_kube_version([
+    ...     {"name": "OpenShift", "versions": ["4.20", "4.21"]},
+    ...     {"name": "Kubernetes", "versions": ["1.10", "1.9", "1.11"]},
+    ... ])
+    '1.9.0'
+    """
+    versions = next(p["versions"] for p in platforms if p["name"] == "Kubernetes")
+    lowest = min(versions, key=lambda v: tuple(int(x) for x in v.split(".")))
+    return f"{lowest}.0"
+
+
+def min_kube_version(release: str) -> str:
+    """Return the lowest Kubernetes version the release supports, according to the Stackable Hub."""
+    hub_release = hub_release_name(release)
+    url = f"{HUB_API}/releases/{hub_release}"
+    try:
+        with urllib.request.urlopen(url) as response:
+            platforms = json.load(response)["platforms"]
+    except urllib.error.HTTPError as e:
+        raise ManifestException(f"Could not read release {hub_release} from {url}: {e}")
+    return lowest_kube_version(platforms)
 
 
 def generate_helm_templates(args: argparse.Namespace) -> list[dict]:
@@ -592,21 +678,81 @@ def main(argv) -> int:
     return 0
 
 
-CSV_DISPLAY_NAME = {
-    "airflow": "Stackable Operator for Apache Airflow",
-    "commons": "Stackable Commons Operator",
-    "druid": "Stackable Operator for Apache Druid",
-    "hbase": "Stackable Operator for Apache HBase",
-    "hdfs": "Stackable Operator for Apache Hadoop HDFS",
-    "hive": "Stackable Operator for Apache Hive",
-    "kafka": "Stackable Operator for Apache Kafka",
-    "nifi": "Stackable Operator for Apache NiFi",
-    "opa": "Stackable Operator for the Open Policy Agent",
-    "opensearch": "Stackable Operator for OpenSearch",
-    "spark-k8s": "Stackable Operator for Apache Spark",
-    "superset": "Stackable Operator for Apache Superset",
-    "trino": "Stackable Operator for Trino",
-    "zookeeper": "Stackable Operator for Apache ZooKeeper",
+# OLM-only listing values.
+# Everything else the listing shows comes from the operator's Chart.yaml.
+#   * capabilities: https://sdk.operatorframework.io/docs/overview/operator-capabilities/
+#   * categories: comma-separated, from the list in https://github.com/operator-framework/api/blob/3d2cbf67cb0990b1b28956bd6eeb21054ca33d0a/pkg/validation/internal/standardcategories.go
+CSV_LISTING = {
+    "airflow": {
+        "display_name": "Stackable Operator for Apache Airflow",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Integration & Delivery",
+    },
+    "commons": {
+        "display_name": "Stackable Commons Operator",
+        "capabilities": "Basic Install",
+        "categories": "Big Data",
+    },
+    "druid": {
+        "display_name": "Stackable Operator for Apache Druid",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Database",
+    },
+    "hbase": {
+        "display_name": "Stackable Operator for Apache HBase",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Database",
+    },
+    "hdfs": {
+        "display_name": "Stackable Operator for Apache Hadoop HDFS",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data",
+    },
+    "hive": {
+        "display_name": "Stackable Operator for Apache Hive",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Database",
+    },
+    "kafka": {
+        "display_name": "Stackable Operator for Apache Kafka",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Streaming & Messaging",
+    },
+    "nifi": {
+        "display_name": "Stackable Operator for Apache NiFi",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Integration & Delivery",
+    },
+    "opa": {
+        "display_name": "Stackable Operator for the Open Policy Agent",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Security",
+    },
+    "opensearch": {
+        "display_name": "Stackable Operator for OpenSearch",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data",
+    },
+    "spark-k8s": {
+        "display_name": "Stackable Operator for Apache Spark",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Integration & Delivery",
+    },
+    "superset": {
+        "display_name": "Stackable Operator for Apache Superset",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data",
+    },
+    "trino": {
+        "display_name": "Stackable Operator for Trino",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data, Database",
+    },
+    "zookeeper": {
+        "display_name": "Stackable Operator for Apache ZooKeeper",
+        "capabilities": "Seamless Upgrades",
+        "categories": "Big Data",
+    },
 }
 
 if __name__ == "__main__":
