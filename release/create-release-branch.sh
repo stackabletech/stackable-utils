@@ -38,6 +38,17 @@ update_operator() (
   push_branch "$operator"
 )
 
+update_cockpit() (
+  ensure_clone "$COCKPIT_REPO" "--branch main"
+  cd "$COCKPIT_REPO"
+  assert_cwd_is_repo "$COCKPIT_REPO"
+  assert_clean_index "$COCKPIT_REPO"
+  git pull && git switch "${RELEASE_BRANCH}" 2> /dev/null || git switch -c "${RELEASE_BRANCH}"
+  assert_on_branch "$RELEASE_BRANCH"
+  assert_remote_exists "$REMOTE" "$COCKPIT_REPO"
+  push_branch "$COCKPIT_REPO"
+)
+
 update_demos() (
   ensure_clone "$DEMOS_REPO" "--branch main"
   cd "$DEMOS_REPO"
@@ -61,10 +72,12 @@ update_repos() {
   case "$WHAT" in
     products) update_products ;;
     operators) for_each_operator update_operator ;;
+    cockpit) update_cockpit ;;
     demos) update_demos ;;
     all)
       update_products
       for_each_operator update_operator
+      update_cockpit
       update_demos
       ;;
   esac
@@ -119,12 +132,12 @@ main() {
   parse_inputs "$@"
 
   if [ -z "${RELEASE_BASE}" ]; then
-    >&2 echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w products|operators|demos|all]"
+    >&2 echo "Usage: create-release-branch.sh -b <branch> [-p] [-c] [-w products|operators|cockpit|demos|all]"
     exit 1
   fi
 
   validate_release_base_version "$RELEASE_BASE"
-  validate_what "$WHAT" "products" "operators" "demos" "all"
+  validate_what "$WHAT" "products" "operators" "cockpit" "demos" "all"
   check_common_dependencies
 
   ensure_temp_folder

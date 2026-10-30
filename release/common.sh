@@ -103,6 +103,16 @@ verify_release() {
 		fi
 	fi
 
+	# package.json version (cockpit)
+	if [ -f "$dir/package.json" ]; then
+		local package_ver
+		package_ver=$(yq -p json '.version' "$dir/package.json")
+		if [ "$package_ver" != "$tag" ]; then
+			>&2 echo "  FAIL: package.json version is '$package_ver', expected '$tag'"
+			errors=$((errors + 1))
+		fi
+	fi
+
 	# Helm Chart.yaml version and appVersion
 	local chart_yaml
 	chart_yaml=$(find "$dir/deploy/helm" -maxdepth 2 -name "Chart.yaml" -print -quit 2>/dev/null || true)
@@ -334,7 +344,7 @@ validate_release_base_version() {
 # Derive common variables from a release tag.
 # Requires $INITIAL_DIR to be set (for reading config.yaml).
 #
-# Sets: RELEASE_BASE, RELEASE_BRANCH, PR_BRANCH, DOCKER_IMAGES_REPO, TEMP_RELEASE_FOLDER
+# Sets: RELEASE_BASE, RELEASE_BRANCH, PR_BRANCH, DOCKER_IMAGES_REPO, COCKPIT_REPO, TEMP_RELEASE_FOLDER
 #
 # Usage:
 #   INITIAL_DIR="$PWD"
@@ -346,13 +356,14 @@ derive_tag_vars() {
 	RELEASE_BRANCH="release-$RELEASE_BASE"      # e.g., release-26.3
 	PR_BRANCH="pr-$tag"                          # e.g., pr-26.3.0-rc1
 	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
+	COCKPIT_REPO=$(yq '... comments="" | .cockpit-repo ' "$INITIAL_DIR"/release/config.yaml)
 	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 }
 
 # Derive common variables from a release base version (YY.M).
 # Requires $INITIAL_DIR to be set (for reading config.yaml).
 #
-# Sets: RELEASE_BRANCH, DOCKER_IMAGES_REPO, DEMOS_REPO, TEMP_RELEASE_FOLDER
+# Sets: RELEASE_BRANCH, DOCKER_IMAGES_REPO, DEMOS_REPO, COCKPIT_REPO, TEMP_RELEASE_FOLDER
 #
 # Usage:
 #   INITIAL_DIR="$PWD"
@@ -363,6 +374,7 @@ derive_branch_vars() {
 	RELEASE_BRANCH="release-$release_base"                # e.g., release-26.3
 	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
 	DEMOS_REPO=$(yq '... comments="" | .demos-repo ' "$INITIAL_DIR"/release/config.yaml)
+	COCKPIT_REPO=$(yq '... comments="" | .cockpit-repo ' "$INITIAL_DIR"/release/config.yaml)
 	TEMP_RELEASE_FOLDER="/tmp/stackable-$RELEASE_BRANCH"
 }
 

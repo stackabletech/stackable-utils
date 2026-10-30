@@ -41,6 +41,16 @@ These steps are repeated for each release tag i.e. for both release-candidates a
 # build failures are not yet sent to the #notifications-container-images channel yet.
 # repeat the above with e.g. the tag 25.3.0 once a release candidate is accepted.
 
+# continue with cockpit ...
+# same flow as the operators: branch, RC PR, merge, tag
+./release/create-release-branch.sh -b 25.3 -w cockpit # Only add the -p flag after testing locally first
+./release/create-release-candidate-branch.sh -t 25.3.0-rc1 -w cockpit # Only add the -p flag after testing locally first
+./release/merge-release-candidate.sh -t 25.3.0-rc1 -w cockpit # Only add the -p flag after testing locally first
+./release/tag-release-candidate.sh -t 25.3.0-rc1 -w cockpit # Only add the -p flag after testing locally first
+
+# monitor the GH action that builds the cockpit image and Helm chart for success.
+# repeat the above with e.g. the tag 25.3.0 once a release candidate is accepted.
+
 # continue with the demos ...
 # create and push the release branch (demos are intentionally branch-only:
 # no RC branches, no tagging, no post-release steps)
@@ -112,14 +122,15 @@ A set of scripts that automates some release steps. The release process has mult
 4. Call `tag-release-candidate.sh` - This will:
   - tag merge commit from above, triggering github actions to build the product images and operators
 5. Call `post-release.sh`- This will:
-  - update the operator CHANGELOG.md in `main` with changes from the release tag
-  - create PRs for all operators
+  - update the operator and cockpit CHANGELOG.md in `main` with changes from the release tag
+  - create PRs for all operators and cockpit
 
 > [!NOTE]
 
 > - Steps 2-4 will check out the release branch (or clone it if does exist locally) and so can be run independently of each other.
 > - Any changes should be done manually between steps 2 and 3 i.e. by making changes in the PR branch and/or cherry-picking commits from main.
 > - Demos only require step 1 (branch creation). They are intentionally not tagged or given release candidates.
+> - Cockpit follows the same steps as the operators.
 
 ## Install requirements
 
@@ -163,13 +174,13 @@ pipx inject jinja2-cli pyyaml
 To create release branches use the `create-release-branch.sh` script, called from the repository root folder. The syntax is given below:
 
 ```shell
-./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|demos|all]
+./release/create-release-branch.sh -b <release> [-p] [-c] [-w products|operators|cockpit|demos|all]
 ```
 
 - `-b <release>`: the release number (mandatory). This must be a semver-compatible value (i.e. without leading zeros) such as `23.1`, `23.10` etc. and will be used to create a branch with the name `release-<release>` e.g. `release-23.1`.
 - `-p`: push flag (optional, default is "false"). If provided, the created branches plus any changes made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the branch. It can be "products", "operators", "demos" or "all".
+- `-w`: where to create the branch. It can be "products", "operators", "cockpit", "demos" or "all".
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
@@ -192,13 +203,13 @@ e.g.
 To create release tags use the `create-release-candidate-branch.sh` script, called from the repository root folder. The syntax is given below:
 
 ```shell
-./release/create-release-candidate-branch.sh -t <release-tag> [-p] [-c] [-w products|operators|all]
+./release/create-release-candidate-branch.sh -t <release-tag> [-p] [-c] [-w products|operators|cockpit|all]
 ```
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to create a tag with the name.
 - `-p`: push flag (optional, default is "false"). If provided, the changes and PRs made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the tag and update versions in code. It can be "products", "operators" or "all".
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "cockpit" or "all".
 
 N.B. the flags cannot be combined (e.g. `-p -c` but not `-pc)
 
@@ -220,6 +231,7 @@ e.g.
   - update the `release-tag` in helm charts
   - rebuilds the helm charts
   - bumps the changelog
+  - for cockpit: sets the version in `package.json`, `package-lock.json` and the Helm `Chart.yaml` instead of the Rust/docs updates above
 - optional: pushes the new branch (if requested with "-p")
 - optional: deletes the temporary folder (if requested with "-c")
 
@@ -233,12 +245,12 @@ Product and operator images will be built when these PRs are created or updated,
 To merge PRs use the `merge-release-candidate.sh` script, called from the repository root folder. The syntax is given below:
 
 ```shell
-./release/merge-release-candidate.sh -t <release-tag> [-p] [-w products|operators|all]
+./release/merge-release-candidate.sh -t <release-tag> [-p] [-w products|operators|cockpit|all]
 ```
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to identify the PR (which was created using this tag).
 - `-p`: push flag (optional, default is "false"). If provided, the PRs will be approved and merged.
-- `-w`: where to create the tag and update versions in code. It can be "products", "operators" or "all".
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "cockpit" or "all".
 
 e.g.
 
@@ -259,13 +271,13 @@ e.g.
 The final step is to tag the merge commit from above: this is done using the `tag-release-candidate.sh` script, called from the repository root folder. The syntax is given below:
 
 ```shell
-./release/tag-release-candidate.sh -t <release-tag> [-p] [-c] [-w products|operators|all]
+./release/tag-release-candidate.sh -t <release-tag> [-p] [-c] [-w products|operators|cockpit|all]
 ```
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3-rc1` etc. and will be used to create a tag with the name.
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
 - `-c`: cleanup flag (optional, default is "false"). If provided, the repository folders will be torn down on completion.
-- `-w`: where to create the tag and update versions in code. It can be "products", "operators" or "all".
+- `-w`: where to create the tag and update versions in code. It can be "products", "operators", "cockpit" or "all".
 
 #### What this script does
 
@@ -281,12 +293,12 @@ The final step is to tag the merge commit from above: this is done using the `ta
 Some post release steps are performed with `release/post-release.sh` script, called from the repository root folder. The syntax is given below:
 
 ```shell
-./release/post-release.sh -t <release-tag> [-p] [-w products|operators|all]
+./release/post-release.sh -t <release-tag> [-p] [-w products|operators|cockpit|all]
 ```
 
 - `-t <release-tag>`: the release tag (mandatory). This must be a semver-compatible value (i.e. major/minor/path, without leading zeros) such as `23.1.0`, `23.10.3` etc. and will be used to create a tag with the name.
 - `-p`: push flag (optional, default is "false"). If provided, the created commits and tags made as part of this process will be pushed to the origin.
-- `-w`: which repositories to update the changelogs for. It can be "products", "operators", "all" (defaults to "all").
+- `-w`: which repositories to update the changelogs for. It can be "products", "operators", "cockpit", "all" (defaults to "all").
 
 #### What this script does
 
@@ -294,6 +306,7 @@ Some post release steps are performed with `release/post-release.sh` script, cal
 - checks that the release tag exists and that the docker-images repository has a clean working copy
 - merges the CHANGELOG.md from the release tag into main
 - creates PRs for all operators
+- does the same for the cockpit repository
 
 ## Build actions
 
@@ -324,6 +337,10 @@ on:
       - '[0-9][0-9].[0-9]+.[0-9]+-rc[0-9]+'
 ...
 ```
+
+### Cockpit image and Helm chart
+
+The cockpit image and Helm chart are built by `build.yaml` in the cockpit repository when a matching tag is pushed. The tag filter there must accept CalVer tags (two-digit year, e.g. `26.3.0`), otherwise tagging builds nothing.
 
 ## Post-release steps
 

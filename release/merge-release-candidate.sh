@@ -104,13 +104,39 @@ merge_products() {
 	fi
 }
 
+merge_cockpit() {
+	echo "Cockpit: $COCKPIT_REPO"
+	if $PUSH; then
+		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${COCKPIT_REPO}" --jq '.state' --json state)
+	else
+		echo "Dry-run: skipping PR existence check for ${COCKPIT_REPO}"
+		STATE="OPEN"
+	fi
+	if [[ "$STATE" == "OPEN" ]]; then
+		echo "Processing ${COCKPIT_REPO} in branch ${PR_BRANCH} with state ${STATE}"
+		if $PUSH; then
+			read -p "Ask someone to approve the PR, then press Enter"
+			echo "Merging..."
+			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${COCKPIT_REPO}"
+		else
+			echo "Dry-run: not reviewing/merging..."
+			echo
+			echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
+		fi
+	else
+		echo "Skipping ${COCKPIT_REPO}, PR already closed"
+	fi
+}
+
 merge() {
 	case "$WHAT" in
 		products) merge_products ;;
 		operators) merge_operators ;;
+		cockpit) merge_cockpit ;;
 		all)
 			merge_products
 			merge_operators
+			merge_cockpit
 			;;
 	esac
 }
@@ -123,12 +149,12 @@ main() {
 	parse_inputs "$@"
 
 	if [ -z "${RELEASE_TAG}" ]; then
-		>&2 echo "Usage: merge-release-candidate.sh -t <tag> [-p] [-w products|operators|all]"
+		>&2 echo "Usage: merge-release-candidate.sh -t <tag> [-p] [-w products|operators|cockpit|all]"
 		exit 1
 	fi
 
 	validate_tag "$RELEASE_TAG"
-	validate_what "$WHAT" "products" "operators" "all"
+	validate_what "$WHAT" "products" "operators" "cockpit" "all"
 	check_dependencies
 	merge
 }
