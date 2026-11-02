@@ -28,9 +28,11 @@ Usage:
 Requirements:
     - uv    (https://docs.astral.sh/uv/) — installs PyYAML automatically
     - helm  (https://helm.sh)
+    - git   (createdAt is the commit date of the checked-out release tag)
 """
 
 import argparse
+import datetime
 import json
 import logging
 import os
@@ -399,6 +401,7 @@ def generate_csv(
     result["spec"]["minKubeVersion"] = min_kube_version(args.release)
     result["metadata"]["name"] = f"{csv_name}.v{args.release}"
     result["metadata"]["annotations"]["containerImage"] = related_images[0]["image"]
+    result["metadata"]["annotations"]["createdAt"] = created_at(args.repo_operator)
     result["metadata"]["annotations"]["description"] = chart["description"]
     result["metadata"]["annotations"]["capabilities"] = listing["capabilities"]
     result["metadata"]["annotations"]["categories"] = listing["categories"]
@@ -429,6 +432,31 @@ def generate_csv(
     logging.debug("finish generate_csv")
 
     return result
+
+
+def created_at(repo: pathlib.Path) -> str:
+    """Return the commit date of the checked-out commit, so createdAt stays the same when the bundle is rebuilt."""
+    try:
+        completed_proc = subprocess.run(
+            ["git", "-C", str(repo), "log", "-1", "--format=%ct"],
+            capture_output=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        logging.error(e.stderr.decode("utf-8"))
+        raise ManifestException(f'Failed to read the commit date of "{repo}"')
+    return format_created_at(int(completed_proc.stdout))
+
+
+def format_created_at(epoch_seconds: int) -> str:
+    """Format a Unix timestamp the way OLM bundles write createdAt, in UTC.
+
+    >>> format_created_at(1784628000)
+    '2026-07-21T10:00:00Z'
+    """
+    return datetime.datetime.fromtimestamp(
+        epoch_seconds, tz=datetime.timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def load_chart(args: argparse.Namespace) -> dict:
