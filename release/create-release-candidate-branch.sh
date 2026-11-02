@@ -137,6 +137,12 @@ rc_branch_cockpit() (
 	fi
 	git add package.json package-lock.json "$chart_yaml"
 
+	# The docs are a module of the 'home' component, like the operator docs.
+	# antora version should be major.minor, not patch level
+	yq -i ".version = \"${RELEASE_BASE}\"" docs/antora.yml
+	yq -i '.prerelease = false' docs/antora.yml
+	git add docs/antora.yml
+
 	# inserts a single line with tag and date
 	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
 	git add CHANGELOG.md
