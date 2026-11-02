@@ -61,9 +61,11 @@ tag_repos() {
 	case "$WHAT" in
 		products) tag_products ;;
 		operators) for_each_operator tag_operator ;;
+		cockpit) tag_operator "$COCKPIT_REPO" ;;
 		all)
 			tag_products
 			for_each_operator tag_operator
+			tag_operator "$COCKPIT_REPO"
 			;;
 	esac
 }
@@ -86,7 +88,7 @@ check_products() (
 
 check_operator() (
 	local operator="$1"
-	echo "Operator: $operator"
+	echo "Repository: $operator"
 	ensure_clone "$operator"
 	cd "${operator}"
 	assert_cwd_is_repo "$operator"
@@ -105,9 +107,11 @@ checks() {
 	case "$WHAT" in
 		products) check_products ;;
 		operators) for_each_operator check_operator ;;
+		cockpit) check_operator "$COCKPIT_REPO" ;;
 		all)
 			check_products
 			for_each_operator check_operator
+			check_operator "$COCKPIT_REPO"
 			;;
 	esac
 }
@@ -172,12 +176,12 @@ main() {
 	parse_inputs "$@"
 
 	if [ -z "${RELEASE_TAG}" ]; then
-		>&2 echo "Usage: tag-release-candidate.sh -t <tag> [-p] [-c] [-w products|operators|all]"
+		>&2 echo "Usage: tag-release-candidate.sh -t <tag> [-p] [-c] [-w products|operators|cockpit|all]"
 		exit 1
 	fi
 
 	validate_tag "$RELEASE_TAG"
-	validate_what "$WHAT" "products" "operators" "all"
+	validate_what "$WHAT" "products" "operators" "cockpit" "all"
 
 	ensure_temp_folder
 	check_dependencies

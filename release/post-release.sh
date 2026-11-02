@@ -36,11 +36,11 @@ parse_inputs() {
   echo "Settings: $RELEASE_BRANCH: Push: $PUSH"
 }
 
-# Check that an operator repo has been cloned locally, and that the release
-# branch and tag exists.
+# Check that an operator (or cockpit) repo has been cloned locally, and that the
+# release branch and tag exists.
 check_operator() (
   local OPERATOR="$1"
-  echo "Operator: $OPERATOR"
+  echo "Repository: $OPERATOR"
   ensure_clone "$OPERATOR"
   cd "$OPERATOR"
   assert_cwd_is_repo "$OPERATOR"
@@ -52,14 +52,14 @@ check_operator() (
   assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
   git fetch --tags
   if ! git tag | grep "^$RELEASE_TAG\$"; then
-    >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
+    >&2 echo "Expected tag $RELEASE_TAG missing for $OPERATOR"
     exit 1
   fi
 )
 
 
-# Update an operator's changelog on main, and check it does not differ from
-# the changelog in the release branch.
+# Update an operator's (or cockpit's) changelog on main, and check it does not
+# differ from the changelog in the release branch.
 update_operator() (
   local OPERATOR="$1"
   cd "$OPERATOR"
@@ -82,7 +82,7 @@ update_operator() (
   # are no conflicts.
   CHANGELOG_MODIFIED=$(git status --short)
   if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
-    echo "Failed to update CHANGELOG.md in main for operator $OPERATOR"
+    echo "Failed to update CHANGELOG.md in main for $OPERATOR"
     exit 1
   fi
   # Commit the updated CHANGELOG.
@@ -169,13 +169,13 @@ main() {
   parse_inputs "$@"
 
   if [ -z "${RELEASE_TAG}" ]; then
-    >&2 echo "Usage: post-release.sh -t <tag> [-p] [-w products|operators|all]"
+    >&2 echo "Usage: post-release.sh -t <tag> [-p] [-w products|operators|cockpit|all]"
     exit 1
   fi
 
   # Post-release is only for final releases, not release candidates.
   validate_tag --no-rc "$RELEASE_TAG"
-  validate_what "$WHAT" "products" "operators" "all"
+  validate_what "$WHAT" "products" "operators" "cockpit" "all"
   check_common_dependencies
 
   ensure_temp_folder
@@ -192,6 +192,11 @@ main() {
       echo "Update the operator main changelog for release $RELEASE_TAG"
       for_each_operator update_operator
       ;;
+    cockpit)
+      check_operator "$COCKPIT_REPO"
+      echo "Update $COCKPIT_REPO main changelog for release $RELEASE_TAG"
+      update_operator "$COCKPIT_REPO"
+      ;;
     all)
       check_products
       echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
@@ -199,6 +204,9 @@ main() {
       for_each_operator check_operator
       echo "Update the operator main changelog for release $RELEASE_TAG"
       for_each_operator update_operator
+      check_operator "$COCKPIT_REPO"
+      echo "Update $COCKPIT_REPO main changelog for release $RELEASE_TAG"
+      update_operator "$COCKPIT_REPO"
       ;;
   esac
 }

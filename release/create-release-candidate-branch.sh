@@ -109,14 +109,58 @@ rc_branch_operator() (
 	commit_and_push_rc "$operator"
 )
 
+rc_branch_cockpit() (
+	cd "$COCKPIT_REPO"
+	assert_cwd_is_repo "$COCKPIT_REPO"
+	assert_clean_index "$COCKPIT_REPO"
+	git switch "$PR_BRANCH"
+	assert_on_branch "$PR_BRANCH"
+
+	# package.json drives the image tag of PR builds against the release branch,
+	# the Chart.yaml version is checked by verify_release.
+	# yq is used instead of npm to avoid a Node.js dependency. It must not reformat
+	# the JSON files, which is checked below by counting the changed lines.
+	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\"" package.json
+	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\" | .packages[\"\"].version = \"${RELEASE_TAG}\"" package-lock.json
+	# Find the chart by file name rather than hard-coding the directory
+	local chart_yaml
+	chart_yaml=$(find deploy/helm -maxdepth 2 -name "Chart.yaml" -print -quit)
+	yq -i ".version = \"${RELEASE_TAG}\" | .appVersion = \"${RELEASE_TAG}\"" "$chart_yaml"
+
+	local changed_lines
+	changed_lines=$(git diff --numstat -- package.json package-lock.json | awk '{ sum += $1 + $2 } END { print sum + 0 }')
+	# At most: one version line in package.json, two in package-lock.json (added and removed each)
+	if [ "$changed_lines" -gt 6 ]; then
+		>&2 echo "Error: bumping the version reformatted package.json/package-lock.json ($changed_lines lines changed):"
+		>&2 git diff --stat -- package.json package-lock.json
+		exit 1
+	fi
+	git add package.json package-lock.json "$chart_yaml"
+
+	# The docs are a module of the 'home' component, like the operator docs.
+	# antora version should be major.minor, not patch level
+	yq -i ".version = \"${RELEASE_BASE}\"" docs/antora.yml
+	yq -i '.prerelease = false' docs/antora.yml
+	git add docs/antora.yml
+
+	# inserts a single line with tag and date
+	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
+	git add CHANGELOG.md
+
+	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
+	commit_and_push_rc "$COCKPIT_REPO"
+)
+
 rc_branch_repos() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) rc_branch_products ;;
 		operators) for_each_operator rc_branch_operator ;;
+		cockpit) rc_branch_cockpit ;;
 		all)
 			rc_branch_products
 			for_each_operator rc_branch_operator
+			rc_branch_cockpit
 			;;
 	esac
 }
@@ -189,6 +233,43 @@ check_operator() (
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 )
 
+check_cockpit() (
+	echo "Checking cockpit"
+
+	ensure_clone "$COCKPIT_REPO"
+	cd "$COCKPIT_REPO"
+	assert_cwd_is_repo "$COCKPIT_REPO"
+	assert_clean_index "$COCKPIT_REPO"
+
+	# Need to update here because if we deleted the local state, or someone else continues
+	# we might be back on main, or on the release branch without having pulled updates from fixes.
+	git fetch && git switch "$RELEASE_BRANCH"
+	if $PUSH; then
+		# In push mode, we expect the remote branch to exist, so pull must not fail.
+		if ! git pull; then
+			echo "Unable to pull $RELEASE_BRANCH. Not in dry-run mode" >&2
+			exit 1
+		fi
+	else
+		# In dry-run mode, the release branch may only exist locally. It is ok if pull fails.
+		git pull 2>/dev/null || true
+	fi
+	assert_on_branch "$RELEASE_BRANCH"
+	# The release branch exists if the previous (create-release-branch.sh) script was run with `-p`.
+	if $PUSH; then
+		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+	fi
+
+	# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
+	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
+
+	# create a new branch for the PR off of this
+	git switch "$PR_BRANCH" "$RELEASE_BRANCH" 2>/dev/null || git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	assert_on_branch "$PR_BRANCH"
+
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
+)
+
 checks() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
@@ -197,10 +278,12 @@ checks() {
 			echo "Checking operators"
 			for_each_operator check_operator
 			;;
+		cockpit) check_cockpit ;;
 		all)
 			check_products
 			echo "Checking operators"
 			for_each_operator check_operator
+			check_cockpit
 			;;
 	esac
 }
@@ -323,12 +406,12 @@ main() {
 	parse_inputs "$@"
 
 	if [ -z "${RELEASE_TAG}" ]; then
-		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
+		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|cockpit|all]"
 		exit 1
 	fi
 
 	validate_tag "$RELEASE_TAG"
-	validate_what "$WHAT" "products" "operators" "all"
+	validate_what "$WHAT" "products" "operators" "cockpit" "all"
 
 	ensure_temp_folder
 	check_dependencies

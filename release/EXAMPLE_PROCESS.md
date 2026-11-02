@@ -9,6 +9,7 @@ It is a good idea to do a dry-run check locally, and then delete the local state
 # Create and switch to branch: release-YY.M.
 ./release/create-release-branch.sh -b YY.M -w products
 ./release/create-release-branch.sh -b YY.M -w operators
+./release/create-release-branch.sh -b YY.M -w cockpit
 ./release/create-release-branch.sh -b YY.M -w demos
 
 # Clone to /tmp/stackable-release-YY.M/docker-images and/or enter the directory.
@@ -20,11 +21,13 @@ It is a good idea to do a dry-run check locally, and then delete the local state
 # Raise a PR (dry-run).
 ./release/create-release-candidate-branch.sh -t YY.M.X-rc1 -w products
 ./release/create-release-candidate-branch.sh -t YY.M.X-rc1 -w operators
+./release/create-release-candidate-branch.sh -t YY.M.X-rc1 -w cockpit
 
 # Pretend the PR exists, and exit.
 # This doesn't really test much.
 ./release/merge-release-candidate.sh -t YY.M.X-rc1 -w products
 ./release/merge-release-candidate.sh -t YY.M.X-rc1 -w operators
+./release/merge-release-candidate.sh -t YY.M.X-rc1 -w cockpit
 
 # Clone to /tmp/stackable-release-YY.M/docker-images and/or enter the directory.
 # Fetch and switch to branch: release-YY.M.
@@ -33,6 +36,7 @@ It is a good idea to do a dry-run check locally, and then delete the local state
 # Tag the HEAD commit (in this case it would be the same as `main` where this branch was based).
 ./release/tag-release-candidate.sh -t YY.M.X-rc1 -w products
 ./release/tag-release-candidate.sh -t YY.M.X-rc1 -w operators
+./release/tag-release-candidate.sh -t YY.M.X-rc1 -w cockpit
 
 # TODO: ./release/post-release.sh
 ```
@@ -55,6 +59,7 @@ This procedure would be done until a viable release-candidate can be selected.
 # Push the branch.
 ./release/create-release-branch.sh -b YY.M -w products -p
 ./release/create-release-branch.sh -b YY.M -w operators -p
+./release/create-release-branch.sh -b YY.M -w cockpit -p
 ./release/create-release-branch.sh -b YY.M -w demos -p
 
 # Clone to /tmp/stackable-release-YY.M/docker-images and/or enter the directory.
@@ -65,6 +70,7 @@ This procedure would be done until a viable release-candidate can be selected.
 # Raise a PR.
 ./release/create-release-candidate-branch.sh -t YY.M.X-rc1 -w products -p
 ./release/create-release-candidate-branch.sh -t YY.M.X-rc1 -w operators -p
+./release/create-release-candidate-branch.sh -t YY.M.X-rc1 -w cockpit -p
 ```
 
 Ask people to do approvals.
@@ -80,6 +86,7 @@ Once all approvals are done, merge the changes and tag the release branch `HEAD`
 # Merge the PR (this does not seem to wait for checks to complete).
 ./release/merge-release-candidate.sh -t YY.M.X-rc1 -w products -p
 ./release/merge-release-candidate.sh -t YY.M.X-rc1 -w operators -p
+./release/merge-release-candidate.sh -t YY.M.X-rc1 -w cockpit -p
 ```
 
 It is still worth checking that all PRs are merged.
@@ -94,6 +101,7 @@ It is still worth checking that all PRs are merged.
 # Push tag.
 ./release/tag-release-candidate.sh -t YY.M.X-rc1 -w products -p
 ./release/tag-release-candidate.sh -t YY.M.X-rc1 -w operators -p
+./release/tag-release-candidate.sh -t YY.M.X-rc1 -w cockpit -p
 ```
 
 > [!CAUTION]
@@ -123,6 +131,7 @@ Once the release candidate has been deemed good, do the release proper:
 # Raise a PR.
 ./release/create-release-candidate-branch.sh -t YY.M.X -w products -p
 ./release/create-release-candidate-branch.sh -t YY.M.X -w operators -p
+./release/create-release-candidate-branch.sh -t YY.M.X -w cockpit -p
 ```
 
 Ask people to do approvals.
@@ -138,6 +147,7 @@ Once all approvals are done, merge the changes and tag the release branch `HEAD`
 # Merge the PR (this does not seem to wait for checks to complete).
 ./release/merge-release-candidate.sh -t YY.M.X -w products -p
 ./release/merge-release-candidate.sh -t YY.M.X -w operators -p
+./release/merge-release-candidate.sh -t YY.M.X -w cockpit -p
 
 # Clone to /tmp/stackable-release-YY.M/docker-images and/or enter the directory.
 # Fetch, including tags.
@@ -148,6 +158,7 @@ Once all approvals are done, merge the changes and tag the release branch `HEAD`
 # Push tag.
 ./release/tag-release-candidate.sh -t YY.M.X -w products -p
 ./release/tag-release-candidate.sh -t YY.M.X -w operators -p
+./release/tag-release-candidate.sh -t YY.M.X -w cockpit -p
 ```
 
 > [!CAUTION]
