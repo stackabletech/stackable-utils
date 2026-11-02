@@ -122,7 +122,7 @@ rc_branch_cockpit() (
 	# the JSON files, which is checked below by counting the changed lines.
 	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\"" package.json
 	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\" | .packages[\"\"].version = \"${RELEASE_TAG}\"" package-lock.json
-	# The chart directory is named after the project, which is being renamed
+	# Find the chart by file name rather than hard-coding the directory
 	local chart_yaml
 	chart_yaml=$(find deploy/helm -maxdepth 2 -name "Chart.yaml" -print -quit)
 	yq -i ".version = \"${RELEASE_TAG}\" | .appVersion = \"${RELEASE_TAG}\"" "$chart_yaml"

@@ -231,7 +231,7 @@ e.g.
   - update the `release-tag` in helm charts
   - rebuilds the helm charts
   - bumps the changelog
-  - for cockpit: sets the version in `package.json`, `package-lock.json` and the Helm `Chart.yaml` instead of the Rust/docs updates above
+  - for cockpit: sets the version in `package.json`, `package-lock.json` and the Helm `Chart.yaml` instead of updating `Cargo.toml` and rebuilding the Helm charts; `docs/antora.yml` and the changelog are updated like for the operators
 - optional: pushes the new branch (if requested with "-p")
 - optional: deletes the temporary folder (if requested with "-c")
 

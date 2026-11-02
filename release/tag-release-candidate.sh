@@ -56,34 +56,16 @@ tag_operator() (
 	push_branch
 )
 
-tag_cockpit() (
-	cd "$COCKPIT_REPO"
-	assert_cwd_is_repo "$COCKPIT_REPO"
-	assert_clean_index "$COCKPIT_REPO"
-
-	git switch "$RELEASE_BRANCH"
-	assert_on_branch "$RELEASE_BRANCH"
-	if $PUSH; then
-		git pull
-	else
-		git pull || echo "Dry-run: remote branch doesn't exist yet..."
-	fi
-	assert_on_branch "$RELEASE_BRANCH"
-	git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
-	assert_remote_exists "$REMOTE" "$COCKPIT_REPO"
-	push_branch
-)
-
 tag_repos() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) tag_products ;;
 		operators) for_each_operator tag_operator ;;
-		cockpit) tag_cockpit ;;
+		cockpit) tag_operator "$COCKPIT_REPO" ;;
 		all)
 			tag_products
 			for_each_operator tag_operator
-			tag_cockpit
+			tag_operator "$COCKPIT_REPO"
 			;;
 	esac
 }
@@ -106,7 +88,7 @@ check_products() (
 
 check_operator() (
 	local operator="$1"
-	echo "Operator: $operator"
+	echo "Repository: $operator"
 	ensure_clone "$operator"
 	cd "${operator}"
 	assert_cwd_is_repo "$operator"
@@ -120,27 +102,16 @@ check_operator() (
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 )
 
-check_cockpit() (
-	ensure_clone "$COCKPIT_REPO"
-	cd "$COCKPIT_REPO"
-	assert_cwd_is_repo "$COCKPIT_REPO"
-	assert_clean_index "$COCKPIT_REPO"
-
-	# The release branch should exist (created in a prior step)
-	assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
-	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
-)
-
 checks() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
 		operators) for_each_operator check_operator ;;
-		cockpit) check_cockpit ;;
+		cockpit) check_operator "$COCKPIT_REPO" ;;
 		all)
 			check_products
 			for_each_operator check_operator
-			check_cockpit
+			check_operator "$COCKPIT_REPO"
 			;;
 	esac
 }

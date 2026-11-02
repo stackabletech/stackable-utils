@@ -43,100 +43,54 @@ parse_inputs() {
 	echo "Settings: ${PR_BRANCH}: Push: $PUSH:"
 }
 
-merge_operator() {
-	local operator="$1"
-	echo "Operator: $operator"
+# Merge the release candidate PR of a repository. Pass --ask-approval as the
+# second argument to wait for someone to approve the PR before merging.
+merge_repo() {
+	local repo="$1"
+	local ask_approval="${2:-}"
+	echo "Repository: $repo"
 	if $PUSH; then
-		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${operator}" --jq '.state' --json state)
+		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${repo}" --jq '.state' --json state)
 	else
-		echo "Dry-run: skipping PR existence check for ${operator}"
+		echo "Dry-run: skipping PR existence check for ${repo}"
 		STATE="OPEN"
 	fi
 	if [[ "$STATE" == "OPEN" ]]; then
-		echo "Processing ${operator} in branch ${PR_BRANCH} with state ${STATE}"
+		echo "Processing ${repo} in branch ${PR_BRANCH} with state ${STATE}"
 		if $PUSH; then
 			echo "Reviewing..."
 			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
 			# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
-			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${operator}"
+			if [[ "$ask_approval" == "--ask-approval" ]]; then
+				read -p "Ask someone to approve the PR, then press Enter"
+			fi
+			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${repo}"
 			echo "Merging..."
-			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${operator}"
+			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${repo}"
 		else
 			echo "Dry-run: not reviewing/merging..."
 			echo
 			echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
 		fi
 	else
-		echo "Skipping ${operator}, PR already closed"
+		echo "Skipping ${repo}, PR already closed"
 	fi
 }
 
 merge_operators() {
 	read -p "Ask someone to approve all of the operator PRs, then press Enter"
-	for_each_operator merge_operator
-}
-
-merge_products() {
-	echo "Products: $DOCKER_IMAGES_REPO"
-	if $PUSH; then
-		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${DOCKER_IMAGES_REPO}" --jq '.state' --json state)
-	else
-		echo "Dry-run: skipping PR existence check for ${DOCKER_IMAGES_REPO}"
-		STATE="OPEN"
-	fi
-	if [[ "$STATE" == "OPEN" ]]; then
-		echo "Processing ${DOCKER_IMAGES_REPO} in branch ${PR_BRANCH} with state ${STATE}"
-		if $PUSH; then
-			echo "Reviewing..."
-			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
-			# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
-			read -p "Ask someone to approve the PR, then press Enter"
-			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${DOCKER_IMAGES_REPO}"
-			echo "Merging..."
-			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${DOCKER_IMAGES_REPO}"
-		else
-			echo "Dry-run: not reviewing/merging..."
-			echo
-			echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
-		fi
-	else
-		echo "Skipping ${DOCKER_IMAGES_REPO}, PR already closed"
-	fi
-}
-
-merge_cockpit() {
-	echo "Cockpit: $COCKPIT_REPO"
-	if $PUSH; then
-		STATE=$(gh pr view "${PR_BRANCH}" -R stackabletech/"${COCKPIT_REPO}" --jq '.state' --json state)
-	else
-		echo "Dry-run: skipping PR existence check for ${COCKPIT_REPO}"
-		STATE="OPEN"
-	fi
-	if [[ "$STATE" == "OPEN" ]]; then
-		echo "Processing ${COCKPIT_REPO} in branch ${PR_BRANCH} with state ${STATE}"
-		if $PUSH; then
-			read -p "Ask someone to approve the PR, then press Enter"
-			echo "Merging..."
-			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${COCKPIT_REPO}"
-		else
-			echo "Dry-run: not reviewing/merging..."
-			echo
-			echo "Please checkout the release branch, and manually run git merge ${PR_BRANCH}"
-		fi
-	else
-		echo "Skipping ${COCKPIT_REPO}, PR already closed"
-	fi
+	for_each_operator merge_repo
 }
 
 merge() {
 	case "$WHAT" in
-		products) merge_products ;;
+		products) merge_repo "$DOCKER_IMAGES_REPO" --ask-approval ;;
 		operators) merge_operators ;;
-		cockpit) merge_cockpit ;;
+		cockpit) merge_repo "$COCKPIT_REPO" --ask-approval ;;
 		all)
-			merge_products
+			merge_repo "$DOCKER_IMAGES_REPO" --ask-approval
 			merge_operators
-			merge_cockpit
+			merge_repo "$COCKPIT_REPO" --ask-approval
 			;;
 	esac
 }

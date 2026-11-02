@@ -36,11 +36,11 @@ parse_inputs() {
   echo "Settings: $RELEASE_BRANCH: Push: $PUSH"
 }
 
-# Check that an operator repo has been cloned locally, and that the release
-# branch and tag exists.
+# Check that an operator (or cockpit) repo has been cloned locally, and that the
+# release branch and tag exists.
 check_operator() (
   local OPERATOR="$1"
-  echo "Operator: $OPERATOR"
+  echo "Repository: $OPERATOR"
   ensure_clone "$OPERATOR"
   cd "$OPERATOR"
   assert_cwd_is_repo "$OPERATOR"
@@ -52,14 +52,14 @@ check_operator() (
   assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
   git fetch --tags
   if ! git tag | grep "^$RELEASE_TAG\$"; then
-    >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
+    >&2 echo "Expected tag $RELEASE_TAG missing for $OPERATOR"
     exit 1
   fi
 )
 
 
-# Update an operator's changelog on main, and check it does not differ from
-# the changelog in the release branch.
+# Update an operator's (or cockpit's) changelog on main, and check it does not
+# differ from the changelog in the release branch.
 update_operator() (
   local OPERATOR="$1"
   cd "$OPERATOR"
@@ -82,7 +82,7 @@ update_operator() (
   # are no conflicts.
   CHANGELOG_MODIFIED=$(git status --short)
   if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
-    echo "Failed to update CHANGELOG.md in main for operator $OPERATOR"
+    echo "Failed to update CHANGELOG.md in main for $OPERATOR"
     exit 1
   fi
   # Commit the updated CHANGELOG.
@@ -164,66 +164,6 @@ update_products() (
   fi
 )
 
-# Check that the cockpit repo has been cloned locally, and that the release
-# branch and tag exists.
-check_cockpit() (
-  ensure_clone "$COCKPIT_REPO"
-  cd "$COCKPIT_REPO"
-  assert_cwd_is_repo "$COCKPIT_REPO"
-  assert_clean_index "$COCKPIT_REPO"
-
-  # The release branch should exist (created in a prior step)
-  assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
-
-  git fetch --tags
-  # check tags: N.B. look for exact match
-  if ! git tag | grep "^$RELEASE_TAG\$"; then
-    >&2 echo "Expected tag $RELEASE_TAG missing for $COCKPIT_REPO"
-    exit 1
-  fi
-)
-
-# Update the cockpit changelog on main, and check it does not differ from
-# the changelog in the release branch.
-update_cockpit() (
-  cd "$COCKPIT_REPO"
-  assert_cwd_is_repo "$COCKPIT_REPO"
-  assert_clean_index "$COCKPIT_REPO"
-
-  git checkout main
-  assert_on_branch "main"
-  git pull
-
-  # New branch that updates the CHANGELOG
-  CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
-  # Branch out from main
-  git switch "$CHANGELOG_BRANCH" 2>/dev/null || git switch -c "$CHANGELOG_BRANCH"
-  assert_on_branch "$CHANGELOG_BRANCH"
-  # Checkout CHANGELOG changes from the release tag
-  git checkout "$RELEASE_TAG" -- CHANGELOG.md
-  # Ensure only the CHANGELOG has been modified and there
-  # are no conflicts.
-  CHANGELOG_MODIFIED=$(git status --short)
-  if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
-    echo "Failed to update CHANGELOG.md in main for $COCKPIT_REPO"
-    exit 1
-  fi
-  # Commit the updated CHANGELOG.
-  git add CHANGELOG.md
-  git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
-  assert_clean_index "$COCKPIT_REPO"
-  # Maybe push and create pull request
-  assert_remote_exists "$REMOTE" "$COCKPIT_REPO"
-  if "$PUSH"; then
-    git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
-    gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
-  else
-    echo "Dry-run: not pushing..."
-    git push --dry-run "${REMOTE}" "${CHANGELOG_BRANCH}"
-    gh pr create --reviewer stackabletech/developers --dry-run --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
-  fi
-)
-
 
 main() {
   parse_inputs "$@"
@@ -253,9 +193,9 @@ main() {
       for_each_operator update_operator
       ;;
     cockpit)
-      check_cockpit
+      check_operator "$COCKPIT_REPO"
       echo "Update $COCKPIT_REPO main changelog for release $RELEASE_TAG"
-      update_cockpit
+      update_operator "$COCKPIT_REPO"
       ;;
     all)
       check_products
@@ -264,9 +204,9 @@ main() {
       for_each_operator check_operator
       echo "Update the operator main changelog for release $RELEASE_TAG"
       for_each_operator update_operator
-      check_cockpit
+      check_operator "$COCKPIT_REPO"
       echo "Update $COCKPIT_REPO main changelog for release $RELEASE_TAG"
-      update_cockpit
+      update_operator "$COCKPIT_REPO"
       ;;
   esac
 }
