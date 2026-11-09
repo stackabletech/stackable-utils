@@ -86,13 +86,13 @@ check_products() (
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 )
 
-check_operator() (
-	local operator="$1"
-	echo "Repository: $operator"
-	ensure_clone "$operator"
-	cd "${operator}"
-	assert_cwd_is_repo "$operator"
-	assert_clean_index "$operator"
+check_repo() (
+	local repo="$1"
+	echo "Repository: $repo"
+	ensure_clone "$repo"
+	cd "${repo}"
+	assert_cwd_is_repo "$repo"
+	assert_clean_index "$repo"
 	# TODO (@NickLarsenNZ): Probably need a pull here
 
 	# The release branch should exist (created in a prior step)
@@ -106,12 +106,12 @@ checks() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
-		operators) for_each_operator check_operator ;;
-		cockpit) check_operator "$COCKPIT_REPO" ;;
+		operators) for_each_operator check_repo ;;
+		cockpit) check_repo "$COCKPIT_REPO" ;;
 		all)
 			check_products
-			for_each_operator check_operator
-			check_operator "$COCKPIT_REPO"
+			for_each_operator check_repo
+			check_repo "$COCKPIT_REPO"
 			;;
 	esac
 }
