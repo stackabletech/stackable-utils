@@ -121,7 +121,7 @@ rc_branch_cockpit() (
 	jaq -i --arg v "$RELEASE_TAG" '.version = $v' package.json
 	jaq -i --arg v "$RELEASE_TAG" '.version = $v | .packages[""].version = $v' package-lock.json
 	local chart_yaml=deploy/helm/cockpit/Chart.yaml
-	yq -i ".version = \"${RELEASE_TAG}\" | .appVersion = \"${RELEASE_TAG}\"" "$chart_yaml"
+	yq -i '.version = strenv(RELEASE_TAG) | .appVersion = strenv(RELEASE_TAG)' "$chart_yaml"
 
 	local changed_lines
 	# "+ 0" prints 0 instead of an empty string when there are no changes
@@ -136,7 +136,7 @@ rc_branch_cockpit() (
 
 	# The docs are a module of the 'home' component, like the operator docs.
 	# antora version should be major.minor, not patch level
-	yq -i ".version = \"${RELEASE_BASE}\"" docs/antora.yml
+	yq -i '.version = strenv(RELEASE_BASE)' docs/antora.yml
 	yq -i '.prerelease = false' docs/antora.yml
 	git add docs/antora.yml
 
@@ -290,7 +290,7 @@ update_code() {
 		echo "Updating antora docs for $1"
 
 		# antora version should be major.minor, not patch level
-		yq -i ".version = \"${RELEASE_BASE}\"" "$1/docs/antora.yml"
+		yq -i '.version = strenv(RELEASE_BASE)' "$1/docs/antora.yml"
 		yq -i '.prerelease = false' "$1/docs/antora.yml"
 
 		# Not all operators have a getting started guide
@@ -298,13 +298,13 @@ update_code() {
 		if [ -f "$1/docs/templating_vars.yaml" ]; then
 
 			# for an initial tag for a given release...
-			yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+			yq -i '(.versions.[] | select(. == "*dev")) |= strenv(RELEASE_TAG)' "$1/docs/templating_vars.yaml"
 
 			# ...consider for patch releases/release candidates too
 			# We assume that the tag (e.g. 23.7.1) is applied to an earlier tag in the same
 			# release (e.g. 23.7.0) so search+replace on the major.minor tag will suffice.
 			# TODO: this may pick up versions of external components as well.
-			yq -i "(.versions.[] | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+			yq -i '(.versions.[] | select(. == strenv(RELEASE_BASE) + "*")) |= strenv(RELEASE_TAG)' "$1/docs/templating_vars.yaml"
 
 			yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
 			yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
@@ -320,11 +320,11 @@ update_code() {
 
 	# Update operator version for the integration tests
 	# (used when installing the operators).
-	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" "$1/tests/release.yaml"
+	yq -i '.releases.tests.products[].operatorVersion |= sub("0.0.0-dev", strenv(RELEASE_TAG))' "$1/tests/release.yaml"
 
 	# do this for patch releases/release candidates too.
 	# i.e. replace 24.11.0-rc1 with 24.11.0, 24.7.0 with 24.7.1 etc.
-	yq -i "(.releases.tests.products[].operatorVersion | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/tests/release.yaml"
+	yq -i '(.releases.tests.products[].operatorVersion | select(. == strenv(RELEASE_BASE) + "*")) |= strenv(RELEASE_TAG)' "$1/tests/release.yaml"
 
 	# Some tests perform **label** inspection and for (only) these cases specific labels should be updated.
 	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
@@ -383,6 +383,8 @@ parse_inputs() {
 
 	INITIAL_DIR="$PWD"
 	derive_tag_vars "$RELEASE_TAG"
+	# Exported for strenv() in yq
+	export RELEASE_TAG RELEASE_BASE
 
 	echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }
