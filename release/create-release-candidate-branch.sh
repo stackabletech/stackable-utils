@@ -122,12 +122,11 @@ rc_branch_cockpit() (
 	# the JSON files, which is checked below by counting the changed lines.
 	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\"" package.json
 	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\" | .packages[\"\"].version = \"${RELEASE_TAG}\"" package-lock.json
-	# Find the chart by file name rather than hard-coding the directory
-	local chart_yaml
-	chart_yaml=$(find deploy/helm -maxdepth 2 -name "Chart.yaml" -print -quit)
+	local chart_yaml=deploy/helm/cockpit/Chart.yaml
 	yq -i ".version = \"${RELEASE_TAG}\" | .appVersion = \"${RELEASE_TAG}\"" "$chart_yaml"
 
 	local changed_lines
+	# "+ 0" prints 0 instead of an empty string when there are no changes
 	changed_lines=$(git diff --numstat -- package.json package-lock.json | awk '{ sum += $1 + $2 } END { print sum + 0 }')
 	# At most: one version line in package.json, two in package-lock.json (added and removed each)
 	if [ "$changed_lines" -gt 6 ]; then

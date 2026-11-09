@@ -59,11 +59,11 @@ merge_repo() {
 		echo "Processing ${repo} in branch ${PR_BRANCH} with state ${STATE}"
 		if $PUSH; then
 			echo "Reviewing..."
-			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
-			# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
 			if [[ "$ask_approval" == "--ask-approval" ]]; then
 				read -p "Ask someone to approve the PR, then press Enter"
 			fi
+			# TODO (@NickLarsenNZ): Check if the review is merged, else loop the following
+			# TODO (@NickLarsenNZ): Allow review if the PR author is not the current `gh` user, otherwise wait.
 			# gh pr review "${PR_BRANCH}" --approve -R stackabletech/"${repo}"
 			echo "Merging..."
 			gh pr merge "${PR_BRANCH}" --delete-branch --squash -R stackabletech/"${repo}"
