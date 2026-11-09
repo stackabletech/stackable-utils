@@ -118,10 +118,8 @@ rc_branch_cockpit() (
 
 	# package.json drives the image tag of PR builds against the release branch,
 	# the Chart.yaml version is checked by verify_release.
-	# yq is used instead of npm to avoid a Node.js dependency. It must not reformat
-	# the JSON files, which is checked below by counting the changed lines.
-	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\"" package.json
-	yq -i -p json -o json -I 2 ".version = \"${RELEASE_TAG}\" | .packages[\"\"].version = \"${RELEASE_TAG}\"" package-lock.json
+	jaq -i --arg v "$RELEASE_TAG" '.version = $v' package.json
+	jaq -i --arg v "$RELEASE_TAG" '.version = $v | .packages[""].version = $v' package-lock.json
 	local chart_yaml=deploy/helm/cockpit/Chart.yaml
 	yq -i ".version = \"${RELEASE_TAG}\" | .appVersion = \"${RELEASE_TAG}\"" "$chart_yaml"
 

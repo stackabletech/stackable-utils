@@ -106,7 +106,7 @@ verify_release() {
 	# package.json version (cockpit)
 	if [ -f "$dir/package.json" ]; then
 		local package_ver
-		package_ver=$(yq -p json '.version' "$dir/package.json")
+		package_ver=$(jaq -r '.version' "$dir/package.json")
 		if [ "$package_ver" != "$tag" ]; then
 			>&2 echo "  FAIL: package.json version is '$package_ver', expected '$tag'"
 			errors=$((errors + 1))
@@ -262,6 +262,9 @@ check_common_dependencies() {
 
 	# yq (YAML processor) - https://github.com/mikefarah/yq
 	yq --version
+
+	# jaq (JSON processor) - https://github.com/01mf02/jaq
+	jaq --version
 }
 
 # CalVer base pattern: YY.M where month is 1-12 without leading zero.

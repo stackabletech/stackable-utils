@@ -153,6 +153,10 @@ cargo install cargo-edit --version 0.12.3
 
 This script requires <https://github.com/mikefarah/yq> (not to be confused with <https://github.com/kislyuk/yq>).
 
+### jaq (json parser)
+
+This script requires <https://github.com/01mf02/jaq> to edit JSON files in place, which `jq` can't do.
+
 ### gh (github client)
 
 This script requires <https://github.com/cli> to be installed.
