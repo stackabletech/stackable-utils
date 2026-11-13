@@ -29,7 +29,10 @@ tag_products() (
   assert_on_branch "$RELEASE_BRANCH"
   # TODO: Assert we are in sync with the remote release branch (0 ahead, 0 behind after pull)
   git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
-  assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
+  # TODO (@Techassi): We should decide where to put these gates
+  if $PUSH; then
+    assert_remote_exists "$REMOTE" "$DOCKER_IMAGES_REPO"
+  fi
   push_branch
 )
 
@@ -52,7 +55,10 @@ tag_operator() (
   assert_on_branch "$RELEASE_BRANCH"
   # TODO: Assert we are in sync with the remote release branch (0 ahead, 0 behind after pull)
   git tag -sm "release $RELEASE_TAG" "$RELEASE_TAG"
-  assert_remote_exists "$REMOTE" "$operator"
+  # TODO (@Techassi): We should decide where to put these gates
+  if $PUSH; then
+    assert_remote_exists "$REMOTE" "$operator"
+  fi
   push_branch
 )
 
@@ -83,7 +89,10 @@ check_products() (
   # The release branch should exist (created in a prior step)
   # NOTE: Do we need to check if the branch exists locally?
   # Which branch should we be on here? Does it matter?
-  assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+  # TODO (@Techassi): We should decide where to put these gates
+  if $PUSH; then
+    assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+  fi
 
   assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 )
@@ -102,7 +111,11 @@ check_repo() (
   # The release branch should exist (created in a prior step)
   # NOTE: Do we need to check if the branch exists locally?
   # Which branch should we be on here? Does it matter?
-  assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+  # TODO (@Techassi): We should decide where to put these gates
+  if $PUSH; then
+    assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+  fi
+
   assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 )
 
