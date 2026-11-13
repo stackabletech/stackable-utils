@@ -72,6 +72,8 @@ tag_repos() {
 
 
 check_products() (
+  echo "tag-release-candidate::check_products" >&2
+
   ensure_clone "$DOCKER_IMAGES_REPO"
   cd "$DOCKER_IMAGES_REPO"
   assert_cwd_is_repo "$DOCKER_IMAGES_REPO"
@@ -87,6 +89,8 @@ check_products() (
 )
 
 check_repo() (
+  echo "tag-release-candidate::check_repo" >&2
+
   local repo="$1"
   echo "Repository: $repo"
   ensure_clone "$repo"
@@ -103,6 +107,8 @@ check_repo() (
 )
 
 checks() {
+  echo "tag-release-candidate::checks" >&2
+
   cd "$TEMP_RELEASE_FOLDER"
   case "$WHAT" in
     products) check_products ;;
