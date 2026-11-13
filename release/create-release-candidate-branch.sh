@@ -164,7 +164,7 @@ rc_branch_repos() {
 
 
 check_products() (
-  echo "DEBUG create-release-candidate-branch::check_products"
+  echo "DEBUG create-release-candidate-branch::check_products" >&2
   echo "Checking products"
 
   ensure_clone "$DOCKER_IMAGES_REPO"
@@ -281,7 +281,7 @@ check_cockpit() (
 )
 
 checks() {
-  echo "DEBUG create-release-candidate-branch::checks"
+  echo "DEBUG create-release-candidate-branch::checks" >&2
 
   cd "$TEMP_RELEASE_FOLDER"
   case "$WHAT" in
@@ -405,7 +405,7 @@ parse_inputs() {
 }
 
 check_dependencies() {
-  echo "DEBUG create-release-candidate-branch::check_dependencies"
+  echo "DEBUG create-release-candidate-branch::check_dependencies" >&2
 
   check_common_dependencies
 
