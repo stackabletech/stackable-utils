@@ -41,6 +41,7 @@ for_each_operator() {
 ensure_clone() {
 	local repo="$1"
 	local clone_args="${2:-}"
+	echo "DEBUG common::ensure_clone{repo=${repo}, clone_args=${2:-none}}"
 
 	if [ ! -d "$repo" ]; then
 		echo "Cloning $repo..."
@@ -52,6 +53,8 @@ ensure_clone() {
 # Ensure the temp release folder exists.
 # Requires $TEMP_RELEASE_FOLDER to be set (via derive_tag_vars or derive_branch_vars).
 ensure_temp_folder() {
+	echo "DEBUG common::ensure_temp_folder{TEMP_RELEASE_FOLDER=${TEMP_RELEASE_FOLDER}}"
+
 	if [ ! -d "$TEMP_RELEASE_FOLDER" ]; then
 		echo "Creating folder: [$TEMP_RELEASE_FOLDER]"
 		mkdir -p "$TEMP_RELEASE_FOLDER"
@@ -66,6 +69,7 @@ ensure_temp_folder() {
 update_changelog() {
 	local changelog="$1"
 	local tag="$2"
+	echo "DEBUG common::update_changelog{changelog=${changelog}, tag=${tag}}"
 
 	validate_tag "$tag"
 
@@ -89,6 +93,8 @@ verify_release() {
 	local dir="$1"
 	local tag="$2"
 	local release_base="$3"
+	echo "DEBUG common::verify_release{dir=${dir}, tag=${tag}, release_base=${release_base}}"
+
 	local errors=0
 
 	echo "Verifying release transformations in $(basename "$dir")..."
@@ -199,6 +205,8 @@ verify_release() {
 #   VAR="$(strip_double_quotes "$VAR")"
 strip_double_quotes() {
 	local val="$1"
+	echo "DEBUG common::strip_double_quotes{val=${val}}"
+
 	val="${val%\"}"
 	val="${val#\"}"
 	echo "$val"
@@ -214,6 +222,7 @@ validate_what() {
 	local what="$1"
 	shift
 	local allowed=("$@")
+	echo "DEBUG common::validate_what{what=${what}, allowed=${allowed}}"
 
 	if [ -z "$what" ]; then
 		>&2 echo "Error: -w/--what is required. Allowed values: ${allowed[*]}"
@@ -238,6 +247,8 @@ validate_what() {
 # Scripts that need additional dependencies (cargo, jinja2, etc.)
 # should call this function first, then check their own extras.
 check_common_dependencies() {
+	echo "DEBUG common::check_common_dependencies"
+
 	if ! git_user=$(git config --global --includes --get user.name) \
 	|| ! git_email=$(git config --global --includes --get user.email); then
 		>&2 echo "Error: global git user name/email is not set."
@@ -284,6 +295,7 @@ CALVER_BASE='[0-9][0-9]\.([1-9]|1[0-2])'
 # Exits with an error if the tag doesn't match.
 validate_tag() {
 	local no_rc=false
+
 	while [[ "$1" == --* ]]; do
 		case "$1" in
 		--no-rc) no_rc=true ;;
@@ -294,7 +306,9 @@ validate_tag() {
 		esac
 		shift
 	done
+
 	local tag="$1"
+	echo "DEBUG common::validate_tag{tag=${tag}}"
 
 	if [ -z "$tag" ]; then
 		>&2 echo "Error: release tag is required."
@@ -331,6 +345,7 @@ validate_tag() {
 # Exits with an error if the version doesn't match.
 validate_release_base_version() {
 	local version="$1"
+	echo "DEBUG common::validate_release_base_version{version=${version}}"
 
 	if [ -z "$version" ]; then
 		>&2 echo "Error: release version is required."
@@ -354,9 +369,10 @@ validate_release_base_version() {
 #   derive_tag_vars "$RELEASE_TAG"
 derive_tag_vars() {
 	local tag="$1"
+	echo "DEBUG common::derive_tag_vars{tag=${tag}}"
 
 	RELEASE_BASE="$(cut -d'.' -f1,2 <<< "$tag")" # e.g., 26.3 from 26.3.0-rc1
-	RELEASE_BRANCH="release-$RELEASE_BASE"      # e.g., release-26.3
+	RELEASE_BRANCH="release-$RELEASE_BASE"       # e.g., release-26.3
 	PR_BRANCH="pr-$tag"                          # e.g., pr-26.3.0-rc1
 	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
 	COCKPIT_REPO=$(yq '... comments="" | .cockpit-repo ' "$INITIAL_DIR"/release/config.yaml)
@@ -373,6 +389,7 @@ derive_tag_vars() {
 #   derive_branch_vars "$RELEASE_BASE"
 derive_branch_vars() {
 	local release_base="$1" # e.g., 26.3
+	echo "DEBUG common::derive_branch_vars{release_base=${release_base}}"
 
 	RELEASE_BRANCH="release-$release_base"                # e.g., release-26.3
 	DOCKER_IMAGES_REPO=$(yq '... comments="" | .images-repo ' "$INITIAL_DIR"/release/config.yaml)
@@ -390,6 +407,7 @@ derive_branch_vars() {
 #
 # Exits with an error if the check fails.
 assert_cwd_is_repo() {
+	echo "DEBUG common::assert_cwd_is_repo{expected_name=${1:-none}}"
 	local expected_name="${1:-}"
 
 	local repo_root
@@ -418,6 +436,7 @@ assert_cwd_is_repo() {
 # Exits with an error if the current branch doesn't match.
 assert_on_branch() {
 	local expected="$1"
+	echo "DEBUG common::assert_on_branch{expected=${expected}}"
 
 	if [ -z "$expected" ]; then
 		>&2 echo "Error: assert_on_branch: expected branch name is required."
@@ -447,6 +466,7 @@ assert_on_branch() {
 assert_remote_exists() {
 	local remote="$1"
 	local expected_repo="$2"
+	echo "DEBUG common::assert_remote_exists{remote=${remote}, expected_repo=${expected_repo}}"
 
 	if [ -z "$remote" ] || [ -z "$expected_repo" ]; then
 		>&2 echo "Error: assert_remote_exists requires a remote name and expected repo name."
@@ -480,6 +500,7 @@ assert_remote_exists() {
 assert_tag_not_exists() {
 	local remote="$1"
 	local tag="$2"
+	echo "DEBUG common::assert_tag_not_exists{remote=${remote}, tag=${tag}}"
 
 	if [ -z "$remote" ] || [ -z "$tag" ]; then
 		>&2 echo "Error: assert_tag_not_exists requires a remote name and tag name."
@@ -501,6 +522,7 @@ assert_tag_not_exists() {
 remote_branch_exists() {
 	local remote="$1"
 	local branch="$2"
+	echo "DEBUG common::remote_branch_exists{remote=${remote}, branch=${branch}}"
 
 	if [ -z "$remote" ] || [ -z "$branch" ]; then
 		>&2 echo "Error: remote_branch_exists requires a remote name and branch name."
@@ -516,6 +538,8 @@ remote_branch_exists() {
 # Usage:
 #   assert_remote_branch_exists "origin" "release-26.3"
 assert_remote_branch_exists() {
+	echo "DEBUG common::assert_remote_branch_exists{args=$@}"
+
 	if ! remote_branch_exists "$@"; then
 		>&2 echo "Error: branch '$2' does not exist on remote '$1'."
 		exit 1
@@ -528,6 +552,8 @@ assert_remote_branch_exists() {
 # Usage:
 #   assert_remote_branch_not_exists "origin" "pr-26.3.0-rc1"
 assert_remote_branch_not_exists() {
+	echo "DEBUG common::assert_remote_branch_not_exists{args=$@}"
+
 	if remote_branch_exists "$@"; then
 		>&2 echo "Error: branch '$2' already exists on remote '$1'."
 		exit 1
@@ -545,6 +571,7 @@ assert_remote_branch_not_exists() {
 # identify which repo/step failed (e.g., "airflow-operator").
 assert_clean_index() {
 	local context="${1:-$(basename "$(pwd)")}"
+	echo "DEBUG common::assert_clean_index{context=${context}}"
 
 	# Check for staged or unstaged changes to tracked files
 	if ! git diff-index --quiet HEAD --; then

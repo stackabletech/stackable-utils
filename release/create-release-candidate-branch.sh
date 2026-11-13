@@ -164,6 +164,7 @@ rc_branch_repos() {
 
 
 check_products() (
+  echo "DEBUG create-release-candidate-branch::check_products"
 	echo "Checking products"
 
 	ensure_clone "$DOCKER_IMAGES_REPO"
@@ -268,6 +269,8 @@ check_cockpit() (
 )
 
 checks() {
+  echo "DEBUG create-release-candidate-branch::checks"
+
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
@@ -390,6 +393,8 @@ parse_inputs() {
 }
 
 check_dependencies() {
+  echo "DEBUG create-release-candidate-branch::check_dependencies"
+
 	check_common_dependencies
 
 	# Additional dependencies for operator RC branch creation
