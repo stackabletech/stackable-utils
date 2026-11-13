@@ -1,6 +1,7 @@
 ---
 demos-repo: demos
 images-repo: docker-images
+cockpit-repo: cockpit
 operators:
   - airflow-operator
   - commons-operator

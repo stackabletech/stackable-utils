@@ -103,6 +103,23 @@ teardown_verify_release_dir() {
 	teardown_verify_release_dir
 }
 
+@test "verify_release: passes with correct package.json version" {
+	setup_verify_release_dir
+	printf '{\n  "name": "cockpit",\n  "version": "26.3.0"\n}\n' > "$VERIFY_DIR/package.json"
+	run verify_release "$VERIFY_DIR" "26.3.0" "26.3"
+	[ "$status" -eq 0 ]
+	teardown_verify_release_dir
+}
+
+@test "verify_release: fails when package.json version is wrong" {
+	setup_verify_release_dir
+	printf '{\n  "name": "cockpit",\n  "version": "0.0.1"\n}\n' > "$VERIFY_DIR/package.json"
+	run verify_release "$VERIFY_DIR" "26.3.0" "26.3"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"package.json version is '0.0.1'"* ]]
+	teardown_verify_release_dir
+}
+
 # --- update_changelog ---
 
 @test "update_changelog: inserts tag entry" {
@@ -343,6 +360,7 @@ teardown_verify_release_dir() {
 	[ "$PR_BRANCH" == "pr-26.3.0" ]
 	[ "$TEMP_RELEASE_FOLDER" == "/tmp/stackable-release-26.3" ]
 	[ -n "$DOCKER_IMAGES_REPO" ]
+	[ -n "$COCKPIT_REPO" ]
 }
 
 @test "derive_tag_vars: sets all variables from an RC tag" {
@@ -363,6 +381,7 @@ teardown_verify_release_dir() {
 	[ "$TEMP_RELEASE_FOLDER" == "/tmp/stackable-release-26.3" ]
 	[ -n "$DOCKER_IMAGES_REPO" ]
 	[ -n "$DEMOS_REPO" ]
+	[ -n "$COCKPIT_REPO" ]
 }
 
 # --- assert_cwd_is_repo (needs temp git repo) ---

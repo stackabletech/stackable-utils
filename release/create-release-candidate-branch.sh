@@ -109,14 +109,55 @@ rc_branch_operator() (
 	commit_and_push_rc "$operator"
 )
 
+rc_branch_cockpit() (
+	cd "$COCKPIT_REPO"
+	assert_cwd_is_repo "$COCKPIT_REPO"
+	assert_clean_index "$COCKPIT_REPO"
+	git switch "$PR_BRANCH"
+	assert_on_branch "$PR_BRANCH"
+
+	# package.json drives the image tag of PR builds against the release branch,
+	# the Chart.yaml version is checked by verify_release.
+	jaq -i --arg v "$RELEASE_TAG" '.version = $v' package.json
+	jaq -i --arg v "$RELEASE_TAG" '.version = $v | .packages[""].version = $v' package-lock.json
+	local chart_yaml=deploy/helm/cockpit/Chart.yaml
+	yq -i '.version = strenv(RELEASE_TAG) | .appVersion = strenv(RELEASE_TAG)' "$chart_yaml"
+
+	local changed_lines
+	# "+ 0" prints 0 instead of an empty string when there are no changes
+	changed_lines=$(git diff --numstat -- package.json package-lock.json | awk '{ sum += $1 + $2 } END { print sum + 0 }')
+	# At most: one version line in package.json, two in package-lock.json (added and removed each)
+	if [ "$changed_lines" -gt 6 ]; then
+		>&2 echo "Error: bumping the version reformatted package.json/package-lock.json ($changed_lines lines changed):"
+		>&2 git diff --stat -- package.json package-lock.json
+		exit 1
+	fi
+	git add package.json package-lock.json "$chart_yaml"
+
+	# The docs are a module of the 'home' component, like the operator docs.
+	# antora version should be major.minor, not patch level
+	yq -i '.version = strenv(RELEASE_BASE)' docs/antora.yml
+	yq -i '.prerelease = false' docs/antora.yml
+	git add docs/antora.yml
+
+	# inserts a single line with tag and date
+	update_changelog ./CHANGELOG.md "$RELEASE_TAG"
+	git add CHANGELOG.md
+
+	verify_release "." "$RELEASE_TAG" "$RELEASE_BASE"
+	commit_and_push_rc "$COCKPIT_REPO"
+)
+
 rc_branch_repos() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) rc_branch_products ;;
 		operators) for_each_operator rc_branch_operator ;;
+		cockpit) rc_branch_cockpit ;;
 		all)
 			rc_branch_products
 			for_each_operator rc_branch_operator
+			rc_branch_cockpit
 			;;
 	esac
 }
@@ -189,6 +230,43 @@ check_operator() (
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 )
 
+check_cockpit() (
+	echo "Checking cockpit"
+
+	ensure_clone "$COCKPIT_REPO"
+	cd "$COCKPIT_REPO"
+	assert_cwd_is_repo "$COCKPIT_REPO"
+	assert_clean_index "$COCKPIT_REPO"
+
+	# Need to update here because if we deleted the local state, or someone else continues
+	# we might be back on main, or on the release branch without having pulled updates from fixes.
+	git fetch && git switch "$RELEASE_BRANCH"
+	if $PUSH; then
+		# In push mode, we expect the remote branch to exist, so pull must not fail.
+		if ! git pull; then
+			echo "Unable to pull $RELEASE_BRANCH. Not in dry-run mode" >&2
+			exit 1
+		fi
+	else
+		# In dry-run mode, the release branch may only exist locally. It is ok if pull fails.
+		git pull 2>/dev/null || true
+	fi
+	assert_on_branch "$RELEASE_BRANCH"
+	# The release branch exists if the previous (create-release-branch.sh) script was run with `-p`.
+	if $PUSH; then
+		assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
+	fi
+
+	# The PR branch should not exist yet, otherwise a duplicate commit will be prepared
+	assert_remote_branch_not_exists "$REMOTE" "$PR_BRANCH"
+
+	# create a new branch for the PR off of this
+	git switch "$PR_BRANCH" "$RELEASE_BRANCH" 2>/dev/null || git switch -c "$PR_BRANCH" "$RELEASE_BRANCH"
+	assert_on_branch "$PR_BRANCH"
+
+	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
+)
+
 checks() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
@@ -197,10 +275,12 @@ checks() {
 			echo "Checking operators"
 			for_each_operator check_operator
 			;;
+		cockpit) check_cockpit ;;
 		all)
 			check_products
 			echo "Checking operators"
 			for_each_operator check_operator
+			check_cockpit
 			;;
 	esac
 }
@@ -210,7 +290,7 @@ update_code() {
 		echo "Updating antora docs for $1"
 
 		# antora version should be major.minor, not patch level
-		yq -i ".version = \"${RELEASE_BASE}\"" "$1/docs/antora.yml"
+		yq -i '.version = strenv(RELEASE_BASE)' "$1/docs/antora.yml"
 		yq -i '.prerelease = false' "$1/docs/antora.yml"
 
 		# Not all operators have a getting started guide
@@ -218,13 +298,13 @@ update_code() {
 		if [ -f "$1/docs/templating_vars.yaml" ]; then
 
 			# for an initial tag for a given release...
-			yq -i "(.versions.[] | select(. == \"*dev\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+			yq -i '(.versions.[] | select(. == "*dev")) |= strenv(RELEASE_TAG)' "$1/docs/templating_vars.yaml"
 
 			# ...consider for patch releases/release candidates too
 			# We assume that the tag (e.g. 23.7.1) is applied to an earlier tag in the same
 			# release (e.g. 23.7.0) so search+replace on the major.minor tag will suffice.
 			# TODO: this may pick up versions of external components as well.
-			yq -i "(.versions.[] | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/docs/templating_vars.yaml"
+			yq -i '(.versions.[] | select(. == strenv(RELEASE_BASE) + "*")) |= strenv(RELEASE_TAG)' "$1/docs/templating_vars.yaml"
 
 			yq -i ".helm.repo_name |= sub(\"stackable-dev\", \"stackable-stable\")" "$1/docs/templating_vars.yaml"
 			yq -i ".helm.repo_url |= sub(\"helm-dev\", \"helm-stable\")" "$1/docs/templating_vars.yaml"
@@ -240,11 +320,11 @@ update_code() {
 
 	# Update operator version for the integration tests
 	# (used when installing the operators).
-	yq -i ".releases.tests.products[].operatorVersion |= sub(\"0.0.0-dev\", \"${RELEASE_TAG}\")" "$1/tests/release.yaml"
+	yq -i '.releases.tests.products[].operatorVersion |= sub("0.0.0-dev", strenv(RELEASE_TAG))' "$1/tests/release.yaml"
 
 	# do this for patch releases/release candidates too.
 	# i.e. replace 24.11.0-rc1 with 24.11.0, 24.7.0 with 24.7.1 etc.
-	yq -i "(.releases.tests.products[].operatorVersion | select(. == \"${RELEASE_BASE}*\")) |= \"${RELEASE_TAG}\"" "$1/tests/release.yaml"
+	yq -i '(.releases.tests.products[].operatorVersion | select(. == strenv(RELEASE_BASE) + "*")) |= strenv(RELEASE_TAG)' "$1/tests/release.yaml"
 
 	# Some tests perform **label** inspection and for (only) these cases specific labels should be updated.
 	# N.B. don't do this for all test files as not all images will necessarily exist for the given release tag.
@@ -303,6 +383,8 @@ parse_inputs() {
 
 	INITIAL_DIR="$PWD"
 	derive_tag_vars "$RELEASE_TAG"
+	# Exported for strenv() in yq
+	export RELEASE_TAG RELEASE_BASE
 
 	echo "Settings: ${RELEASE_BRANCH}: Push: $PUSH: Cleanup: $CLEANUP"
 }
@@ -323,12 +405,12 @@ main() {
 	parse_inputs "$@"
 
 	if [ -z "${RELEASE_TAG}" ]; then
-		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|all]"
+		>&2 echo "Usage: create-release-candidate-branch.sh -t <tag> [-p] [-c] [-w products|operators|cockpit|all]"
 		exit 1
 	fi
 
 	validate_tag "$RELEASE_TAG"
-	validate_what "$WHAT" "products" "operators" "all"
+	validate_what "$WHAT" "products" "operators" "cockpit" "all"
 
 	ensure_temp_folder
 	check_dependencies

@@ -36,15 +36,15 @@ parse_inputs() {
   echo "Settings: $RELEASE_BRANCH: Push: $PUSH"
 }
 
-# Check that an operator repo has been cloned locally, and that the release
-# branch and tag exists.
-check_operator() (
-  local OPERATOR="$1"
-  echo "Operator: $OPERATOR"
-  ensure_clone "$OPERATOR"
-  cd "$OPERATOR"
-  assert_cwd_is_repo "$OPERATOR"
-  assert_clean_index "$OPERATOR"
+# Check that a repo has been cloned locally, and that the
+# release branch and tag exists.
+check_repo() (
+  local REPO="$1"
+  echo "Repository: $REPO"
+  ensure_clone "$REPO"
+  cd "$REPO"
+  assert_cwd_is_repo "$REPO"
+  assert_clean_index "$REPO"
   # TODO (@NickLarsenNZ): Probably need a pull here
 
   # The release branch should exist (created in a prior step)
@@ -52,19 +52,19 @@ check_operator() (
   assert_remote_branch_exists "$REMOTE" "$RELEASE_BRANCH"
   git fetch --tags
   if ! git tag | grep "^$RELEASE_TAG\$"; then
-    >&2 echo "Expected tag $RELEASE_TAG missing for operator $OPERATOR"
+    >&2 echo "Expected tag $RELEASE_TAG missing for $REPO"
     exit 1
   fi
 )
 
 
-# Update an operator's changelog on main, and check it does not differ from
-# the changelog in the release branch.
-update_operator() (
-  local OPERATOR="$1"
-  cd "$OPERATOR"
-  assert_cwd_is_repo "$OPERATOR"
-  assert_clean_index "$OPERATOR"
+# Update a repo's changelog on main, and check it does not
+# differ from the changelog in the release branch.
+update_repo() (
+  local REPO="$1"
+  cd "$REPO"
+  assert_cwd_is_repo "$REPO"
+  assert_clean_index "$REPO"
 
   git checkout main
   assert_on_branch "main"
@@ -82,15 +82,15 @@ update_operator() (
   # are no conflicts.
   CHANGELOG_MODIFIED=$(git status --short)
   if [ "M  CHANGELOG.md" != "$CHANGELOG_MODIFIED" ]; then
-    echo "Failed to update CHANGELOG.md in main for operator $OPERATOR"
+    echo "Failed to update CHANGELOG.md in main for $REPO"
     exit 1
   fi
   # Commit the updated CHANGELOG.
   git add CHANGELOG.md
   git commit -sm "Update CHANGELOG.md from release $RELEASE_TAG"
-  assert_clean_index "$OPERATOR"
+  assert_clean_index "$REPO"
   # Maybe push and create pull request
-  assert_remote_exists "$REMOTE" "$OPERATOR"
+  assert_remote_exists "$REMOTE" "$REPO"
   if "$PUSH"; then
     git push -u "${REMOTE}" "${CHANGELOG_BRANCH}"
     gh pr create --reviewer stackabletech/developers --base main --head "${CHANGELOG_BRANCH}" --title "chore: Update changelog from release ${RELEASE_TAG}" --body "${PR_MSG}"
@@ -169,13 +169,13 @@ main() {
   parse_inputs "$@"
 
   if [ -z "${RELEASE_TAG}" ]; then
-    >&2 echo "Usage: post-release.sh -t <tag> [-p] [-w products|operators|all]"
+    >&2 echo "Usage: post-release.sh -t <tag> [-p] [-w products|operators|cockpit|all]"
     exit 1
   fi
 
   # Post-release is only for final releases, not release candidates.
   validate_tag --no-rc "$RELEASE_TAG"
-  validate_what "$WHAT" "products" "operators" "all"
+  validate_what "$WHAT" "products" "operators" "cockpit" "all"
   check_common_dependencies
 
   ensure_temp_folder
@@ -188,17 +188,25 @@ main() {
       update_products
       ;;
     operators)
-      for_each_operator check_operator
+      for_each_operator check_repo
       echo "Update the operator main changelog for release $RELEASE_TAG"
-      for_each_operator update_operator
+      for_each_operator update_repo
+      ;;
+    cockpit)
+      check_repo "$COCKPIT_REPO"
+      echo "Update $COCKPIT_REPO main changelog for release $RELEASE_TAG"
+      update_repo "$COCKPIT_REPO"
       ;;
     all)
       check_products
       echo "Update $DOCKER_IMAGES_REPO main changelog for release $RELEASE_TAG"
       update_products
-      for_each_operator check_operator
+      for_each_operator check_repo
       echo "Update the operator main changelog for release $RELEASE_TAG"
-      for_each_operator update_operator
+      for_each_operator update_repo
+      check_repo "$COCKPIT_REPO"
+      echo "Update $COCKPIT_REPO main changelog for release $RELEASE_TAG"
+      update_repo "$COCKPIT_REPO"
       ;;
   esac
 }

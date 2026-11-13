@@ -61,9 +61,11 @@ tag_repos() {
 	case "$WHAT" in
 		products) tag_products ;;
 		operators) for_each_operator tag_operator ;;
+		cockpit) tag_operator "$COCKPIT_REPO" ;;
 		all)
 			tag_products
 			for_each_operator tag_operator
+			tag_operator "$COCKPIT_REPO"
 			;;
 	esac
 }
@@ -84,13 +86,13 @@ check_products() (
 	assert_tag_not_exists "$REMOTE" "$RELEASE_TAG"
 )
 
-check_operator() (
-	local operator="$1"
-	echo "Operator: $operator"
-	ensure_clone "$operator"
-	cd "${operator}"
-	assert_cwd_is_repo "$operator"
-	assert_clean_index "$operator"
+check_repo() (
+	local repo="$1"
+	echo "Repository: $repo"
+	ensure_clone "$repo"
+	cd "${repo}"
+	assert_cwd_is_repo "$repo"
+	assert_clean_index "$repo"
 	# TODO (@NickLarsenNZ): Probably need a pull here
 
 	# The release branch should exist (created in a prior step)
@@ -104,10 +106,12 @@ checks() {
 	cd "$TEMP_RELEASE_FOLDER"
 	case "$WHAT" in
 		products) check_products ;;
-		operators) for_each_operator check_operator ;;
+		operators) for_each_operator check_repo ;;
+		cockpit) check_repo "$COCKPIT_REPO" ;;
 		all)
 			check_products
-			for_each_operator check_operator
+			for_each_operator check_repo
+			check_repo "$COCKPIT_REPO"
 			;;
 	esac
 }
@@ -172,12 +176,12 @@ main() {
 	parse_inputs "$@"
 
 	if [ -z "${RELEASE_TAG}" ]; then
-		>&2 echo "Usage: tag-release-candidate.sh -t <tag> [-p] [-c] [-w products|operators|all]"
+		>&2 echo "Usage: tag-release-candidate.sh -t <tag> [-p] [-c] [-w products|operators|cockpit|all]"
 		exit 1
 	fi
 
 	validate_tag "$RELEASE_TAG"
-	validate_what "$WHAT" "products" "operators" "all"
+	validate_what "$WHAT" "products" "operators" "cockpit" "all"
 
 	ensure_temp_folder
 	check_dependencies

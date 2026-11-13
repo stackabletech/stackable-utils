@@ -8,6 +8,7 @@ pkgs.mkShell {
     gh
     jinja2-cli
     yq-go
+    jaq
     python311Packages.pip
     python311Packages.pyyaml
     bats # for shell function testing
