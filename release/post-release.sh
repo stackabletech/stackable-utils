@@ -137,7 +137,7 @@ update_products() (
   # New branch that updates the CHANGELOG
   CHANGELOG_BRANCH="chore/update-changelog-from-release-$RELEASE_TAG"
   # Branch out from main
-  git switch -c "$CHANGELOG_BRANCH"
+  git switch "$CHANGELOG_BRANCH" 2>/dev/null || git switch -c "$CHANGELOG_BRANCH"
   assert_on_branch "$CHANGELOG_BRANCH"
   # Checkout CHANGELOG changes from the release tag
   git checkout "$RELEASE_TAG" -- CHANGELOG.md
